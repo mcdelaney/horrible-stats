@@ -5,7 +5,7 @@ from google.oauth2 import service_account
 
 
 def get_gcs_bucket(bucket="horrible-server",
-                   cred_path="~/dcs-storage-gcs.json"):
+                   cred_path="dcs-storage-gcs.json"):
     credentials = service_account.Credentials.from_service_account_file(
         Path(cred_path).expanduser())
 
