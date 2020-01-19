@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 /mnt/c/users/mcdel/horrible-stats/scripts/tacview_to_gs.py --local-path "/mnt/c/users/mcdel/Saved Games/DCS.openbeta_server/Logs/FrameTimeExport"  --local-suffix "*" --remote-subdir "frametime" --delete True
+python3 stats/logs_to_gs.py --local-path "/mnt/c/users/mcdel/Saved Games/DCS.openbeta_server/Logs/FrameTimeExport"  --local-suffix "*" --remote-subdir "frametime" --delete True
