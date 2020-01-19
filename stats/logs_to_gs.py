@@ -11,6 +11,10 @@ log.setLevel(level=logging.INFO)
 
 BUCKET = "horrible-server"
 
+local_path_glob = Path("../Saved Games/DCS.openbeta_server/Logs/FrameTimeExport").glob("*")
+remote_subdir = "frametime"
+delete_files = False
+file = list(local_path_glob)[0]
 
 def upload_files(local_path_glob: Path, remote_subdir: str, delete_files: bool):
     """Upload files to GCP bucket."""
@@ -18,12 +22,26 @@ def upload_files(local_path_glob: Path, remote_subdir: str, delete_files: bool):
     for file in local_path_glob:
         try:
             log.info(f"Uploading {file.absolute()} to {remote_subdir}")
-            blob = bucket.blob(f"{remote_subdir}/{file.name}")
-            if blob.exists():
-                log.info(f"Skipping file {file.name}...already uploaded...")
+            gs_filename = f"{remote_subdir}/{file.name}"
+            blob = bucket.blob(gs_filename)
+            meta = bucket.get_blob(gs_filename)
+            if blob.exists() and file.stat().st_mtime <= meta.updated.timestamp():
+                log.info(f"Skipping file {file.name}...already uploaded")
             else:
+                if blob.exists():
+                    log.info("Updating file...has changed since last update...")
+                try:
+                    fopen_test = file.open('w+')
+                    fopen_test.close()
+                    fopen = False
+                except Exception as e:
+                    log.error(e)
+                    log.error("File is already open in another process!")
+                    fopen = True
+                    # continue
+                log.info("Uploading file...")
                 blob.upload_from_filename(str(file.absolute()))
-                if delete_files:
+                if delete_files and not fopen:
                     log.info("File uploaded...deleting...")
                     file.unlink()
         except PermissionError:
@@ -38,12 +56,12 @@ if __name__=="__main__":
                         help="Regex pattern for local files being uploaded.")
     parser.add_argument("--remote-subdir", type=str,
                         help="Name of remote bucket destination subdir.")
-    parser.add_argument("-d", "--delete", default=False, type=bool,
+    parser.add_argument("--delete", action="store_true",
                         help="If set, files will be deleted after upload.")
     args = parser.parse_args()
 
     credentials = service_account.Credentials.from_service_account_file(
-        "dcs-storage-gcs.json")
+        Path("~/dcs-storage-gcs.json").expanduser())
 
     client = storage.Client(credentials=credentials,
                             project=credentials.project_id)
