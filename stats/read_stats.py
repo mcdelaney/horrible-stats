@@ -10,7 +10,7 @@ import threading
 from lupa import LuaRuntime
 import pandas as pd
 
-from utils import get_gcs_bucket
+from stats.utils import get_gcs_bucket
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ def result_to_flat_dict(result: dict, session_ts: datetime.datetime) -> dict:
         # log.error(f"Error: {e} \n {result}")
         raise e
 
-    result['session_ts'] = session_ts
+    result['session_start_time'] = session_ts
     return result
 
 
@@ -120,4 +120,4 @@ if __name__=='__main__':
     parser.add_argument('--max-parse', default=100, type=int,
                         help='Limit the number of files being parsed.')
     args = parser.parse_args()
-    pprint(main(args.max_parse))
+    pprint(main(args.max_parse).to_html())
