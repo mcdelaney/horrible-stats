@@ -66,9 +66,6 @@ def result_to_flat_dict(result: dict, session_ts: datetime.datetime) -> dict:
 
 def read_lua_table(file_contents: str, stat: Path) -> list:
     """Read a single json file, returning a dict."""
-    # with file_path.open('r') as fp_:
-    #     lua_code = " ".join([line for line in fp_])
-
     session_ts = parse_ts(stat)
     lua_code = f"\n function() \r\n local {file_contents} return misStats end"
 
