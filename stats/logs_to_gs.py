@@ -31,6 +31,8 @@ def upload_files(local_path_glob: Path, remote_subdir: str, delete_files: bool):
                 if blob.exists():
                     log.info("Updating file...has changed since last update...")
                 try:
+                    # TODO
+                    # Write only the new bytes of the file if it's open
                     fopen_test = file.open('w+')
                     fopen_test.close()
                     fopen = False
