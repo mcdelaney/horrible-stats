@@ -64,8 +64,12 @@ def result_to_flat_dict(result: dict, session_ts: datetime.datetime) -> dict:
     return result
 
 
-def read_lua_table(file_contents: str, stat: Path) -> list:
+def read_lua_table(stat: Path) -> list:
     """Read a single json file, returning a dict."""
+    with stat.open('r') as fp_:
+        file_contents = " ".join([f for f in fp_.readlines()])
+    if file_contents == "placeholder":
+        return
     session_ts = parse_ts(stat)
     lua_code = f"\n function() \r\n local {file_contents} return misStats end"
 
@@ -96,11 +100,16 @@ def main(max_parse: int = 1) -> dict:
     stats_list = bucket.client.list_blobs(bucket, prefix="mission-stats/")
     for i, stat in enumerate(stats_list):
         try:
-            log.info(f"Downloading blob from gcs: {stat}...")
-            content = stat.download_as_string().decode().replace("\n", "\r\n")
-            if content == "placeholder":
+            log.info(f"Handing {stat.name}")
+            if stat.name == "mission-stats/":
                 continue
-            stat_parsed = read_lua_table(content, stat)
+            local_path = Path(f"cache/{stat.name}")
+            if local_path.exists():
+                log.info("Cached file found...skipping download...")
+            else:
+                log.info(f"Downloading {stat} to {local_path}...")
+                stat.download_to_filename(local_path)
+            stat_parsed = read_lua_table(local_path)
             if len(stat_parsed) > 0:
                 results.extend(stat_parsed)
 
