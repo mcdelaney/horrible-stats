@@ -1,0 +1,9 @@
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.7
+
+COPY requirements.txt /tmp/
+
+RUN apt-get update && \
+  apt-get install gcc curl -y && \
+  pip install --no-cache-dir -r /tmp/requirements.txt && \
+  mkdir -p /app/log/ && \
+  mkdir -p /app/cache/mission-stats

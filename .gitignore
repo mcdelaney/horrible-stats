@@ -1,3 +1,4 @@
 env/**
 *.pyc
 cache/*
+dcs-storage-gcs.json
