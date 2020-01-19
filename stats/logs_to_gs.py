@@ -2,22 +2,16 @@ import argparse
 import logging
 from pathlib import Path
 
-from google.cloud import storage
-from google.oauth2 import service_account
+from utils import get_gcs_bucket
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
 
-BUCKET = "horrible-server"
-
-local_path_glob = Path("../Saved Games/DCS.openbeta_server/Logs/FrameTimeExport").glob("*")
-remote_subdir = "frametime"
-delete_files = False
-file = list(local_path_glob)[0]
 
 def upload_files(local_path_glob: Path, remote_subdir: str, delete_files: bool):
     """Upload files to GCP bucket."""
+    bucket = get_gcs_bucket()
     remote_subdir = Path(remote_subdir)
     for file in local_path_glob:
         try:
@@ -62,12 +56,6 @@ if __name__=="__main__":
                         help="If set, files will be deleted after upload.")
     args = parser.parse_args()
 
-    credentials = service_account.Credentials.from_service_account_file(
-        Path("~/dcs-storage-gcs.json").expanduser())
-
-    client = storage.Client(credentials=credentials,
-                            project=credentials.project_id)
-    bucket = client.get_bucket(BUCKET)
 
     local_glob = args.local_path.glob(args.local_suffix)
     upload_files(local_glob, args.remote_subdir, args.delete)
