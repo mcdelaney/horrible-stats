@@ -24,20 +24,20 @@ def upload_files(local_path_glob: Path, remote_subdir: str, delete_files: bool):
             else:
                 if blob.exists():
                     log.info("Updating file...has changed since last update...")
-                try:
+                # try:
                     # TODO
                     # Write only the new bytes of the file if it's open
-                    fopen_test = file.open('w+')
-                    fopen_test.close()
-                    fopen = False
-                except Exception as e:
-                    log.error(e)
-                    log.error("File is already open in another process!")
-                    fopen = True
+                #     fopen_test = file.open('w+')
+                #     fopen_test.close()
+                #     fopen = False
+                # except Exception as e:
+                #     log.error(e)
+                #     log.error("File is already open in another process!")
+                #     fopen = True
                     # continue
                 log.info("Uploading file...")
                 blob.upload_from_filename(str(file.absolute()))
-                if delete_files and not fopen:
+                if delete_files:
                     log.info("File uploaded...deleting...")
                     file.unlink()
         except PermissionError:
