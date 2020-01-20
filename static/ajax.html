@@ -28,14 +28,15 @@
         // Iterate each column and print table headers for Datatables
         $.each(data.columns, function (k, colObj) {
             str = '<th>' + colObj.name + '</th>';
+            console.log(str);
             $(str).appendTo(tableName+'>thead>tr');
         });
 
         // Add some Render transformations to Columns
         // Not a good practice to add any of this in API/ Json side
-        data.columns.render = function (data, type, row) {
-            return '<h4>' + data + '</h4>';
-        }
+        // data.columns.render = function (data, type, row) {
+        //     return '<h4>' + data + '</h4>';
+        // }
                 // Debug? console.log(data.columns[0]);
 
         $(tableName).dataTable({
