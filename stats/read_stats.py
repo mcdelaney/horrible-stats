@@ -128,7 +128,7 @@ def main(max_parse: int = 1) -> dict:
 
 
 def get_dataframe():
-    df = read_stats.main(max_parse=1000)
+    df = main(max_parse=1000)
     df.drop(labels=["id"], axis=1, inplace=True)
     return df
 
