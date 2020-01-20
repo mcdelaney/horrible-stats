@@ -32,6 +32,6 @@ def stats_basic():
 
 @app.get("/json_data")
 def json_data():
-    stats = read_stats.main(max_parse=1000).to_json(orient="split"
+    stats = read_stats.main(max_parse=1000).to_json(orient="split",
                                                     index=False)
     return stats
