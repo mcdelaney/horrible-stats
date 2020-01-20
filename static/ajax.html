@@ -24,7 +24,7 @@
         jqxhr = $.ajax('http://ahorribleserver.com/json_data')
                 .done(function () {
                     data = JSON.parse(jqxhr.responseText);
-        console.log(data);
+        // console.log(data);
         // Iterate each column and print table headers for Datatables
         $.each(data.columns, function (k, colObj) {
             str = '<th>' + colObj.name + '</th>';
@@ -33,7 +33,7 @@
 
         // Add some Render transformations to Columns
         // Not a good practice to add any of this in API/ Json side
-        data.columns[0].render = function (data, type, row) {
+        data.columns.render = function (data, type, row) {
             return '<h4>' + data + '</h4>';
         }
                 // Debug? console.log(data.columns[0]);
