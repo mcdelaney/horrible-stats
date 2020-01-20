@@ -11,7 +11,7 @@
           <h1 class="display-4">Horrible Stats For A Horrible Server</h1>
             <table id="stats" class="table-striped table-condensed dataTable">
               <thead><tr></tr></thead>
-            <table>
+            </table>
         </div>
     </div>
   </div>
@@ -21,7 +21,7 @@
         tableName= '#stats',
         columns,
         str,
-        jqxhr = $.ajax('/json_data')
+        jqxhr = $.ajax('http://ahorribleserver.com/json_data')
                 .done(function () {
                     data = JSON.parse(jqxhr.responseText);
 
