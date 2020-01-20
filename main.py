@@ -10,6 +10,13 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory='templates')
 
 
+
+def get_dataframe():
+    df = read_stats.main(max_parse=1000)
+    df.drop("id", inplace=True)
+    return df
+
+
 @app.get("/healthz")
 def healthz():
     return "ok"
@@ -22,7 +29,7 @@ def ajax(request: Request):
 
 @app.get("/")
 def stats(request: Request):
-    df = read_stats.main(max_parse=1000)
+    df = get_dataframe()
     context = {"request": request,
                "data": df.to_html(table_id="stats", index=False)}
     return templates.TemplateResponse("index.html", context)
@@ -30,8 +37,8 @@ def stats(request: Request):
 
 @app.get("/basic")
 def stats_basic():
-    stats = read_stats.main(max_parse=1000).to_html(table_id="stats",
-                                                    index=False)
+    df = get_dataframe()
+    df.to_html(table_id="stats", index=False)
     return HTMLResponse(stats)
 
 
