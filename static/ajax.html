@@ -18,8 +18,8 @@
     <script type="text/javascript">
       $(document).ready(function() {
           $('#stats').DataTable( {
+            "processing": true,
             'ajax':{url: 'http://ahorribleserver.com/json_data', dataSrc: 'data'}
-            // "pagingType": "scrolling"
           }
           );
       });

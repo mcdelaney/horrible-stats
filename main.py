@@ -1,7 +1,7 @@
 from stats import read_stats
 from fastapi import FastAPI
 from starlette.responses import HTMLResponse
-from starlette.staticfiles import StaticFiles
+from starlette.staticfiles import StaticFiles, FileResponse
 from starlette.templating import Jinja2Templates
 from starlette.requests import Request
 
@@ -13,6 +13,11 @@ templates = Jinja2Templates(directory='templates')
 @app.get("/healthz")
 def healthz():
     return "ok"
+
+
+@app.get("ajax")
+def ajax(request: Request):
+    return FileResponse(path="ajax.html")
 
 
 @app.get("/")
