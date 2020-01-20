@@ -9,11 +9,13 @@
       <div class="jumbotron">
         <h1 class="display-4">Horrible Stats For A Horrible Server</h1>
         <div class="container">
-          {% block content %}
-          <div style="width:100%">
-            {{data | safe}}
-          </div>
-          {% endblock %}
+          <table id="stats" class="display" style="width:100%">
+            <thead>
+              {% for colName in columns %}
+                <tr>{{ colName }}</tr>
+              {% endfor %}
+            </thead>
+          </table>
       </div>
     </div>
   </div>
