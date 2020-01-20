@@ -14,15 +14,16 @@ templates = Jinja2Templates(directory='templates')
 def healthz():
     return "ok"
 
+
 @app.get("/")
-def stats():
-    stats = read_stats.main(max_parse=1000).to_html(table_id="stats")
-    return HTMLResponse(stats)
-
-
-@app.get("/fancy")
-def fancy(request: Request):
+def stats(request: Request):
     df = read_stats.main(max_parse=1000)
     context = {"request": request,
                "data": df.to_html(table_id="stats")}
     return templates.TemplateResponse("index.html", context)
+
+
+@app.get("/basic")
+def stats_basic():
+    stats = read_stats.main(max_parse=1000).to_html(table_id="stats")
+    return HTMLResponse(stats)
