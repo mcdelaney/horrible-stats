@@ -120,6 +120,9 @@ def main(max_parse: int = 1) -> dict:
             break
 
     results = pd.DataFrame.from_records(results, index=None)
+    start_time = results["session_start_time"]
+    results.drop(labels=["session_start_time"], axis=1, inplace=True)
+    results.insert(1, "session_start_time", start_time)
     results.fillna(0, inplace=True)
     return results
 
