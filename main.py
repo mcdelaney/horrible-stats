@@ -24,5 +24,5 @@ def stats():
 def fancy(request: Request):
     df = read_stats.main(max_parse=1000)
     context = {"request": request,
-               "data": main.to_html(table_id="stats")}
+               "data": df.to_html(table_id="stats")}
     return templates.TemplateResponse("index.html", context)
