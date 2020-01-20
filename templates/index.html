@@ -21,13 +21,16 @@
     <script type="text/javascript">
       $(document).ready(function() {
           $('#stats').DataTable( {
-            // "paging": "false",
-            "rowId": "index",
-            "fixedColumns": true,
-            // "scrollY": 300,
-            "scrollX":true,
-            "sScrollX": "100%",
-          }
+              // "paging": "false",
+              "rowId": "index",
+              "fixedColumns": true,
+              // "scrollY": 300,
+              "scrollX":true,
+              "sScrollX": "100%",
+              "fixedColumns":   {
+                "leftColumns": 2
+              }
+            }
           );
       });
     </script>
