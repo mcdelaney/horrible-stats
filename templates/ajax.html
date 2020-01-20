@@ -10,11 +10,13 @@
         <h1 class="display-4">Horrible Stats For A Horrible Server</h1>
         <div class="container">
           <table id="stats" class="display" style="width:100%">
+            {% block content %}
             <thead>
-              {% for colName in columns %}
-                <tr>"{{ colName }}"</tr>
+              {% for colname in columns %}
+                <tr>"{{ colname }}"</tr>
               {% endfor %}
             </thead>
+            {% endblock %}
           </table>
       </div>
     </div>
