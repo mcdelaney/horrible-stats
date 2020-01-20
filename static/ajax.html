@@ -10,19 +10,69 @@
         <div class="container">
           <h1 class="display-4">Horrible Stats For A Horrible Server</h1>
           <div>
-            <table id="stats">
+            <table id="stats" class="table-striped table-condensed dataTable" style="width:100%">>
+              <thead><tr></tr></thead>
             <table>
         </div>
     </div>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script>
     <script type="text/javascript">
-      $(document).ready(function() {
-          $('#stats').DataTable( {
-            "processing": true,
-            'ajax':{url: 'http://ahorribleserver.com/json_data', dataSrc: 'data'}
-          }
-          );
-      });
-    </script>
+    var data,
+        tableName= '#demotable',
+        columns,
+        str,
+        jqxhr = $.ajax('/json_data')
+                .done(function () {
+                    data = JSON.parse(jqxhr.responseText);
+
+        // Iterate each column and print table headers for Datatables
+        $.each(data.columns, function (k, colObj) {
+            str = '<th>' + colObj.name + '</th>';
+            $(str).appendTo(tableName+'>thead>tr');
+        });
+
+        // Add some Render transformations to Columns
+        // Not a good practice to add any of this in API/ Json side
+        data.columns[0].render = function (data, type, row) {
+            return '<h4>' + data + '</h4>';
+        }
+                // Debug? console.log(data.columns[0]);
+
+        $(tableName).dataTable({
+            "data": data.data,
+            "columns": data.columns,
+            "fnInitComplete": function () {
+                // Event handler to be fired when rendering is complete (Turn off Loading gif for example)
+                console.log('Datatable rendering complete');
+            }
+        });
+    })
+    .fail(function (jqXHR, exception) {
+                    var msg = '';
+                    if (jqXHR.status === 0) {
+                        msg = 'Not connect.\n Verify Network.';
+                    } else if (jqXHR.status == 404) {
+                        msg = 'Requested page not found. [404]';
+                    } else if (jqXHR.status == 500) {
+                        msg = 'Internal Server Error [500].';
+                    } else if (exception === 'parsererror') {
+                        msg = 'Requested JSON parse failed.';
+                    } else if (exception === 'timeout') {
+                        msg = 'Time out error.';
+                    } else if (exception === 'abort') {
+                        msg = 'Ajax request aborted.';
+                    } else {
+                        msg = 'Uncaught Error.\n' + jqXHR.responseText;
+                    }
+        console.log(msg);
+    });
+      // $(document).ready(function() {
+      //     $('#stats').DataTable( {
+      //       "processing": true,
+      //       'ajax':{url: 'http://ahorribleserver.com/json_data', dataSrc: 'data'}
+      //     }
+      //     );
+      // });
+  </script>
   </body>
 </html>
