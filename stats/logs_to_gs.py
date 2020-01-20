@@ -1,4 +1,5 @@
 import argparse
+import gzip
 import logging
 from pathlib import Path
 
@@ -25,7 +26,16 @@ def upload_files(local_path_glob: Path, remote_subdir: str, delete_files: bool):
                 if blob.exists():
                     log.info("Updating file...has changed since last update...")
                 log.info("Uploading file...")
-                blob.upload_from_filename(str(file.absolute()))
+
+                with file.open('r') as fp_:
+                    content = fp_.read()
+                content.seek(0)
+                content = gzip.compress(bytes(content, encoding="utf-8"))
+
+                blob.content_type = "text/plain"
+                blob.content_encoding = "gzip"
+                blob.upload_from_string(content)
+
                 if delete_files:
                     log.info("File uploaded...deleting...")
                     file.unlink()
@@ -43,8 +53,9 @@ if __name__=="__main__":
                         help="Name of remote bucket destination subdir.")
     parser.add_argument("--delete", action="store_true",
                         help="If set, files will be deleted after upload.")
+    parser.add_argument("--env", default='stg', type=str,
+                        help="Prod or stg.")
     args = parser.parse_args()
-
-
+    args.remote_subdir = args.remote_subdir if args.env == "prod" else 'stg/'+args.remote_subdir
     local_glob = args.local_path.glob(args.local_suffix)
     upload_files(local_glob, args.remote_subdir, args.delete)

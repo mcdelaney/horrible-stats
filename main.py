@@ -9,8 +9,6 @@ app = FastAPI("Stat-Server")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 # app.mount("/templates", Jinja2Templatestemplates = Jinja2Templates(directory='templates'))
 
-
-
 @app.get("/healthz")
 def healthz():
     return "ok"
