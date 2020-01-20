@@ -35,7 +35,7 @@ def ajax(request: Request):
 
 @app.get("/")
 def stats(request: Request):
-    df = get_dataframe()
+    df = read_stats.get_dataframe()
     app.columns = list(df.columns)
     context = {"request": request,
                "data": df.to_html(table_id="stats", index=False)}
@@ -44,7 +44,7 @@ def stats(request: Request):
 
 @app.get("/basic")
 def stats_basic():
-    df = get_dataframe()
+    df = read_stats.get_dataframe()
     app.columns = list(df.columns)
 
     df.to_html(table_id="stats", index=False)
