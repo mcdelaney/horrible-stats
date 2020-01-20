@@ -20,7 +20,7 @@ app = StatServer()
 templates = Jinja2Templates(directory='templates')
 
 app.columns = list(read_stats.get_dataframe().columns)
-log.info(f"Columns: {app.columns}")
+logging.info(f"Columns: {app.columns}")
 
 @app.get("/healthz")
 def healthz():
