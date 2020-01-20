@@ -15,7 +15,7 @@ def healthz():
     return "ok"
 
 
-@app.get("ajax")
+@app.get("/ajax")
 def ajax(request: Request):
     return FileResponse(path="ajax.html")
 
