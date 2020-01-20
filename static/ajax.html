@@ -24,7 +24,7 @@
         jqxhr = $.ajax('http://ahorribleserver.com/json_data')
                 .done(function () {
                     data = JSON.parse(jqxhr.responseText);
-
+        console.log(data);
         // Iterate each column and print table headers for Datatables
         $.each(data.columns, function (k, colObj) {
             str = '<th>' + colObj.name + '</th>';
