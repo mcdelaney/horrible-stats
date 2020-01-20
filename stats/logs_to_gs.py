@@ -56,6 +56,10 @@ if __name__=="__main__":
     parser.add_argument("--env", default='stg', type=str,
                         help="Prod or stg.")
     args = parser.parse_args()
-    args.remote_subdir = args.remote_subdir if args.env == "prod" else 'stg/'+args.remote_subdir
+    if args.env != prod:
+        args.remote_subdir = args.env + "/" + args.remote_subdir
+        args.delete = False
+
     local_glob = args.local_path.glob(args.local_suffix)
+
     upload_files(local_glob, args.remote_subdir, args.delete)
