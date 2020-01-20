@@ -1,9 +1,11 @@
 from stats import read_stats
 from fastapi import FastAPI
 from starlette.responses import HTMLResponse
+from starlette.staticfiles import StaticFiles
 
 
 app = FastAPI("Stat-Server")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/healthz")

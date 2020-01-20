@@ -16,5 +16,16 @@ spec:
       containers:
       - name: app
         image: gcr.io/dcs-analytics-257714/horrible_stats:latest
+        env:
+          - name: GOOGLE_APPLICATION_CREDENTIALS
+            value: "/etc/keys/dcs-storage-gcs.json"
         ports:
         - containerPort: 80
+        volumeMounts:
+        - name: dcs-storage-gcs
+          mountPath: "/etc/keys/"
+          readOnly: true
+      volumes:
+      - name: dcs-storage-gcs
+        secret:
+          secretName: dcs-storage-gcs

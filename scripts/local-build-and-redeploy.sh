@@ -19,4 +19,7 @@ echo "Pushing commit hash image to GCR..."
 docker push gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG
 
 echo "Deploying new image to prod..."
-kubectl set image deployment horrible-stats app=gcr.io$/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG -n horrible-stats
+kubectl set image deployment horrible-stats app=gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG -n horrible-stats
+
+# kubectl delete deployment horrible-stats -n horrible-stats
+# kubectl apply -f deployment.yaml
