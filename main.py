@@ -29,7 +29,7 @@ def healthz():
 
 @app.get("/ajax")
 def ajax(request: Request):
-    context = {'request': request, columns=app.columns}
+    context = {'request': request, "columns": app.columns}
     return templates.TemplateResponse("ajax.html", context)
 
 
