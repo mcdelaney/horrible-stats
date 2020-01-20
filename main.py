@@ -7,7 +7,7 @@ from starlette.templating import Jinja2Templates
 templates = Jinja2Templates(directory='templates')
 app = FastAPI("Stat-Server")
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/templates", Jinja2Templatestemplates = Jinja2Templates(directory='templates'))
+# app.mount("/templates", Jinja2Templatestemplates = Jinja2Templates(directory='templates'))
 
 
 
