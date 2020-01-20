@@ -6,7 +6,7 @@ from starlette.templating import Jinja2Templates
 from starlette.requests import Request
 
 app = FastAPI("Stat-Server")
-# app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory='templates')
 
 
@@ -28,3 +28,10 @@ def stats_basic():
     stats = read_stats.main(max_parse=1000).to_html(table_id="stats",
                                                     index=False)
     return HTMLResponse(stats)
+
+
+@app.get("/json_data")
+def json_data():
+    stats = read_stats.main(max_parse=1000).to_json(orient="split"
+                                                    index=False)
+    return stats
