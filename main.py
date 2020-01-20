@@ -1,6 +1,6 @@
 from stats import read_stats
 from fastapi import FastAPI
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, JSONResponse
 from starlette.staticfiles import StaticFiles, FileResponse
 from starlette.templating import Jinja2Templates
 from starlette.requests import Request
@@ -46,4 +46,4 @@ def stats_basic():
 def json_data():
     stats = read_stats.main(max_parse=1000).to_json(orient="split",
                                                     index=False)
-    return stats
+    return JSONResponse(content=stats)
