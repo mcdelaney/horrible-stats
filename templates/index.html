@@ -10,12 +10,10 @@
         <div class="container">
           <h1 class="display-4">Horrible Stats For A Horrible Server</h1>
           <div>
-            <table id="stats">
-            <table>
           </div>
           {% block content %}
           <div>
-
+            {% data|safe %}
           </div>
           {% endblock %}
           </div>
@@ -25,8 +23,6 @@
     <script type="text/javascript">
       $(document).ready(function() {
           $('#stats').DataTable( {
-            'ajax':{url: 'http://ahorribleserver.com/json_stats', dataSrc: 'data'},
-            "pagingType": "scrolling"
           }
           );
       });

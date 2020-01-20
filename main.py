@@ -15,7 +15,7 @@ def healthz():
     return "ok"
 
 
-@app.get("/")
+@app.get("/stats")
 def stats(request: Request):
     df = read_stats.main(max_parse=1000)
     context = {"request": request,
