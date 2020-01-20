@@ -5,14 +5,16 @@
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.css"/>
   </head>
   <body>
-    <div class="jumbotron">
-      <div class="container">
-        <h1 class="display-4">Horrible Stats For A Horrible Server</h1>
-        {% block content %}
-        <div>
-          {{data | safe}}
-        </div>
-        {% endblock %}
+    <div class="container">
+      <div class="jumbotron">
+        <div class="container">
+          <h1 class="display-4">Horrible Stats For A Horrible Server</h1>
+          {% block content %}
+          <div>
+            {{data | safe}}
+          </div>
+          {% endblock %}
+          </div>
         </div>
     </div>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script>
