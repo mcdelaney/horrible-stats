@@ -53,7 +53,7 @@ def stats_basic():
 
 @app.get("/json_data")
 def json_data():
-    stats = read_stats.main(max_parse=1000).to_json(orient="split",
-                                                    index=False)
+    df = read_stats.get_dataframe()
     app.columns = list(df.columns)
-    return JSONResponse(content=stats)
+
+    return JSONResponse(content=df.to_json(orient="split", index=False))
