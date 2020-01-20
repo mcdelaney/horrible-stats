@@ -120,6 +120,8 @@ def main(max_parse: int = 1) -> dict:
             break
 
     results = pd.DataFrame.from_records(results, index=None)
+    start_time = results.pop("sessioon_start_time")
+    results.insert(0, "session_start_time", start_time)
     results.fillna(0, inplace=True)
     return results
 
