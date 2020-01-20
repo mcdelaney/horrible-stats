@@ -27,11 +27,12 @@ def upload_files(local_path_glob: Path, remote_subdir: str, delete_files: bool):
                     log.info("Updating file...has changed since last update...")
                 log.info("Uploading file...")
 
-                with file.open('r') as fp_:
+                with file.open('rb') as fp_:
                     content = fp_.read()
-                content.seek(0)
-                content = gzip.compress(bytes(content, encoding="utf-8"))
 
+                if '.zip' not in file.name:
+                    log.info("File not compressed...zipping...")
+                    content = gzip.compress(content)
                 blob.content_type = "text/plain"
                 blob.content_encoding = "gzip"
                 blob.upload_from_string(content)
@@ -56,10 +57,9 @@ if __name__=="__main__":
     parser.add_argument("--env", default='stg', type=str,
                         help="Prod or stg.")
     args = parser.parse_args()
-    if args.env != prod:
+    if args.env != 'prod':
         args.remote_subdir = args.env + "/" + args.remote_subdir
         args.delete = False
 
     local_glob = args.local_path.glob(args.local_suffix)
-
     upload_files(local_glob, args.remote_subdir, args.delete)
