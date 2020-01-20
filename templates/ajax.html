@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link href="https://netdna.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.css"/>
+  </head>
+  <body>
+    <div class="w-75 p-3">
+      <div class="jumbotron">
+        <h1 class="display-4">Horrible Stats For A Horrible Server</h1>
+        <div class="container">
+          {% block content %}
+          <div style="width:100%">
+            {{data | safe}}
+          </div>
+          {% endblock %}
+      </div>
+    </div>
+  </div>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+          $('#stats').DataTable( {
+            'ajax': {
+                      'url': "/json_data",
+                      'dataSrc': '',
+                      'contentType': "application/json"
+                     },
+              "paging": "false",
+              "rowId": "index",
+              "fixedColumns": true,
+              // "scrollY": 300,
+              "scrollX":true,
+              "sScrollX": "100%",
+              "fixedColumns":   {
+                "leftColumns": 2
+              }
+            }
+          );
+      });
+    </script>
+  </body>
+</html>
