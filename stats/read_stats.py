@@ -125,7 +125,7 @@ def main(max_parse: int = 1) -> dict:
             break
 
     results = pd.DataFrame.from_records(results, index=None)
-    results['losses__total'] = results['losses__crash'] + results["losses_pilotDeath"]
+    results['losses__total'] = results['losses__crash'] + results["losses__pilotDeath"]
     results["kills__ratio"] = results["kills__Planes__total"]/results["losses__total"]
 
     prio_cols = ["session_start_time",
