@@ -134,6 +134,7 @@ def compute_metrics(results):
     results = results.groupby(["names"]).sum().reset_index()
     results['losses__total_deaths'] = results['losses__crash'] + results["losses__pilotDeath"]
     results["kills__ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
+    results['kills__ratio'] = results.kills__ratio.round()
 
     results = results.replace([np.inf, -np.inf], np.nan)
 
