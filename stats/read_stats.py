@@ -131,7 +131,7 @@ def main(max_parse: int = 1) -> dict:
 
 def compute_metrics(results):
     """Compute additional metrics, reorder columns, and sort."""
-    results = results.groupby(["names"]).sum().reset_index(drop=True)
+    results = results.groupby(["names"]).sum().reset_index()
     results['losses__total_deaths'] = results['losses__crash'] + results["losses__pilotDeath"]
     results["kills__A/A Kill Ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
     results["kills__A/A Kill Ratio"] = results["kills__A/A Kill Ratio"].round()
