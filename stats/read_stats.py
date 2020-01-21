@@ -160,9 +160,8 @@ def compute_metrics(results):
                 log.error(f"\t{c}")
 
     results.fillna(0, inplace=True)
-    # results.columns[0] = "Pilot"
+    results.columns[0] = "Pilot"
     results = results.sort_values(by=["kills__A/A Kill Ratio"], ascending=False)
-    results = results.reset_index()
     return results
 
 
@@ -190,7 +189,7 @@ def get_subset(df, subset_name: List):
     """Summarise by user, returning weapons columns only."""
     drop_cols = []
     for col in df.columns:
-        if col != "names" and not any([f"{s}__" in col for s in subset_name]):
+        if col != "Pilot" and not any([f"{s}__" in col for s in subset_name]):
             drop_cols.append(col)
     df.drop(labels=drop_cols, axis=1, inplace=True)
 
@@ -206,7 +205,7 @@ def get_dataframe(subset: str = None, user_name: str = None) -> pd.DataFrame:
     df = compute_metrics(df)
 
     if user_name:
-        df = df[df['names'] == user_name]
+        df = df[df['Pilot'] == user_name]
 
     df.drop(labels=["id"], axis=1, inplace=True)
     df = df[df.sum(axis=1) != 0.0]
