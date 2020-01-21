@@ -8,6 +8,7 @@ import re
 import threading
 
 from lupa import LuaRuntime
+import numpy as np
 import pandas as pd
 
 from stats.utils import get_gcs_bucket
@@ -142,13 +143,12 @@ def get_dataframe(user_name: str = None) -> pd.DataFrame:
         if "times__" in c:
             df[c] = df[c].apply(lambda x: int(round(x/60)))
 
-    try:
-        float_cols = df.columns.to_series().groupby(df.dtypes).groups
-        log.info(f"{float_cols}")
-        float_cols = float_cols['float64']
+    float_cols = []
+    for c in df.columns:
+        if isintance(df[c].dtype, np.float64):
+            float_cols.append(c)
+    if float_cols:
         df[float_cols] = df[float_cols].applymap(int)
-    except KeyError:
-        pass
 
     cleaned_cols = [c.replace("__", "_").replace("_", " ") for c in df.columns]
     df.columns = cleaned_cols
