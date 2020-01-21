@@ -160,7 +160,7 @@ def compute_metrics(results):
                 log.error(f"\t{c}")
 
     results.fillna(0, inplace=True)
-    results = results.sort_values(by=["kills__A/A Kill Ratio"], ascending=False)
+    results = results.sort_values(by="kills__A/A Kill Ratio", ascending=False)
     return results
 
 
