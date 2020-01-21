@@ -1,5 +1,6 @@
 import argparse
 import datetime
+from typing import List
 import logging
 from pathlib import Path
 from pprint import pprint
@@ -149,14 +150,18 @@ def format_cols(df):
     return df
 
 
-def weapons_subset(df):
+def get_subset(df, subset_name: List):
     """Summarise by user, returning weapons columns only."""
     drop_cols = []
     for col in df.columns:
-        if col != "names" and "weapons__" not in col:
+        if col != "names" and not any([f"{s}__" in col for s in subset_name]):
             drop_cols.append(col)
     df.drop(labels=drop_cols, axis=1, inplace=True)
-    df = df.groupby(["names"]).sum()
+    df = df.groupby(["names"]).sum().reset_index()
+
+    for sub in subset_name:
+        df.columns = [c.replace(f"{sub}__", "") for c in df.columns]
+
     return df
 
 
@@ -170,8 +175,8 @@ def get_dataframe(subset: str = None, user_name: str = None) -> pd.DataFrame:
     df.drop(labels=["id"], axis=1, inplace=True)
     df = df[df.sum(axis=1) != 0.0]
 
-    if subset and subset == "weapons":
-        df = weapons_subset(df)
+    if subset:
+        df = get_subset(df, subset)
 
     df = format_cols(df)
     return df
