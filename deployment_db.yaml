@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: horrible-stats-db
+  namespace: horrible-stats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+      - name: db
+        image: postgres:11.5
+        env:
+          - name: POSTGRES_DB
+            value: "dcs"
+          - name: POSTGRES_USER
+            value: prod
+          - name: POSTGRES_PASSWORD
+            value: pwd
+        ports:
+        - containerPort: 5432
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: horrible-stats-db-svc
+  labels:
+    app: db
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: db
