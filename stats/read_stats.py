@@ -127,13 +127,13 @@ def main(max_parse: int = 1) -> dict:
     return results
 
 
-def get_dataframe(user_names=None):
+def get_dataframe(user_name=None):
     df = main(max_parse=1000)
     df.drop(labels=["id"], axis=1, inplace=True)
     df = df[df.sum(axis=1)!=0.0]
 
-    # if user_names:
-    #     df = df[df['names'] == user_names]
+    if user_name:
+        df = df[df['names'] == user_name]
 
     for c in df.columns:
         if "times__" in c:
