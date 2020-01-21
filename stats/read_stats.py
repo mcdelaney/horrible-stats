@@ -127,13 +127,6 @@ def main(max_parse: int = 1) -> dict:
     return results
 
 
-def get_dataframe():
-    df = main(max_parse=1000)
-    df.drop(labels=["id"], axis=1, inplace=True)
-    return df
-
-
-
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--max-parse', default=100, type=int,
