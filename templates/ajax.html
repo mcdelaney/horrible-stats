@@ -5,22 +5,23 @@
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.css"/>
   </head>
   <body>
+    {% block content %}
     <div class="w-75 p-3">
       <div class="jumbotron">
         <h1 class="display-4">Horrible Stats For A Horrible Server</h1>
         <div class="container">
           <table id="stats" class="display" style="width:100%">
-            {% block content %}
             <thead>
               {% for colname in columns %}
-                <tr>"{{ colname }}"</tr>
+                <tr> {{ colname }} </tr>
               {% endfor %}
             </thead>
-            {% endblock %}
+
           </table>
       </div>
     </div>
   </div>
+  {% endblock %}
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
