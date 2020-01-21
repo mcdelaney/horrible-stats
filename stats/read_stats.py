@@ -109,7 +109,10 @@ def main(max_parse: int = 1) -> dict:
                 log.info("Cached file found...skipping download...")
             else:
                 log.info(f"Downloading {stat} to {local_path}...")
-                stat.download_to_filename(local_path)
+                try:
+                    stat.download_to_filename(local_path)
+                except Exception as e:
+                    log.erorr(f"Error downloading file! {e}")
             stat_parsed = read_lua_table(local_path)
             if len(stat_parsed) > 0:
                 results.extend(stat_parsed)
