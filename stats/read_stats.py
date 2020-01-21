@@ -133,8 +133,8 @@ def compute_metrics(results):
     """Compute additional metrics, reorder columns, and sort."""
     results = results.groupby(["names"]).sum().reset_index()
     results['losses__total_deaths'] = results['losses__crash'] + results["losses__pilotDeath"]
-    results["kills__ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
-    results['kills__ratio'] = results.kills__ratio.round()
+    results["kills__A/A-Kill-Ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
+    results["kills__A/A-Kill-Ratio"] = results["kills__A/A-Kill-Ratio"].round()
 
     results = results.replace([np.inf, -np.inf], np.nan)
 
@@ -142,7 +142,7 @@ def compute_metrics(results):
                  "names",
                  "kills__Planes__total",
                  "losses__total_deaths",
-                 "kills__ratio",
+                 "kills__A/A-Kill-Ratio",
                  "kills__Ground Units__total",
                  "losses__pilotDeath",
                  "losses__eject",
