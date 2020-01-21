@@ -168,7 +168,7 @@ def compute_metrics(results):
 
 def format_cols(df):
     """Format a dataframe for display in HTML."""
-    not_ints = ['kills__ratio']
+    not_ints = ['kills__A/A Kill Ratio']
     for c in df.columns:
         if "times__" in c:
             df[c] = df[c].apply(lambda x: int(round(x/60)))
