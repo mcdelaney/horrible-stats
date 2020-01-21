@@ -162,7 +162,7 @@ def compute_metrics(results):
 
     results.fillna(0, inplace=True)
 
-    results = results.sort_values(by=['kills__ratio'])
+    results = results.sort_values(by=["kills__A/A-Kill-Ratio"], ascending=False)
     return results
 
 
