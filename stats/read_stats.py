@@ -125,9 +125,18 @@ def main(max_parse: int = 1) -> dict:
             break
 
     results = pd.DataFrame.from_records(results, index=None)
-    start_time = results["session_start_time"]
-    results.drop(labels=["session_start_time"], axis=1, inplace=True)
-    results.insert(1, "session_start_time", start_time)
+    prio_cols = ["session_start_time", "kills__Planes_total",
+                 "kill_Ground_Units_total", "losses_pilotDeath", "losses_eject",
+                 "losses_crash", "kills_Ships_total", "kills_Buildings_total"]
+
+    for i, col in enumerate(prio_cols):
+        try:
+            tmp = results[col]
+            results.drop(labels=[col], axis=1, inplace=True)
+            results.insert(i+1, col, tmp)
+        except KeyError:
+            log.error(f"Key {col} not in cols {results.columns}")
+
     results.fillna(0, inplace=True)
     return results
 
