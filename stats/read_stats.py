@@ -162,7 +162,7 @@ def compute_metrics(results):
     results.fillna(0, inplace=True)
     # results.columns[0] = "Pilot"
     results = results.sort_values(by=["kills__A/A Kill Ratio"], ascending=False)
-    # results = results.reset_index()
+    results = results.reset_index()
     return results
 
 
