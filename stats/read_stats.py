@@ -8,6 +8,7 @@ import re
 import threading
 
 from lupa import LuaRuntime
+import numpy as np
 import pandas as pd
 
 from stats.utils import get_gcs_bucket
@@ -127,6 +128,8 @@ def main(max_parse: int = 1) -> dict:
     results = pd.DataFrame.from_records(results, index=None)
     results['losses__total'] = results['losses__crash'] + results["losses__pilotDeath"]
     results["kills__ratio"] = results["kills__Planes__total"]/results["losses__total"]
+
+    results = results.replace([np.inf, -np.inf], np.nan)
 
     prio_cols = ["session_start_time",
                  "names",
