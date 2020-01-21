@@ -131,16 +131,8 @@ def main(max_parse: int = 1) -> dict:
     return results
 
 
-def get_dataframe(user_name: str = None) -> pd.DataFrame:
-    """Get stats in dataframe format suitable for HTML display."""
-    df = main(max_parse=1000)
-
-    if user_name:
-        df = df[df['names'] == user_name]
-
-    df.drop(labels=["id"], axis=1, inplace=True)
-    df = df[df.sum(axis=1) != 0.0]
-
+def format_cols(df):
+    """Format a dataframe for display in HTML."""
     for c in df.columns:
         if "times__" in c:
             df[c] = df[c].apply(lambda x: int(round(x/60)))
@@ -154,6 +146,34 @@ def get_dataframe(user_name: str = None) -> pd.DataFrame:
 
     cleaned_cols = [c.replace("__", "_").replace("_", " ") for c in df.columns]
     df.columns = cleaned_cols
+    return df
+
+
+def weapons_subset(df):
+    """Summarise by user, returning weapons columns only."""
+    drop_cols = []
+    for col in df.columns:
+        if col != "names" or "weapons__" not in col:
+            drop_cols.append(col)
+    df.drop(labels=drop_cols, axis=1, inplace=True)
+    df = df.groupby(["names"]).sum()
+    return df
+
+
+def get_dataframe(subset: str = None, user_name: str = None) -> pd.DataFrame:
+    """Get stats in dataframe format suitable for HTML display."""
+    df = main(max_parse=1000)
+
+    if user_name:
+        df = df[df['names'] == user_name]
+
+    df.drop(labels=["id"], axis=1, inplace=True)
+    df = df[df.sum(axis=1) != 0.0]
+
+    if subset and subset == "weapons":
+        df = weapons_subset(df)
+
+    df = format_cols(df)
     return df
 
 
