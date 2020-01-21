@@ -1,12 +1,12 @@
 from stats import read_stats
 from fastapi import FastAPI
 from starlette.responses import HTMLResponse, JSONResponse
-from starlette.staticfiles import StaticFiles, FileResponse
 from starlette.templating import Jinja2Templates
 from starlette.requests import Request
 import logging
 
 logging.basicConfig(level=logging.INFO)
+templates = Jinja2Templates(directory='templates')
 
 
 class StatServer(FastAPI):
@@ -14,13 +14,10 @@ class StatServer(FastAPI):
         FastAPI.__init__(self, "Stat_server")
         self.columns = []
 
+
 app = StatServer()
-
 # app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory='templates')
 
-# app.columns = list(read_stats.get_dataframe().columns)
-logging.info(f"Columns: {app.columns}")
 
 @app.get("/healthz")
 def healthz():
@@ -40,6 +37,7 @@ def stats(request: Request):
     context = {"request": request,
                "data": df.to_html(table_id="stats", index=False)}
     return templates.TemplateResponse("index.html", context)
+
 
 @app.get("/new")
 def new_stats(request: Request):
