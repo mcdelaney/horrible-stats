@@ -1,17 +1,10 @@
 {% extends "base.html" %}
-  <!-- <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <ul class="navbar-nav">
-      <li class="nav-item active">
-      <a class="nav-link" href="/">Home <span class="sr-only">Overall</span></a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="/user_stats">User Detail</a>
-    </li>
-    <ul>
-  </nav> -->
+  {% block header_scripts %}
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script>
+  {% endblock %}
   {% block navbar %}
     <li class="nav-item active">
-      <a class="nav-link" href="/">Home <span class="sr-only">Overall</span></a>
+      <a class="nav-link" href="/">Overall <span class="sr-only">Overall</span></a>
     </li>
     <li class="nav-item">
       <a class="nav-link" href="/user_stats">User Detail</a>
@@ -23,7 +16,7 @@
     {% endblock %}
   </div>
     {% block scripts %}
-      <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script>
+
       <script type="text/javascript">
         $(document).ready(function() {
             $('#stats').DataTable( {
@@ -32,7 +25,7 @@
                 "rowId": "index",
                 "fixedColumns": true,
                 "autoWidth": false,
-
+                "lengthChange" : false,
                 // "scrollY": 300,
                 "scrollX": true,
                 "sScrollX": "100%",
@@ -43,4 +36,4 @@
             );
         });
       </script>
-    {% endblock %}
+  {% endblock %}
