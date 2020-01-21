@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+  {% block header_scripts %}
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script>
+  {% endblock %}
+  {% block navbar %}
+    <li class="nav-item">
+      <a class="nav-link" href="/">Overall<span class="sr-only">Overall</span></a>
+    </li>
+    <li class="nav-item active">
+      <a class="nav-link" href="/weapons">Weapon Efficiency</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="/survivability">Kills/Losses</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="/user_stats">User Detail</a>
+    </li>
+  {% endblock %}
+  <div style="width:100%">
+    {% block content %}
+      {{data | safe}}
+    {% endblock %}
+  </div>
+    {% block scripts %}
+
+      <script type="text/javascript">
+        $(document).ready(function() {
+            $('#stats').DataTable( {
+                "paging": "false",
+                "pageLength": 75,
+                "rowId": "index",
+                "fixedColumns": true,
+                "autoWidth": false,
+                "lengthChange" : false,
+                // "scrollY": 300,
+                "scrollX": true,
+                "sScrollX": "100%",
+              }
+            );
+        });
+      </script>
+  {% endblock %}
