@@ -131,17 +131,17 @@ def main(max_parse: int = 1) -> dict:
 
 def compute_metrics(results):
     """Compute additional metrics, reorder columns, and sort."""
-    results = results.groupby(["names"]).sum().reset_index()
+    results = results.groupby(["names"]).sum().reset_index(drop=True)
     results['losses__total_deaths'] = results['losses__crash'] + results["losses__pilotDeath"]
-    results["kills__A/A-Kill-Ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
-    results["kills__A/A-Kill-Ratio"] = results["kills__A/A-Kill-Ratio"].round()
+    results["kills__A/A Kill Ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
+    results["kills__A/A Kill Ratio"] = results["kills__A/A Kill Ratio"].round()
 
     results = results.replace([np.inf, -np.inf], np.nan)
 
     prio_cols = ["names",
+                 "kills__A/A Kill Ratio",
                  "kills__Planes__total",
                  "losses__total_deaths",
-                 "kills__A/A-Kill-Ratio",
                  "kills__Ground Units__total",
                  "losses__pilotDeath",
                  "losses__eject",
@@ -160,8 +160,9 @@ def compute_metrics(results):
                 log.error(f"\t{c}")
 
     results.fillna(0, inplace=True)
-
+    # results.columns[0] = "Pilot"
     results = results.sort_values(by=["kills__A/A-Kill-Ratio"], ascending=False)
+    results = results.reset_index(drop=True)
     return results
 
 
@@ -192,7 +193,6 @@ def get_subset(df, subset_name: List):
         if col != "names" and not any([f"{s}__" in col for s in subset_name]):
             drop_cols.append(col)
     df.drop(labels=drop_cols, axis=1, inplace=True)
-    df = df.groupby(["names"]).sum().reset_index()
 
     for sub in subset_name:
         df.columns = [c.replace(f"{sub}__", "") for c in df.columns]
