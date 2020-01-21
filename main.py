@@ -41,6 +41,14 @@ def stats(request: Request):
                "data": df.to_html(table_id="stats", index=False)}
     return templates.TemplateResponse("index.html", context)
 
+@app.get("/new")
+def stats(request: Request):
+    df = read_stats.get_dataframe()
+    app.columns = list(df.columns)
+    context = {"request": request,
+               "data": df.to_html(table_id="stats", index=False)}
+    return templates.TemplateResponse("index_new.html", context)
+
 
 @app.get("/basic")
 def stats_basic():
