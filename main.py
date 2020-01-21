@@ -24,41 +24,31 @@ def healthz():
     return "ok"
 
 
-@app.get("/ajax")
-def ajax(request: Request):
-    context = {'request': request, "columns": app.columns}
-    return templates.TemplateResponse("ajax.html", context)
-
-
-@app.get("/")
+@app.get("/old")
 def stats(request: Request):
     df = read_stats.get_dataframe()
-    app.columns = list(df.columns)
     context = {"request": request,
                "data": df.to_html(table_id="stats", index=False)}
     return templates.TemplateResponse("index.html", context)
 
 
-@app.get("/new")
+@app.get("/")
 def new_stats(request: Request):
     df = read_stats.get_dataframe()
-    app.columns = list(df.columns)
     context = {"request": request,
                "data": df.to_html(table_id="stats", index=False)}
     return templates.TemplateResponse("index_new.html", context)
 
 
-@app.get("/basic")
-def stats_basic():
-    df = read_stats.get_dataframe()
-    app.columns = list(df.columns)
-
-    df.to_html(table_id="stats", index=False)
-    return HTMLResponse(stats)
+@app.get("/weapons")
+def weapon_stats(request: Request):
+    df = read_stats.get_dataframe(subset="weapons")
+    context = {"request": request,
+               "data": df.to_html(table_id="stats", index=False)}
+    return templates.TemplateResponse("index_new.html", context)
 
 
 @app.get("/json_data")
 def json_data():
     df = read_stats.get_dataframe()
-    app.columns = list(df.columns)
     return JSONResponse(content=df.to_json(orient="split", index=False))
