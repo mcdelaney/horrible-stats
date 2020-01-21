@@ -42,7 +42,7 @@ def stats(request: Request):
     return templates.TemplateResponse("index.html", context)
 
 @app.get("/new")
-def stats(request: Request):
+def new_stats(request: Request):
     df = read_stats.get_dataframe()
     app.columns = list(df.columns)
     context = {"request": request,
