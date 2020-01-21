@@ -28,7 +28,6 @@ app = StatServer()
 # app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory='templates')
 
-app.columns = list(read_stats.get_dataframe().columns)
 logging.info(f"Columns: {app.columns}")
 
 
