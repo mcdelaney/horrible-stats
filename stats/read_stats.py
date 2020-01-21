@@ -125,9 +125,9 @@ def main(max_parse: int = 1) -> dict:
             break
 
     results = pd.DataFrame.from_records(results, index=None)
-    prio_cols = ["session_start_time", "kills__Planes_total",
-                 "kill_Ground_Units_total", "losses_pilotDeath", "losses_eject",
-                 "losses_crash", "kills_Ships_total", "kills_Buildings_total"]
+    prio_cols = ["session_start_time", "kills__planes_total",
+                 "kill_ground_units_total", "losses_pilotDeath", "losses_eject",
+                 "losses_crash", "kills_ships_total", "kills_buildings_total"]
 
     for i, col in enumerate(prio_cols):
         try:

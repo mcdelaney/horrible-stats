@@ -42,10 +42,18 @@ def new_stats(request: Request):
 
 @app.get("/weapons")
 def weapon_stats(request: Request):
-    df = read_stats.get_dataframe(subset="weapons")
+    df = read_stats.get_dataframe(subset=["weapons"])
     context = {"request": request,
-               "data": df.to_html(table_id="stats", index=True)}
+               "data": df.to_html(table_id="stats", index=False)}
     return templates.TemplateResponse("weapons.html", context)
+
+
+@app.get("/survivability")
+def suvival_stats(request: Request):
+    df = read_stats.get_dataframe(subset=["kills", "losses"])
+    context = {"request": request,
+               "data": df.to_html(table_id="stats", index=False)}
+    return templates.TemplateResponse("survivability.html", context)
 
 
 @app.get("/json_data")
