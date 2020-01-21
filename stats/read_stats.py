@@ -144,7 +144,7 @@ def get_dataframe(user_name: str = None) -> pd.DataFrame:
 
     try:
         float_cols = df.columns.to_series().groupby(df.dtypes).groups
-        log.info(f"{float_cols}"})
+        log.info(f"{float_cols}")
         float_cols = float_cols['float64']
         df[float_cols] = df[float_cols].applymap(int)
     except KeyError:
