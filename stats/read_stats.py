@@ -145,7 +145,7 @@ def get_dataframe(user_name: str = None) -> pd.DataFrame:
 
     float_cols = []
     for c in df.columns:
-        if isintance(df[c].dtype, np.float64):
+        if isinstance(df[c].dtype, np.float64):
             float_cols.append(c)
     if float_cols:
         df[float_cols] = df[float_cols].applymap(int)
