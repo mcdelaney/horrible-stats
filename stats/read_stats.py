@@ -134,7 +134,7 @@ def compute_metrics(results):
     results = results.groupby(["Pilot"]).sum().reset_index()
     results['losses__total_deaths'] = results['losses__crash'] + results["losses__pilotDeath"]
     results["kills__A/A Kill Ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
-    results["kills__A/A Kill Ratio"] = results["kills__A/A Kill Ratio"].round()
+    results["kills__A/A Kill Ratio"] = results["kills__A/A Kill Ratio"].round(1)
 
     results = results.replace([np.inf, -np.inf], np.nan)
 
