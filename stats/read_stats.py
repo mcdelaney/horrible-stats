@@ -126,6 +126,12 @@ def main(max_parse: int = 1) -> dict:
             break
 
     results = pd.DataFrame.from_records(results, index=None)
+    return results
+
+
+def compute_metrics(results):
+    """Compute additional metrics, reorder columns, and sort."""
+    results = results.groupby(["names"]).sum().reset_index()
     results['losses__total_deaths'] = results['losses__crash'] + results["losses__pilotDeath"]
     results["kills__ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
 
@@ -154,6 +160,8 @@ def main(max_parse: int = 1) -> dict:
                 log.error(f"\t{c}")
 
     results.fillna(0, inplace=True)
+
+    results = results.sort_values(by=['kills__ratio'])
     return results
 
 
@@ -166,8 +174,8 @@ def format_cols(df):
 
     to_int_cols = []
     for c in df.columns:
-        if (any([x in c for x in ['weapons__', 'kills__', 'losses__']]) and
-            c not in not_ints):
+        if any([x in c for x in ['weapons__', 'kills__', 'losses__']]) and \
+         c not in not_ints:
             to_int_cols.append(c)
     if to_int_cols:
         df[to_int_cols] = df[to_int_cols].applymap(int)
@@ -195,6 +203,7 @@ def get_subset(df, subset_name: List):
 def get_dataframe(subset: str = None, user_name: str = None) -> pd.DataFrame:
     """Get stats in dataframe format suitable for HTML display."""
     df = main(max_parse=1000)
+    df = compute_metrics(df)
 
     if user_name:
         df = df[df['names'] == user_name]
