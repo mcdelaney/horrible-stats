@@ -4,7 +4,13 @@
   {% endblock %}
   {% block navbar %}
     <li class="nav-item active">
-      <a class="nav-link" href="/">Overall <span class="sr-only">Overall</span></a>
+      <a class="nav-link" href="/">Overall<span class="sr-only">Overall</span></a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="/weapons">Weapon Efficiency</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="/survivability">Kills v Losses</a>
     </li>
     <li class="nav-item">
       <a class="nav-link" href="/user_stats">User Detail</a>
@@ -17,7 +23,7 @@
   </div>
     {% block scripts %}
 
-      <script type="text/javascript">
+      <!-- <script type="text/javascript">
         $(document).ready(function() {
             $('#stats').DataTable( {
                 "paging": "false",
@@ -35,5 +41,5 @@
               }
             );
         });
-      </script>
+      </script> -->
   {% endblock %}
