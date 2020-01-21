@@ -44,7 +44,7 @@ def upload_files(local_path_glob: Path, remote_subdir: str, delete_files: bool):
             log.info("File is open...skipping...")
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--local-path", type=Path,
                         help="Path to local directory holding files.")

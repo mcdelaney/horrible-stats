@@ -7,7 +7,6 @@ import re
 import threading
 
 from lupa import LuaRuntime
-import numpy as np
 import pandas as pd
 
 from stats.utils import get_gcs_bucket
@@ -36,8 +35,8 @@ def lua_tbl_to_py(lua_tbl) -> dict:
 
 def parse_ts(path: Path) -> datetime:
     file = Path(path.name).name
-    # m = re.search("([A-z]{3}\ [0-9]{1,2}\,\ [0-9]{4}\ at\ [0-9]{2}\ [0-9]{2}\ [0-9]{2})", file)
-    m = re.search("([A-z]{3} [0-9]{1,2}, [0-9]{4} at [0-9]{2} [0-9]{2} [0-9]{2})", file)
+    m = re.search("([A-z]{3} [0-9]{1,2}, [0-9]{4} at [0-9]{2} [0-9]{2} [0-9]{2})",
+                  file)
     parsed = m.group().replace("at ", "")
     return datetime.datetime.strptime(parsed, "%b %d, %Y %H %M %S")
 
@@ -75,15 +74,16 @@ def read_lua_table(stat: Path) -> list:
     lua_code = f"\n function() \r\n local {file_contents} return misStats end"
 
     thread_count = 1
-    lua_funcs = [ LuaRuntime(encoding=None).eval(lua_code)
-                  for _ in range(thread_count) ]
+    lua_funcs = [LuaRuntime(encoding=None).eval(lua_code)
+                 for _ in range(thread_count)]
 
     results = [None]
+
     def read_tab_func(i, lua_func):
         results[i] = lua_func()
 
-    threads = [ threading.Thread(target=read_tab_func, args=(i,lua_func))
-                for i, lua_func in enumerate(lua_funcs) ]
+    threads = [threading.Thread(target=read_tab_func, args=(i, lua_func))
+               for i, lua_func in enumerate(lua_funcs)]
     for thread in threads:
         thread.start()
     for thread in threads:
