@@ -142,8 +142,11 @@ def get_dataframe(user_name: str = None) -> pd.DataFrame:
         if "times__" in c:
             df[c] = df[c].apply(lambda x: int(round(x/60)))
 
-    float_cols = df.columns.to_series().groupby(df.dtypes).groups['float64']
-    df[float_cols] = df[float_cols].applymap(int)
+    try:
+        float_cols = df.columns.to_series().groupby(df.dtypes).groups['float64']
+        df[float_cols] = df[float_cols].applymap(int)
+    except KeyError:
+        pass
 
     cleaned_cols = [c.replace("__", "_").replace("_", " ") for c in df.columns]
     df.columns = cleaned_cols
