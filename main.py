@@ -29,7 +29,7 @@ def stats(request: Request):
     df = read_stats.get_dataframe()
     context = {"request": request,
                "data": df.to_html(table_id="stats", index=False)}
-    return templates.TemplateResponse("index.html", context)
+    return templates.TemplateResponse("index_old.html", context)
 
 
 @app.get("/")
@@ -37,15 +37,15 @@ def new_stats(request: Request):
     df = read_stats.get_dataframe()
     context = {"request": request,
                "data": df.to_html(table_id="stats", index=False)}
-    return templates.TemplateResponse("index_new.html", context)
+    return templates.TemplateResponse("index.html", context)
 
 
 @app.get("/weapons")
 def weapon_stats(request: Request):
     df = read_stats.get_dataframe(subset="weapons")
     context = {"request": request,
-               "data": df.to_html(table_id="stats", index=False)}
-    return templates.TemplateResponse("index_new.html", context)
+               "data": df.to_html(table_id="stats", index=True)}
+    return templates.TemplateResponse("weapons.html", context)
 
 
 @app.get("/json_data")

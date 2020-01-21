@@ -153,7 +153,7 @@ def weapons_subset(df):
     """Summarise by user, returning weapons columns only."""
     drop_cols = []
     for col in df.columns:
-        if col != "names" or "weapons__" not in col:
+        if col != "names" and "weapons__" not in col:
             drop_cols.append(col)
     df.drop(labels=drop_cols, axis=1, inplace=True)
     df = df.groupby(["names"]).sum()
