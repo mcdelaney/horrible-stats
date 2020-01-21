@@ -159,13 +159,15 @@ def main(max_parse: int = 1) -> dict:
 
 def format_cols(df):
     """Format a dataframe for display in HTML."""
+    not_ints = ['kills__ratio']
     for c in df.columns:
         if "times__" in c:
             df[c] = df[c].apply(lambda x: int(round(x/60)))
 
     to_int_cols = []
     for c in df.columns:
-        if any([x in c for x in ['weapons__', 'kills__', 'losses__']]):
+        if (any([x in c for x in ['weapons__', 'kills__', 'losses__']]) and
+            c not in not_ints):
             to_int_cols.append(c)
     if to_int_cols:
         df[to_int_cols] = df[to_int_cols].applymap(int)
