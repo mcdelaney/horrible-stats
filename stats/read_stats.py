@@ -135,7 +135,9 @@ def main(max_parse: int = 1) -> dict:
             results.drop(labels=[col], axis=1, inplace=True)
             results.insert(i+1, col, tmp)
         except KeyError:
-            log.error(f"Key {col} not in cols {results.columns}")
+            log.error(f"Key {col} not in cols:")
+            for c in results.columns:
+                log.error(c)
 
     results.fillna(0, inplace=True)
     return results
