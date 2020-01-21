@@ -12,6 +12,7 @@ spec:
     metadata:
       labels:
         app: app
+        run: horrible-stats
     spec:
       containers:
       - name: app
@@ -19,6 +20,8 @@ spec:
         env:
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: "/etc/keys/dcs-storage-gcs.json"
+          - name: DATABASE_URL
+            value: postgresql://10.1.3.22:5432/dcs?user=prod&password=pwd
         ports:
         - containerPort: 80
         volumeMounts:
