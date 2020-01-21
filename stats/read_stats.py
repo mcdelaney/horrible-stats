@@ -126,8 +126,8 @@ def main(max_parse: int = 1) -> dict:
 
     results = pd.DataFrame.from_records(results, index=None)
     prio_cols = ["session_start_time", "kills__planes_total",
-                 "kill_ground_units_total", "losses_pilotDeath", "losses_eject",
-                 "losses_crash", "kills_ships_total", "kills_buildings_total"]
+                 "kills__Ground_Units_total", "losses__pilotDeath", "losses__eject",
+                 "losses__crash", "kills__Ships_total", "kills__Buildings_total"]
 
     for i, col in enumerate(prio_cols):
         try:
