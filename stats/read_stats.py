@@ -142,12 +142,12 @@ def get_dataframe(user_name: str = None) -> pd.DataFrame:
         if "times__" in c:
             df[c] = df[c].apply(lambda x: int(round(x/60)))
 
-    float_cols = []
+    to_int_cols = []
     for c in df.columns:
-        if isinstance(df[c].dtype, np.float64):
-            float_cols.append(c)
-    if float_cols:
-        df[float_cols] = df[float_cols].applymap(int)
+        if any([x in c for x in ['weapons__', 'kills__', 'losses__']]):
+            to_int_cols.append(c)
+    if to_int_cols:
+        df[to_int_cols] = df[to_int_cols].applymap(int)
 
     cleaned_cols = [c.replace("__", "_").replace("_", " ") for c in df.columns]
     df.columns = cleaned_cols
