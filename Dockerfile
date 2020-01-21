@@ -1,5 +1,5 @@
 FROM horrible_base
 
-COPY ./stats /app/stats
-COPY ./templates  /app/templates
-COPY main.py /app
+ADD horrible/ /app/
+RUN mkdir -p /app/cache/mission-stats
+WORKDIR "/app"

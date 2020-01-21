@@ -22,4 +22,3 @@ echo "Pushing latest image to GCR..."
 docker push gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:latest
 
 # kubectl delete deployment horrible-stats -n horrible-stats
-# kubectl apply -f deployment.yaml
