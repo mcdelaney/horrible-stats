@@ -127,10 +127,16 @@ def main(max_parse: int = 1) -> dict:
     return results
 
 
-def get_dataframe():
+def get_dataframe(user_names=None):
     df = main(max_parse=1000)
     df.drop(labels=["id"], axis=1, inplace=True)
     df = df[df.sum(axis=1)!=0.0]
+
+    # if user_names:
+    #     df = df[df['names'] == user_names]
+
+    cleaned_cols = [c.replace("__", "_").split("_") for c in df.columns]
+    df.columns = cleaned_cols
     return df
 
 
