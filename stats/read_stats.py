@@ -127,8 +127,8 @@ def main(max_parse: int = 1) -> dict:
     results = pd.DataFrame.from_records(results, index=None)
     prio_cols = ["session_start_time",
                  "names",
-                 "kills__planes__total",
-                 "kills__Ground_Units__total",
+                 "kills__Planes__total",
+                 "kills__Ground Units__total",
                  "losses__pilotDeath",
                  "losses__eject",
                  "losses__crash",
