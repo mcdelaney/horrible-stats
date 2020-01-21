@@ -137,7 +137,7 @@ def get_dataframe(user_names=None):
 
     for c in df.columns:
         if "time__" in c:
-            df[c] = df[c].apply(lambda x: int(x/60))
+            df[c] = df[c].apply(lambda x: int(round(x/60)))
 
     cleaned_cols = [c.replace("__", "_").replace("_", " ") for c in df.columns]
     df.columns = cleaned_cols
