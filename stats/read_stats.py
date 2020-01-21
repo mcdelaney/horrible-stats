@@ -130,6 +130,7 @@ def main(max_parse: int = 1) -> dict:
 def get_dataframe():
     df = main(max_parse=1000)
     df.drop(labels=["id"], axis=1, inplace=True)
+    df = df[df.sum(axis=1)!=0.0]
     return df
 
 
