@@ -127,13 +127,16 @@ def main(max_parse: int = 1) -> dict:
     return results
 
 
-def get_dataframe(user_name=None):
+def get_dataframe(user_name: str = None) -> pd.DataFrame:
+    """Get stats in dataframe format suitable for HTML display."""
     df = main(max_parse=1000)
-    df.drop(labels=["id"], axis=1, inplace=True)
-    df = df[df.sum(axis=1)!=0.0]
 
     if user_name:
         df = df[df['names'] == user_name]
+
+    df.drop(labels=["id"], axis=1, inplace=True)
+    df = df[df.sum(axis=1)!=0.0]
+
 
     for c in df.columns:
         if "times__" in c:
