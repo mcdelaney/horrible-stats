@@ -125,12 +125,14 @@ def main(max_parse: int = 1) -> dict:
             break
 
     results = pd.DataFrame.from_records(results, index=None)
-    results['losses__total'] = results.apply(
-        lambda x: x['losses__crash'] + x["losses_pilotDeath"])
+    results['losses__total'] = results['losses__crash'] + results["losses_pilotDeath"]
+    results["kills__ratio"] = results["kills__Planes__total"]/results["losses__total"]
+
     prio_cols = ["session_start_time",
                  "names",
                  "kills__Planes__total",
                  "losses__total",
+                 "kills__ratio",
                  "kills__Ground Units__total",
                  "losses__pilotDeath",
                  "losses__eject",
