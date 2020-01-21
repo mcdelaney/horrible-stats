@@ -24,7 +24,7 @@ def lua_tbl_to_py(lua_tbl) -> dict:
     try:
         for k, v in lua_tbl.items():
             if k == b'names':
-                out['names'] = ', '.join([val.decode() for val in dict(v).values()])
+                out['Pilot'] = ', '.join([val.decode() for val in dict(v).values()])
                 continue
             if v and isinstance(v, (int, bytes, float, str)):
                 out[k.decode()] = v
@@ -131,14 +131,14 @@ def main(max_parse: int = 1) -> dict:
 
 def compute_metrics(results):
     """Compute additional metrics, reorder columns, and sort."""
-    results = results.groupby(["names"]).sum().reset_index()
+    results = results.groupby(["Pilot"]).sum().reset_index()
     results['losses__total_deaths'] = results['losses__crash'] + results["losses__pilotDeath"]
     results["kills__A/A Kill Ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
     results["kills__A/A Kill Ratio"] = results["kills__A/A Kill Ratio"].round()
 
     results = results.replace([np.inf, -np.inf], np.nan)
 
-    prio_cols = ["names",
+    prio_cols = ["Pilot",
                  "kills__A/A Kill Ratio",
                  "kills__Planes__total",
                  "losses__total_deaths",
@@ -160,7 +160,6 @@ def compute_metrics(results):
                 log.error(f"\t{c}")
 
     results.fillna(0, inplace=True)
-    results.columns[0] = "Pilot"
     results = results.sort_values(by=["kills__A/A Kill Ratio"], ascending=False)
     return results
 
