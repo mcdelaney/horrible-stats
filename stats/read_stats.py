@@ -135,7 +135,11 @@ def get_dataframe(user_names=None):
     # if user_names:
     #     df = df[df['names'] == user_names]
 
-    cleaned_cols = [c.replace("__", "_").split("_") for c in df.columns]
+    for c in df.columns:
+        if "time__" in c:
+            df[c] = df[c].apply(lambda x: int(x/60))
+
+    cleaned_cols = [c.replace("__", "_").replace("_", " ") for c in df.columns]
     df.columns = cleaned_cols
     return df
 
