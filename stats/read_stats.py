@@ -143,7 +143,7 @@ def main(max_parse: int = 1) -> dict:
         except KeyError:
             log.error(f"Key {col} not in cols:")
             for c in results.columns:
-                log.error(c)
+                log.error(f"\t{c}")
 
     results.fillna(0, inplace=True)
     return results
