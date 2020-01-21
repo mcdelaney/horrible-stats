@@ -138,8 +138,7 @@ def compute_metrics(results):
 
     results = results.replace([np.inf, -np.inf], np.nan)
 
-    prio_cols = ["session_start_time",
-                 "names",
+    prio_cols = ["names",
                  "kills__Planes__total",
                  "losses__total_deaths",
                  "kills__A/A-Kill-Ratio",
