@@ -1,8 +1,7 @@
 import argparse
 import datetime
-import json
 import logging
-from pathlib import Path, WindowsPath
+from pathlib import Path
 from pprint import pprint
 import re
 import threading
@@ -37,7 +36,8 @@ def lua_tbl_to_py(lua_tbl) -> dict:
 
 def parse_ts(path: Path) -> datetime:
     file = Path(path.name).name
-    m = re.search("([A-z]{3}\ [0-9]{1,2}\,\ [0-9]{4}\ at\ [0-9]{2}\ [0-9]{2}\ [0-9]{2})", file)
+    # m = re.search("([A-z]{3}\ [0-9]{1,2}\,\ [0-9]{4}\ at\ [0-9]{2}\ [0-9]{2}\ [0-9]{2})", file)
+    m = re.search("([A-z]{3} [0-9]{1,2}, [0-9]{4} at [0-9]{2} [0-9]{2} [0-9]{2})", file)
     parsed = m.group().replace("at ", "")
     return datetime.datetime.strptime(parsed, "%b %d, %Y %H %M %S")
 
@@ -136,8 +136,7 @@ def get_dataframe(user_name: str = None) -> pd.DataFrame:
         df = df[df['names'] == user_name]
 
     df.drop(labels=["id"], axis=1, inplace=True)
-    df = df[df.sum(axis=1)!=0.0]
-
+    df = df[df.sum(axis=1) != 0.0]
 
     for c in df.columns:
         if "times__" in c:
@@ -155,8 +154,7 @@ def get_dataframe(user_name: str = None) -> pd.DataFrame:
     return df
 
 
-
-if __name__=='__main__':
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--max-parse', default=100, type=int,
                         help='Limit the number of files being parsed.')
