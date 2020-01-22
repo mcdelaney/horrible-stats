@@ -7,7 +7,7 @@ metadata:
     app: app
 spec:
   type: LoadBalancer
-  loadBalancerIP: "35.208.13.109"
+  loadBalancerIP: "35.226.240.39"
   ports:
     - port: 80
       targetPort: 80

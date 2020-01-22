@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:11.5
+    volumes:
+      - ./postgresql_:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=dcs
+      - POSTGRES_USER=prod
+      - POSTGRES_PASSWORD=pwd
+    restart: always
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile_local
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    links:
+      - db
+    environment:
+    - GOOGLE_APPLICATION_CREDENTIALS=/etc/dcs-storage-gcs.json
+    - DATABASE_URL=postgresql://db:5432/dcs?user=prod&password=pwd
+    volumes:
+      - ./horrible:/app/:rw
+      - ./dcs-storage-gcs.json:/etc/dcs-storage-gcs.json:rw
+    restart: always
+
+volumes:
+  esdata01:
+    driver: local

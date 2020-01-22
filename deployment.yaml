@@ -4,7 +4,7 @@ metadata:
   name: horrible-stats
   namespace: horrible-stats
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: app
@@ -12,9 +12,23 @@ spec:
     metadata:
       labels:
         app: app
+        run: horrible-stats
     spec:
       containers:
       - name: app
         image: gcr.io/dcs-analytics-257714/horrible_stats:latest
+        env:
+          - name: GOOGLE_APPLICATION_CREDENTIALS
+            value: "/etc/keys/dcs-storage-gcs.json"
+          - name: DATABASE_URL
+            value: postgresql://10.1.3.22:5432/dcs?user=prod&password=pwd
         ports:
         - containerPort: 80
+        volumeMounts:
+        - name: dcs-storage-gcs
+          mountPath: "/etc/keys/"
+          readOnly: true
+      volumes:
+      - name: dcs-storage-gcs
+        secret:
+          secretName: dcs-storage-gcs

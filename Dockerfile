@@ -1,5 +1,5 @@
-FROM gcr.io/dcs-analytics-257714/dcs_mapping_base:latest
+FROM horrible_base
 
-COPY dcs-storage-gcs.json /app
-COPY ./stats /app/stats
-COPY main.py /app
+ADD horrible/ /app/
+RUN mkdir -p /app/cache/mission-stats
+WORKDIR "/app"
