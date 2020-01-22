@@ -220,6 +220,8 @@ def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
     results['losses__total_deaths'] = results['losses__crash'] + results["losses__pilotDeath"]
     results["kills__A/A Kill Ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
     results["kills__A/A Kill Ratio"] = results["kills__A/A Kill Ratio"].round(1)
+    results["kills__A/A Kills Total"] = results["kills__Planes__total"]
+    results.drop(labels=["kills__Planes__total"], axis=1, inplace=True)
 
     # results["weapons__Prob_Hit"] = results["weapons__A/A Kill Ratio"].round(1)
 
@@ -228,7 +230,7 @@ def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
     prio_cols = ["pilot",
                  # "total_sessions",
                  "kills__A/A Kill Ratio",
-                 "kills__Planes__total",
+                 "kills__A/A Kills Total",
                  "losses__total_deaths",
                  "kills__Ground Units__total",
                  "losses__pilotDeath",
@@ -308,6 +310,7 @@ async def get_dataframe(subset: str = None, user_name: str = None) -> pd.DataFra
         df = get_subset(df, subset)
 
     df = format_cols(df)
+    df = df.loc[:, (df != 0).any(axis=0)]
     return df
 
 
