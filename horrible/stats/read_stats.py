@@ -132,11 +132,11 @@ def read_lua_table(stat: Path) -> List:
 async def process_lua_records() -> NoReturn:
     """Parse a directory of Sl-Mod stats files, returning a pandas dataframe."""
     bucket = get_gcs_bucket()
-    stats_list = await db.fetch_all("""SELECT file_name
-                                    FROM mission_stat_files
-                                    WHERE processed = FALSE""")
-
-    for stat in stats_list:
+    query = """SELECT file_name
+                FROM mission_stat_files
+                WHERE processed = FALSE
+            """
+    async for stat in db.iterate(query):
         try:
             log.info(f"Handing {stat['file_name']}")
             if stat['file_name'] == "mission-stats/":
@@ -164,7 +164,6 @@ async def process_lua_records() -> NoReturn:
                                     """)
 
             log.info("Marking record as processed...")
-
             await db.execute(f"""UPDATE mission_stat_files
                              SET processed = TRUE,
                              processed_at = CURRENT_TIMESTAMP
@@ -199,8 +198,8 @@ async def collect_recs_from_db(check_all_exists: bool = False,
     if process_new:
         await process_lua_records()
     data = []
-    results = await db.fetch_all("SELECT record FROM mission_stats")
-    for rec in results:
+
+    async for rec in db.iterate("SELECT record FROM mission_stats"):
         data.extend(json.loads(rec['record']))
     data = pd.DataFrame.from_records(data, index=None)
     return data
@@ -208,14 +207,24 @@ async def collect_recs_from_db(check_all_exists: bool = False,
 
 def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
     """Compute additional metrics, reorder columns, and sort."""
-    results = results.groupby(["pilot"]).sum().reset_index()
+    grouper = results.groupby(["pilot"])
+    # count = results[["pilot", "session_start_time"]].\
+    #     groupby(["pilot"]).agg(['count']).\
+    #     reset_index()
+    # count.columns = ["pilot", "total_sessions"]
+    results = grouper.sum().reset_index()
+    # results = pd.merge(results, count, how='left', on='pilot')
+
     results['losses__total_deaths'] = results['losses__crash'] + results["losses__pilotDeath"]
     results["kills__A/A Kill Ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
     results["kills__A/A Kill Ratio"] = results["kills__A/A Kill Ratio"].round(1)
 
+    # results["weapons__Prob_Hit"] = results["weapons__A/A Kill Ratio"].round(1)
+
     results = results.replace([np.inf, -np.inf], np.nan)
 
     prio_cols = ["pilot",
+                 # "total_sessions",
                  "kills__A/A Kill Ratio",
                  "kills__Planes__total",
                  "losses__total_deaths",
