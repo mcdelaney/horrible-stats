@@ -1,5 +1,4 @@
 import asyncpg
-import argparse
 import json
 import datetime
 from typing import List
@@ -271,6 +270,7 @@ async def get_dataframe(subset: str = None, user_name: str = None) -> pd.DataFra
 
 
 # if __name__ == '__main__':
+#     import argparse
 #     parser = argparse.ArgumentParser()
 #     parser.add_argument('--max-parse', default=100, type=int,
 #                         help='Limit the number of files being parsed.')
