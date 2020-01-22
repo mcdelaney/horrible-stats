@@ -3,6 +3,7 @@ import gzip
 import logging
 from pathlib import Path
 
+import requests
 from utils import get_gcs_bucket
 
 logging.basicConfig(level=logging.INFO)
@@ -40,8 +41,10 @@ def upload_files(local_path_glob: Path, remote_subdir: str, delete_files: bool):
                 if delete_files:
                     log.info("File uploaded...deleting...")
                     file.unlink()
-        except PermissionError:
+        except Exception as e:
+            log.error(e)
             log.info("File is open...skipping...")
+    requests.get("http://ahorribleserver.com/check_db_files")
 
 
 if __name__ == "__main__":
