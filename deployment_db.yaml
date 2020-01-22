@@ -29,9 +29,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: db-svc
+  name: db
   labels:
-    app: db-svc
+    app: db
 spec:
   ports:
   - port: 5432

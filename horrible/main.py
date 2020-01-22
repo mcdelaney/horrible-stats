@@ -6,7 +6,7 @@ from starlette.templating import Jinja2Templates
 from starlette.requests import Request
 
 from stats import read_stats
-from stats.database import db
+from stats.database import db, DATABASE_URL
 
 
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +24,11 @@ app = StatServer()
 
 @app.on_event("startup")
 async def database_connect():
-    await db.connect()
+    try:
+        await db.connect()
+    except Exception as err:
+        logging.error(f"Could not conect to database at {DATABASE_URL}!")
+        raise err
 
 
 @app.on_event("shutdown")
