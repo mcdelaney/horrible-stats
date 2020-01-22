@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from starlette.responses import JSONResponse, RedirectResponse
 from starlette.templating import Jinja2Templates
 from starlette.requests import Request
+import pandas as pd
 
 from stats import read_stats
 from stats.database import db, DATABASE_URL
@@ -41,12 +42,20 @@ def healthz():
     return "ok"
 
 
-@app.get("/check_db_files")
-async def check_db_files(request: Request):
+@app.get("/stats_logs")
+async def get_stats_logs(request: Request):
     await read_stats.insert_gs_files_to_db()
     await read_stats.process_lua_records()
-    response = RedirectResponse(url='/')
-    return response
+    records = await db.fetch_all(
+        query="""SELECT file_name, processed, processed_at, uploaded_at, errors
+                FROM mission_stat_files
+                ORDER BY uploaded_at DESC
+                """)
+    records = [dict(r) for r in records]
+    records = pd.DataFrame.from_records(records, index=None)
+    context = {"request": request,
+               "data": records.to_html(table_id="stats", index=False)}
+    return templates.TemplateResponse("stats_logs.html", context)
 
 
 @app.get("/old")
