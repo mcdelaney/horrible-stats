@@ -3,6 +3,7 @@ cachetools==4.0.0
 certifi==2019.11.28
 chardet==3.0.4
 Click==7.0
+email-validator==1.0.5
 fastapi==0.47.1
 google-api-core==1.16.0
 google-auth==1.10.1

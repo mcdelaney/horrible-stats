@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: db
-        image: postgres:11.5
+        image: gcr.io/dcs-analytics-257714/horrible_stats_db:latest
         env:
           - name: POSTGRES_DB
             value: "dcs"
@@ -25,13 +25,13 @@ spec:
             value: pwd
         ports:
         - containerPort: 5432
-
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: horrible-stats-db-svc
+  name: db-svc
   labels:
-    app: db
+    app: db-svc
 spec:
   ports:
   - port: 5432

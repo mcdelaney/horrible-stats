@@ -2,9 +2,11 @@ version: '3'
 
 services:
   db:
-    image: postgres:11.5
+    build:
+      context: database/
+    # image: postgres:11.5
     volumes:
-      - ./postgresql_:/var/lib/postgresql/data
+      - ./database/postgresql_:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     environment:
@@ -17,6 +19,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile_local
+    command: ["bash", "/var/dev/wait-for-it.sh", "db:5432", "--", "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
     depends_on:

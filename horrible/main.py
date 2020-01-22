@@ -1,19 +1,16 @@
 import logging
 
 from fastapi import FastAPI
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, RedirectResponse
 from starlette.templating import Jinja2Templates
 from starlette.requests import Request
-from starlette.config import Config
 
 from stats import read_stats
-from stats.database import db, mission_stats, mission_stat_files
+from stats.database import db
 
 
 logging.basicConfig(level=logging.INFO)
 templates = Jinja2Templates(directory='templates')
-
-config = Config('.env')
 
 
 class StatServer(FastAPI):
@@ -28,8 +25,6 @@ app = StatServer()
 @app.on_event("startup")
 async def database_connect():
     await db.connect()
-    await db.execute(query=mission_stats)
-    await db.execute(query=mission_stat_files)
 
 
 @app.on_event("shutdown")
@@ -43,10 +38,11 @@ def healthz():
 
 
 @app.get("/check_db_files")
-async def check_db_files():
+async def check_db_files(request: Request):
     await read_stats.insert_gs_files_to_db()
     await read_stats.process_lua_records()
-    return 200
+    response = RedirectResponse(url='/')
+    return response
 
 
 @app.get("/old")
@@ -82,6 +78,6 @@ async def suvival_stats(request: Request):
 
 
 @app.get("/json_data")
-async def json_data():
+async def json_data(request: Request):
     df = await read_stats.get_dataframe()
     return JSONResponse(content=df.to_json(orient="split", index=False))

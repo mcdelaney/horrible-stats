@@ -21,7 +21,7 @@ spec:
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: "/etc/keys/dcs-storage-gcs.json"
           - name: DATABASE_URL
-            value: postgresql://10.1.3.22:5432/dcs?user=prod&password=pwd
+            value: postgresql://DB_SVC_SERVICE_HOST:5432/dcs?user=prod&password=pwd
         ports:
         - containerPort: 80
         volumeMounts:
@@ -32,3 +32,23 @@ spec:
       - name: dcs-storage-gcs
         secret:
           secretName: dcs-storage-gcs
+---
+  apiVersion: v1
+  kind: Service
+  metadata:
+    namespace: horrible-stats
+    name: app
+    labels:
+      app: app
+  spec:
+    type: LoadBalancer
+    loadBalancerIP: "35.226.240.39"
+    ports:
+      - port: 80
+        targetPort: 80
+        name: http
+      - port: 443
+        targetPort: 80
+        name: https
+    selector:
+      app: app

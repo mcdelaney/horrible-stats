@@ -2,3 +2,5 @@ env/**
 __pycache__/**/*
 .git/*
 horrible/cache/**
+postgresql_/*
+database/postgresql_/*
