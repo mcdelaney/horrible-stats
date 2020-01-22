@@ -131,18 +131,19 @@ def read_lua_table(stat: Path) -> List:
 
 async def process_lua_records() -> NoReturn:
     """Parse a directory of Sl-Mod stats files, returning a pandas dataframe."""
+    Path("cache/mission-stats").mkdir(parents=True, exist_ok=True)
     bucket = get_gcs_bucket()
     query = """SELECT file_name
                 FROM mission_stat_files
                 WHERE processed = FALSE
             """
-    async for stat in db.iterate(query):
+    stats_files = await db.fetch_all(query)
+    for stat in stats_files:
         try:
             log.info(f"Handing {stat['file_name']}")
             if stat['file_name'] == "mission-stats/":
                 continue
             local_path = Path(f"cache/{stat['file_name']}")
-            local_path.parent.mkdir(parents=True, exist_ok=True)
             if local_path.exists():
                 log.info("Cached file found...skipping download...")
             else:
@@ -169,6 +170,7 @@ async def process_lua_records() -> NoReturn:
                              processed_at = CURRENT_TIMESTAMP
                                 WHERE file_name = '{stat['file_name']}'
                                 """)
+            log.info("Record processing complete...")
 
         except Exception as err:
             log.error(f"Error handling file: \n\t{stat['file_name']}\n\t{err}")
