@@ -201,7 +201,7 @@ async def process_lua_records() -> NoReturn:
                 pass
 
 
-async def collect_recs_from_db() -> pd.DataFrame:
+async def collect_stat_recs() -> pd.DataFrame:
     data = []
     async for rec in db.iterate("""SELECT record, files.session_start_time
                                 FROM mission_stats
@@ -212,6 +212,48 @@ async def collect_recs_from_db() -> pd.DataFrame:
         tmp['session_stat_time'] = rec['session_start_time']
         data.append(tmp)
     data = pd.DataFrame.from_records(data, index=None)
+    return data
+
+
+async def collect_recs_kv() -> pd.DataFrame:
+    """Collect records and convert to kv."""
+    data = []
+    weapons = await db.fetch_all(weapon_types.select())
+    weapons = pd.DataFrame.from_records(weapons, index=None)
+    weapons['stat_type'] = weapons['name']
+    weapons.drop(labels=['type', 'name'], axis=1, inplace=True)
+
+    async for rec in db.iterate("""SELECT pilot, record,
+                                    files.session_start_time
+                                FROM mission_stats
+                                LEFT JOIN mission_stat_files files
+                                USING (file_name)
+                                """):
+        recs = json.loads(rec['record'])
+        recs.pop('pilot')
+        recs.pop('id')
+
+        tmp = pd.DataFrame({"key": list(recs.keys()),
+                            "value": list(recs.values())},
+                           columns=["key", "value"], index=None)
+        tmp['pilot'] = rec['pilot']
+        tmp['session_start_time'] = rec['session_start_time']
+        tmp = tmp[tmp.value != ""]
+        tmp['value'] = tmp.value.astype(int)
+        tmp["stat_group"] = tmp.key.apply(lambda x: x.split("__")[0])
+        tmp["stat_type"] = tmp.key.apply(lambda x: "__".join(x.split("__")[1:-1]))
+        tmp["stat_sub_type"] = tmp.key.apply(lambda x: "__".join(x.split("__")[-1:]))
+        tmp["key"] = tmp.key.apply(lambda x: "__".join(x.split("__")[1:]))
+        tmp = tmp[["session_start_time", "pilot", "stat_group", "stat_type",
+                   "stat_sub_type", "key", "value"]]
+        data.append(tmp)
+
+    data = pd.concat(data)
+    data = data.merge(weapons, how='left', on='stat_type')
+    data["category"] = data.category.combine_first(data.stat_type)
+    data['category'] = data.category.apply(lambda x: "total" if x == "" else x)
+    data = data.groupby(["pilot", "stat_group", "stat_sub_type", 'category'
+                         ], as_index=False).sum()
     return data
 
 
@@ -293,7 +335,7 @@ def get_subset(df: pd.DataFrame, subset_name: List) -> pd.DataFrame:
 
 async def get_dataframe(subset: str = None, user_name: str = None) -> pd.DataFrame:
     """Get stats in dataframe format suitable for HTML display."""
-    df = await collect_recs_from_db()
+    df = await collect_stat_recs()
     if df.empty:
         return pd.DataFrame()
 

@@ -12,4 +12,3 @@ echo "Pushing latest image to GCR..."
 docker push gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:latest
 
 kubectl apply -f deployment_db.yaml
-kubectl apply -f service.yaml

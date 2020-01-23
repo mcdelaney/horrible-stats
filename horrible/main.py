@@ -79,7 +79,8 @@ async def get_weapon_db_logs(request: Request):
 
 @app.get("/")
 async def new_stats(request: Request):
-    df = await read_stats.get_dataframe()
+    # df = await read_stats.get_dataframe()
+    df = await read_stats.collect_recs_kv()
     context = {"request": request,
                "data": df.to_html(table_id="stats", index=False)}
     return templates.TemplateResponse("index.html", context)

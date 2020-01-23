@@ -25,11 +25,11 @@ spec:
             value: pwd
         ports:
         - containerPort: 5432
-        volumeMounts:
-        - name: db-disk
-          mountPath: /var/lib/postgresql/data
-      volumes:
-      - name: db-disk
+      #   volumeMounts:
+      #   - name: db-disk
+      #     mountPath: /var/lib/postgresql/data
+      # volumes:
+      # - name: db-disk
 ---
 apiVersion: v1
 kind: Service
@@ -43,14 +43,14 @@ spec:
     targetPort: 5432
   selector:
     app: db
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: db-disk
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 50Gi
+# ---
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: db-disk
+# spec:
+#   accessModes:
+#     - ReadWriteOnce
+#   resources:
+#     requests:
+#       storage: 50Gi
