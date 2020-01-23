@@ -20,6 +20,7 @@ Air-to-Air,PL-5EII,Infrared
 Air-to-Air,Matra_S530D,Active Radar
 Air-to-Air,AIM-9G,Infrared
 Air-to-Air,AIM-9H,Infrared
+Air-to-Air,MMagicII,Infrared
 Air-to-Air,AIM-9J,Infrared
 Air-to-Air,AIM-9L,Infrared
 Air-to-Air,AIM-9M,Infrared
@@ -30,6 +31,7 @@ Air-to-Air,CAP-9M,Infrared
 Air-to-Air,Mistral,Infrared
 Air-to-Air,R.550,Infrared
 Air-to-Air,R-13M,Infrared
+Air-to-Air,R-60 (AA-8 Aphid),Infrared
 Air-to-Air,R-13M1,Infrared
 Air-to-Air,R-27ER,Semi-Active Radar
 Air-to-Air,R-27ET,Infrared
@@ -43,36 +45,41 @@ Air-to-Air,R-60,Infrared
 Air-to-Air,R-60M,Infrared
 Air-to-Air,R-73,Infrared
 Air-to-Air,R-77,Active Radar
+Air-to-Air,R-73 (AA-11 Archer),Infrared
 Air-to-Air,RS-2US,Semi-Active Radar
 Air-to-Air,Super 530D,Semi-Active Radar
 Air-to-Air,Werfer-Granate 21,Unguided
-Guns,2A42,Autocannon
-Guns,DEFA 554,Revolver cannon
-Guns,GAU-8/A,Autocannon
-Guns,GIAT 621,Autocannon
-Guns,GSh-23,Autocannon
-Guns,GSh-30,Autocannon
-Guns,GSh-23L,Autocannon
-Guns,GSh-30-2,Autocannon
-Guns,GSh-301,Autocannon
-Guns,GSh-302,Autocannon
-Guns,Hispano Mk.II,Autocannon
-Guns,M1919 Browning,Machine gun
-Guns,M134 Minigun,Machine gun
-Guns,M2 Browning,Machine gun
-Guns,M3 Browning,Machine gun
-Guns,M39A2,Revolver cannon
-Guns,M-61A1,Autocannon
-Guns,M-61,Autocannon
-Guns,M-61A2,Autocannon
-Guns,MG 131,Machine gun
-Guns,MG 151,Autocannon
-Guns,MK 108,Autocannon
-Guns,N-37,Autocannon
-Guns,NR-23,Autocannon
-Guns,NR-30,Autocannon
-Guns,Oerlikon KCA,Revolver cannon
-Guns,ShKAS,Machine gun
+Gun,2A42,Autocannon
+Gun,DEFA 554,Revolver cannon
+Gun,GAU-8/A,Autocannon
+Gun,GIAT 621,Autocannon
+Gun,GSh-23,Autocannon
+Gun,GSh-2-23,Autocannon
+Gun,GSh-2-30,Autocannon
+Gun,GSh-30,Autocannon
+Gun,GSh-23L,Autocannon
+Gun,GSh-30-2,Autocannon
+Gun,GSh-301,Autocannon
+Gun,GSh-302,Autocannon
+Gun,Hispano Mk.II,Autocannon
+Gun,M1919 Browning,Machine gun
+Gun,M134 Minigun,Machine gun
+Gun,M2 Browning,Machine gun
+Gun,GAU_12,Autocannon
+Gun,M-39,Autocannon
+Gun,M3 Browning,Machine gun
+Gun,M39A2,Revolver cannon
+Gun,M-61A1,Autocannon
+Gun,M-61,Autocannon
+Gun,M-61A2,Autocannon
+Gun,MG 131,Machine gun
+Gun,MG 151,Autocannon
+Gun,MK 108,Autocannon
+Gun,N-37,Autocannon
+Gun,NR-23,Autocannon
+Gun,NR-30,Autocannon
+Gun,Oerlikon KCA,Revolver cannon
+Gun,ShKAS,Machine gun
 Air-to-Surface,9A4172 Vikhr,Laser
 Air-to-Surface,AGM-122 Sidearm,Anti-Radiation
 Air-to-Surface,AGM-65A,TV guided
@@ -97,16 +104,31 @@ Air-to-Surface,Kh-25 MPU,Anti-Radiation
 Air-to-Surface,Kh-29 L,Laser
 Air-to-Surface,Kh-29 T,TV guided
 Air-to-Surface,Kh-58 U,Anti-Radiation
+Air-to-Surface,Kh-58U,Anti-Radiation
+Air-to-Surface,Kh-25MPU,Anti-Radiation
 Air-to-Surface,Kh-66 Grom,Radar Beam Riding
 Air-to-Surface,M-151,Unguided
 Air-to-Surface,M-156,Unguided
+Air-to-Surface,C-802AK,GPS
+Air-to-Surface,LS-6-500,GPS
 Air-to-Surface,M-257,Unguided
 Air-to-Surface,M-258,Unguided
+Air-to-Surface,Kh-29T,Laser
+Air-to-Surface,S-25L,Unguided
+Air-to-Surface,AGM-84D,Active Radar
+Air-to-Surface,C-701IR,TV guided
+Air-to-Surface,CM-802AKG,Active Radar
+Air-to-Surface,CM-802AKG,GPS
+Air-to-Surface,GB-6-HE,GPS
 Air-to-Surface,M-274,Training
 Air-to-Surface,M70B AP,Unguided
 Air-to-Surface,M70B HE,Unguided
 Air-to-Surface,Matra 155,Unguided
 Air-to-Surface,MK-1,Training
+Air-to-Surface,BRM-1 90MM,Laser
+Air-to-Surface,Kh-25ML,Anti-Radiation
+Air-to-Surface,Mk-20 Rockeye,Unguided
+Air-to-Surface,Unguided Rocket 90mm,Unguided
 Air-to-Surface,MK-151,Unguided
 Air-to-Surface,MK-156,Unguided
 Air-to-Surface,MK-5,Unguided
@@ -128,6 +150,7 @@ Air-to-Surface,S-5 KO,Unguided
 Air-to-Surface,S-5KO,Unguided
 Air-to-Surface,S-5 M,Unguided
 Air-to-Surface,S-8 KOM,Unguided
+Air-to-Surface,S-8KOM,Unguided
 Air-to-Surface,S-8 OFP2,Unguided
 Air-to-Surface,S-8OFP2,Unguided
 Air-to-Surface,S-8 OM,Unguided
@@ -153,6 +176,7 @@ Bomb,BLU-110,Unguided
 Bomb,BLU-111,Unguided
 Bomb,BLU-117,Unguided
 Bomb,BR-250,Unguided
+Bomb,Mk-84,Unguided
 Bomb,BR-500,Unguided
 Bomb,CBU-100,Unguided
 Bomb,CBU-103,GPS
@@ -163,6 +187,7 @@ Bomb,CBU-97,Unguided
 Bomb,CBU-99,Unguided
 Bomb,FAB-100,Unguided
 Bomb,FAB-100M,Unguided
+Bomb,Mk-82,Unguided
 Bomb,FAB-250,Unguided
 Bomb,FAB-250 M54 TU,Unguided
 Bomb,FAB-250 M62,Unguided

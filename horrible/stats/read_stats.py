@@ -227,7 +227,6 @@ async def collect_recs_kv() -> pd.DataFrame:
     weapons = pd.DataFrame.from_records(weapons, index=None)
     weapons['stat_type'] = weapons['name']
     weapons.drop(labels=['type', 'name'], axis=1, inplace=True)
-    weapons['stat_type'] = weapons['stat_type'].str.strip()
 
     async for rec in db.iterate("""SELECT pilot, record,
                                     files.session_start_time
@@ -257,11 +256,10 @@ async def collect_recs_kv() -> pd.DataFrame:
     data['stat_type'] = data['stat_type'].str.strip()
 
     data = data.merge(weapons, how='left', on='stat_type')
-    return data
-    # data["category"] = data.category.combine_first(data.stat_type)
+    data["category"] = data.category.combine_first(data.stat_type)
     # data['category'] = data.category.apply(lambda x: "total" if x == "" else x)
-    # data = data.groupby(["stat_group", "stat_sub_type", 'category'
-    #                      ], as_index=False).sum()
+    data = data.groupby(["pilot", "stat_group", "stat_sub_type", 'category'
+                         ], as_index=False).sum()
     return data
 
 
