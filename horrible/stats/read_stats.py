@@ -8,17 +8,25 @@ import re
 import threading
 import traceback
 
-
 from lupa import LuaRuntime
 import numpy as np
 import pandas as pd
+import sqlalchemy as sa
 
 from stats.gcs_config import get_gcs_bucket
-from stats.database import db
+from stats.database import db, weapon_types, stat_files, mission_stats
+
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
+
+
+async def sync_weapons() -> NoReturn:
+    if await db.execute(weapon_types.count()) == 0:
+        weapons = pd.read_csv("data/weapon-db.csv").to_dict('records')
+        query = weapon_types.insert()
+        await db.execute_many(query, values=weapons)
 
 
 async def insert_gs_files_to_db() -> NoReturn:
@@ -33,12 +41,15 @@ async def insert_gs_files_to_db() -> NoReturn:
             continue
         if stat_file.name == "mission-stats/":
             continue
-        log.info(f"Inserting stat file: {stat_file.name}")
+
         try:
-            await db.execute(f"""INSERT INTO mission_stat_files
-                       (file_name) VALUES ('{stat_file.name}')""")
+            log.info(f"Inserting stat file: {stat_file.name}")
+            await db.execute(stat_files.insert(),
+                             {'file_name': stat_file.name,
+                              'session_start_time': parse_ts(stat_file.name)})
         except asyncpg.exceptions.UniqueViolationError:
-            pass
+            log.error("File already has been inserted!")
+            raise asyncpg.exceptions.UniqueViolationError
 
 
 def lua_tbl_to_py(lua_tbl) -> Dict:
@@ -69,15 +80,15 @@ def lua_tbl_to_py(lua_tbl) -> Dict:
     return out
 
 
-def parse_ts(path: Path) -> datetime.datetime:
-    file = Path(path.name).name
+def parse_ts(path: str) -> datetime.datetime:
+    file = Path(path).name
     m = re.search("([A-z]{3} [0-9]{1,2}, [0-9]{4} at [0-9]{2} [0-9]{2} [0-9]{2})",
                   file)
     parsed = m.group().replace("at ", "")
     return datetime.datetime.strptime(parsed, "%b %d, %Y %H %M %S")
 
 
-def result_to_flat_dict(result: dict, session_ts: datetime.datetime) -> dict:
+def result_to_flat_dict(result: dict) -> dict:
     """Flatten nested keys for DataFrame."""
     try:
         for k in list(result.keys()):
@@ -95,7 +106,6 @@ def result_to_flat_dict(result: dict, session_ts: datetime.datetime) -> dict:
     except Exception as e:
         raise e
 
-    result['session_start_time'] = str(session_ts)
     return result
 
 
@@ -105,7 +115,7 @@ def read_lua_table(stat: Path) -> List:
         file_contents = " ".join([f for f in fp_.readlines()])
     if file_contents == "placeholder":
         return
-    session_ts = parse_ts(stat)
+
     lua_code = f"\n function() \r\n local {file_contents} return misStats end"
 
     thread_count = 1
@@ -125,25 +135,26 @@ def read_lua_table(stat: Path) -> List:
         thread.join()
 
     result = lua_tbl_to_py(results[0])
-    results = [result_to_flat_dict(res, session_ts) for res in result.values()]
+    results = []
+    for res in result.values():
+        tmp = result_to_flat_dict(res)
+        results.append({'file_name': str(stat),
+                        'pilot': tmp['pilot'],
+                        'record': tmp})
     return results
 
 
 async def process_lua_records() -> NoReturn:
     """Parse a directory of Sl-Mod stats files, returning a pandas dataframe."""
-    Path("cache/mission-stats").mkdir(parents=True, exist_ok=True)
+    Path("mission-stats").mkdir(parents=True, exist_ok=True)
     bucket = get_gcs_bucket()
-    query = """SELECT file_name
-                FROM mission_stat_files
-                WHERE processed = FALSE
-            """
-    stats_files = await db.fetch_all(query)
+    stats_files = await db.fetch_all(stat_files.select(sa.text("processed=FALSE")))
     for stat in stats_files:
         try:
             log.info(f"Handing {stat['file_name']}")
             if stat['file_name'] == "mission-stats/":
                 continue
-            local_path = Path(f"cache/{stat['file_name']}")
+            local_path = Path(f"{stat['file_name']}")
             if local_path.exists():
                 log.info("Cached file found...skipping download...")
             else:
@@ -153,27 +164,24 @@ async def process_lua_records() -> NoReturn:
                     blob.download_to_filename(local_path)
                 except Exception as e:
                     log.error(f"Error downloading file! {e}")
-            stat_parsed = read_lua_table(local_path)
 
+            stat_parsed = read_lua_table(local_path)
             log.info("Dumping record to database...")
             if stat_parsed:
-                await db.execute(f"""INSERT INTO mission_stats
-                                (file_name, session_start_time, record)
-                                    VALUES ('{stat['file_name']}',
-                                        '{stat_parsed[0]["session_start_time"]}',
-                                        '{json.dumps(stat_parsed)}')
-                                    """)
+                insert = mission_stats.insert()
+                await db.execute_many(insert, stat_parsed)
 
             log.info("Marking record as processed...")
             await db.execute(f"""UPDATE mission_stat_files
                              SET processed = TRUE,
-                             processed_at = CURRENT_TIMESTAMP
+                             processed_at = date_trunc('second', CURRENT_TIMESTAMP)
                                 WHERE file_name = '{stat['file_name']}'
                                 """)
             log.info("Record processing complete...")
 
         except Exception as err:
             log.error(f"Error handling file: \n\t{stat['file_name']}\n\t{err}")
+
             traceback.print_tb(err.__traceback__)
             await db.execute(f"""UPDATE mission_stat_files
                              SET errors = (
@@ -193,16 +201,16 @@ async def process_lua_records() -> NoReturn:
                 pass
 
 
-async def collect_recs_from_db(check_all_exists: bool = False,
-                               process_new: bool = False) -> pd.DataFrame:
-    if check_all_exists:
-        await insert_gs_files_to_db()
-    if process_new:
-        await process_lua_records()
+async def collect_recs_from_db() -> pd.DataFrame:
     data = []
-
-    async for rec in db.iterate("SELECT record FROM mission_stats"):
-        data.extend(json.loads(rec['record']))
+    async for rec in db.iterate("""SELECT record, files.session_start_time
+                                FROM mission_stats
+                                LEFT JOIN mission_stat_files files
+                                USING (file_name)
+                                """):
+        tmp = json.loads(rec['record'])
+        tmp['session_stat_time'] = rec['session_start_time']
+        data.append(tmp)
     data = pd.DataFrame.from_records(data, index=None)
     return data
 
@@ -210,12 +218,7 @@ async def collect_recs_from_db(check_all_exists: bool = False,
 def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
     """Compute additional metrics, reorder columns, and sort."""
     grouper = results.groupby(["pilot"])
-    # count = results[["pilot", "session_start_time"]].\
-    #     groupby(["pilot"]).agg(['count']).\
-    #     reset_index()
-    # count.columns = ["pilot", "total_sessions"]
     results = grouper.sum().reset_index()
-    # results = pd.merge(results, count, how='left', on='pilot')
 
     results['losses__total_deaths'] = results['losses__crash'] + results["losses__pilotDeath"]
     results["kills__A/A Kill Ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
@@ -312,12 +315,3 @@ async def get_dataframe(subset: str = None, user_name: str = None) -> pd.DataFra
     df = format_cols(df)
     df = df.loc[:, (df != 0).any(axis=0)]
     return df
-
-
-# if __name__ == '__main__':
-#     import argparse
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('--max-parse', default=100, type=int,
-#                         help='Limit the number of files being parsed.')
-#     args = parser.parse_args()
-#     collect_recs_from_db(args.max_parse).to_html()

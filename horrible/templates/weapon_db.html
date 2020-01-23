@@ -9,13 +9,13 @@
     <li class="nav-item">
       <a class="nav-link" href="/weapons">Weapon Efficiency</a>
     </li>
-    <li class="nav-item active">
+    <li class="nav-item">
       <a class="nav-link" href="/survivability">Kills/Losses</a>
     </li>
     <li class="nav-item">
       <a class="nav-link" href="/stats_logs">Log-DB-Status</a>
     </li>
-    <li class="nav-item">
+    <li class="nav-item active">
       <a class="nav-link" href="/weapon_db">Weapon-DB</a>
     </li>
     <li class="nav-item">
@@ -27,23 +27,23 @@
       {{data | safe}}
     {% endblock %}
   </div>
-    {% block scripts %}
+  {% block scripts %}
 
-      <script type="text/javascript">
-        $(document).ready(function() {
-            $('#stats').DataTable( {
-                "paging": "false",
-                "pageLength": 75,
-                "rowId": "index",
-                "fixedColumns": true,
-                "autoWidth": false,
-                'className': 'dt-body-center',
-                "lengthChange" : false,
-                // "scrollY": 300,
-                "scrollX": true,
-                "sScrollX": "100%",
-              }
-            );
-        });
-      </script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+          $('#stats').DataTable( {
+              "paging": "false",
+              "pageLength": 75,
+              "rowId": "index",
+              "fixedColumns": true,
+              "autoWidth": false,
+              'className': 'dt-body-center',
+              "lengthChange" : false,
+              // "scrollY": 300,
+              "scrollX": true,
+              "sScrollX": "100%",
+            }
+          );
+      });
+    </script>
   {% endblock %}

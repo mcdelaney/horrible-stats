@@ -14,6 +14,8 @@ to be converted python dictionaries, suitable for storage as JSON in Postgres.
 We use `Lupa` to accomplish this dark magic.
 - A `fastapi` web-server.  All views are rendered server-side with Jinja templates.
 Currently, the following endpoints are available:
+  - `/docs`: Mainly for development, this endpoint shows auto-generated documentation
+  for all available endpoints.
   - `/`: Summary statistics for all server members.
   - `/weapons`: Weapon efficiency statistics.
   - `/survivability`: Kill/Loss statistics.

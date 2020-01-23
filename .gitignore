@@ -4,3 +4,5 @@ cache/*
 dcs-storage-gcs.json
 **/postgresql_/*
 horrible/cache/**
+**/**/scratch.py
+**/mission-stats/**/**

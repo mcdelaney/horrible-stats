@@ -7,7 +7,7 @@ from starlette.requests import Request
 import pandas as pd
 
 from stats import read_stats
-from stats.database import db, DATABASE_URL
+from stats.database import db, weapon_types, stat_files
 
 
 logging.basicConfig(level=logging.INFO)
@@ -27,8 +27,9 @@ app = StatServer()
 async def database_connect():
     try:
         await db.connect()
+        await read_stats.sync_weapons()
     except Exception as err:
-        logging.error(f"Could not conect to database at {DATABASE_URL}!")
+        logging.error(f"Could not conect to database at {db.url}!")
         raise err
 
 
@@ -39,31 +40,41 @@ def database_disconnect():
 
 @app.get("/healthz")
 def healthz():
+    """Health-check endpoint.  Should return 200."""
     return "ok"
+
+
+@app.get("/resync_stat_file")
+async def resync_stat_file(request: Request, file_name: str):
+    """Delete a previously processed file from the database, triggering a re-sync."""
+    async with db.transaction():
+        await db.execute(
+            f"""DELETE FROM mission_stats
+            WHERE file_name = '{file_name}'""")
+        await db.execute(
+            f"""DELETE FROM mission_stat_files
+            WHERE file_name = '{file_name}'""")
+    return RedirectResponse("/stats_logs")
 
 
 @app.get("/stats_logs")
 async def get_stats_logs(request: Request):
     await read_stats.insert_gs_files_to_db()
     await read_stats.process_lua_records()
-    records = await db.fetch_all(
-        query="""SELECT file_name, processed, processed_at, uploaded_at, errors
-                FROM mission_stat_files
-                ORDER BY uploaded_at DESC
-                """)
-    records = [dict(r) for r in records]
+    records = await db.fetch_all(query=stat_files.select())
     records = pd.DataFrame.from_records(records, index=None)
     context = {"request": request,
                "data": records.to_html(table_id="stats", index=False)}
     return templates.TemplateResponse("stats_logs.html", context)
 
 
-@app.get("/old")
-async def stats(request: Request):
-    df = await read_stats.get_dataframe()
+@app.get("/weapon_db")
+async def get_weapon_db_logs(request: Request):
+    records = await db.fetch_all(query=weapon_types.select())
+    records = pd.DataFrame.from_records(records, index=None)
     context = {"request": request,
-               "data": df.to_html(table_id="stats", index=False)}
-    return templates.TemplateResponse("index_old.html", context)
+               "data": records.to_html(table_id="stats", index=False)}
+    return templates.TemplateResponse("weapon_db.html", context)
 
 
 @app.get("/")
