@@ -252,7 +252,7 @@ async def collect_recs_kv() -> pd.DataFrame:
     data = data.merge(weapons, how='left', on='stat_type')
     data["category"] = data.category.combine_first(data.stat_type)
     data['category'] = data.category.apply(lambda x: "total" if x == "" else x)
-    data = data.groupby(["pilot", "stat_group", "stat_sub_type", 'category'
+    data = data.groupby([ "stat_group", "stat_sub_type", 'category'
                          ], as_index=False).sum()
     return data
 
