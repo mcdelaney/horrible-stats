@@ -23,10 +23,15 @@ log.setLevel(level=logging.INFO)
 
 
 async def sync_weapons() -> NoReturn:
-    if await db.execute(weapon_types.count()) == 0:
-        weapons = pd.read_csv("data/weapon-db.csv").to_dict('records')
-        query = weapon_types.insert()
-        await db.execute_many(query, values=weapons)
+    weapons = pd.read_csv("data/weapon-db.csv").to_dict('records')
+    for record in weapons:
+        try:
+            query = weapon_types.insert()
+            await db.execute(query, values=record)
+            log.info(f"New weapon added to database: {record['name']}...")
+        except asyncpg.exceptions.UniqueViolationError:
+            pass
+            # log.info(f"weapon {record['name']} already exists...skipping...")
 
 
 async def insert_gs_files_to_db() -> NoReturn:
@@ -222,6 +227,7 @@ async def collect_recs_kv() -> pd.DataFrame:
     weapons = pd.DataFrame.from_records(weapons, index=None)
     weapons['stat_type'] = weapons['name']
     weapons.drop(labels=['type', 'name'], axis=1, inplace=True)
+    weapons['stat_type'] = weapons['stat_type'].str.strip()
 
     async for rec in db.iterate("""SELECT pilot, record,
                                     files.session_start_time
@@ -232,7 +238,6 @@ async def collect_recs_kv() -> pd.DataFrame:
         recs = json.loads(rec['record'])
         recs.pop('pilot')
         recs.pop('id')
-
         tmp = pd.DataFrame({"key": list(recs.keys()),
                             "value": list(recs.values())},
                            columns=["key", "value"], index=None)
@@ -249,11 +254,14 @@ async def collect_recs_kv() -> pd.DataFrame:
         data.append(tmp)
 
     data = pd.concat(data)
+    data['stat_type'] = data['stat_type'].str.strip()
+
     data = data.merge(weapons, how='left', on='stat_type')
-    data["category"] = data.category.combine_first(data.stat_type)
-    data['category'] = data.category.apply(lambda x: "total" if x == "" else x)
-    data = data.groupby([ "stat_group", "stat_sub_type", 'category'
-                         ], as_index=False).sum()
+    return data
+    # data["category"] = data.category.combine_first(data.stat_type)
+    # data['category'] = data.category.apply(lambda x: "total" if x == "" else x)
+    # data = data.groupby(["stat_group", "stat_sub_type", 'category'
+    #                      ], as_index=False).sum()
     return data
 
 
