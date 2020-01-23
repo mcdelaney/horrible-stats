@@ -59,6 +59,7 @@ async def resync_stat_file(request: Request, file_name: str):
 
 @app.get("/stats_logs")
 async def get_stats_logs(request: Request):
+    await read_stats.sync_weapons()
     await read_stats.insert_gs_files_to_db()
     await read_stats.process_lua_records()
     records = await db.fetch_all(query=stat_files.select())
