@@ -28,6 +28,8 @@ async def database_connect():
     try:
         await db.connect()
         await read_stats.sync_weapons()
+        await read_stats.insert_gs_files_to_db()
+        await read_stats.process_lua_records()
     except Exception as err:
         logging.error(f"Could not conect to database at {db.url}!")
         raise err
