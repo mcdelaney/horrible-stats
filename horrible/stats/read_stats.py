@@ -51,7 +51,10 @@ async def insert_gs_files_to_db() -> NoReturn:
             log.info(f"Inserting stat file: {stat_file.name}")
             await db.execute(stat_files.insert(),
                              {'file_name': stat_file.name,
-                              'session_start_time': parse_ts(stat_file.name)})
+                              'session_start_time': parse_ts(stat_file.name),
+                              'processed': False,
+                              'processed_at': None,
+                              'errors': 0})
         except asyncpg.exceptions.UniqueViolationError:
             log.error("File already has been inserted!")
             raise asyncpg.exceptions.UniqueViolationError
@@ -256,9 +259,11 @@ async def collect_recs_kv() -> pd.DataFrame:
     data['stat_type'] = data['stat_type'].str.strip()
 
     data = data.merge(weapons, how='left', on='stat_type')
-    data["category"] = data.category.combine_first(data.stat_type)
-    # data['category'] = data.category.apply(lambda x: "total" if x == "" else x)
-    data = data.groupby(["pilot", "stat_group", "stat_sub_type", 'category'
+    data["category"] = data.category.combine_first(data.stat_group)
+    data['stat_type'] = data.stat_type.apply(lambda x: "Total" if x == "" else x)
+    data['category'] = data.category.apply(lambda x: "Kills" if x == "kills" else x)
+    data['category'] = data.category.apply(lambda x: "Time" if x == "times" else x)
+    data = data.groupby(["pilot", "category", 'stat_type', "stat_sub_type"
                          ], as_index=False).sum()
     return data
 

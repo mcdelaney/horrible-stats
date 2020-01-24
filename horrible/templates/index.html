@@ -1,7 +1,5 @@
 {% extends "base.html" %}
-  {% block header_scripts %}
-    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script>
-  {% endblock %}
+
   {% block navbar %}
     <li class="nav-item active">
       <a class="nav-link" href="/">Overall</a>
@@ -23,9 +21,8 @@
     </li>
   {% endblock %}
   <div style="width:100%">
-    {% block content %}
+
       {{data | safe}}
-    {% endblock %}
   </div>
     {% block scripts %}
 
@@ -45,7 +42,27 @@
                 "sScrollX": "100%",
                 "fixedColumns":   {
                   "leftColumns": 1
-                }
+                },
+                'initComplete': function () {
+            this.api().columns().every( function () {
+                var column = this;
+                var select = $('<select><option value=""></option></select>')
+                    .appendTo( $(column.footer()).empty() )
+                    .on( 'change', function () {
+                        var val = $.fn.dataTable.util.escapeRegex(
+                            $(this).val()
+                        );
+
+                        column
+                            .search( val ? '^'+val+'$' : '', true, false )
+                            .draw();
+                    } );
+
+                column.data().unique().sort().each( function ( d, j ) {
+                    select.append( '<option value="'+d+'">'+d+'</option>' )
+                } );
+            } );
+        }
               }
             );
         });

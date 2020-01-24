@@ -1,8 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link href="https://netdna.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <script type="text/javascript" src="https://cdn.datatables.net/v/dt/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.css"/>
+
+    <!-- <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.css"/>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script> -->
+
     {% block header_scripts %}
     {% endblock %}
   </head>
@@ -17,10 +23,6 @@
               {% endblock %}
             </ul>
           </nav>
-        <div id='content'>
-          {% block content %}
-          {% endblock %}
-        </div>
       </div>
     </div>
   </body>
