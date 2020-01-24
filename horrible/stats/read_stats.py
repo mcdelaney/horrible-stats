@@ -23,6 +23,7 @@ log.setLevel(level=logging.INFO)
 
 
 async def sync_weapons() -> NoReturn:
+    """Sync contents of data/weapons-db.csv with database."""
     weapons = pd.read_csv("data/weapon-db.csv").to_dict('records')
     for record in weapons:
         try:
@@ -30,8 +31,7 @@ async def sync_weapons() -> NoReturn:
             await db.execute(query, values=record)
             log.info(f"New weapon added to database: {record['name']}...")
         except asyncpg.exceptions.UniqueViolationError:
-            pass
-            # log.info(f"weapon {record['name']} already exists...skipping...")
+            log.debug(f"weapon {record['name']} already exists...skipping...")
 
 
 async def insert_gs_files_to_db() -> NoReturn:
@@ -42,7 +42,7 @@ async def insert_gs_files_to_db() -> NoReturn:
     files = [file["file_name"] for file in files]
     for stat_file in stats_list:
         if stat_file.name in files:
-            log.info(f"File: {stat_file.name} already recorded...")
+            log.debug(f"File: {stat_file.name} already recorded...")
             continue
         if stat_file.name == "mission-stats/":
             continue
@@ -228,15 +228,15 @@ async def collect_recs_kv() -> pd.DataFrame:
     data = []
     weapons = await db.fetch_all(weapon_types.select())
     weapons = pd.DataFrame.from_records(weapons, index=None)
-    weapons['stat_type'] = weapons['name']
-    weapons.drop(labels=['type', 'name'], axis=1, inplace=True)
+    weapons.rename({'name': 'stat_type'}, axis=1, inplace=True)
 
-    async for rec in db.iterate("""SELECT pilot, record,
-                                    files.session_start_time
-                                FROM mission_stats
-                                LEFT JOIN mission_stat_files files
-                                USING (file_name)
-                                """):
+    query = """SELECT pilot, record,
+                files.session_start_time
+            FROM mission_stats
+            LEFT JOIN mission_stat_files files
+            USING (file_name)
+            """
+    async for rec in db.iterate(query=query):
         recs = json.loads(rec['record'])
         recs.pop('pilot')
         recs.pop('id')
@@ -245,26 +245,25 @@ async def collect_recs_kv() -> pd.DataFrame:
                            columns=["key", "value"], index=None)
         tmp['pilot'] = rec['pilot']
         tmp['session_start_time'] = rec['session_start_time']
-        tmp = tmp[tmp.value != ""]
-        tmp['value'] = tmp.value.astype(int)
-        tmp["stat_group"] = tmp.key.apply(lambda x: x.split("__")[0])
-        tmp["stat_type"] = tmp.key.apply(lambda x: "__".join(x.split("__")[1:-1]))
-        tmp["stat_sub_type"] = tmp.key.apply(lambda x: "__".join(x.split("__")[-1:]))
-        tmp["key"] = tmp.key.apply(lambda x: "__".join(x.split("__")[1:]))
-        tmp = tmp[["session_start_time", "pilot", "stat_group", "stat_type",
-                   "stat_sub_type", "key", "value"]]
         data.append(tmp)
 
     data = pd.concat(data)
-    data['stat_type'] = data['stat_type'].str.strip()
-
+    data = data[data.value != ""]
+    data['value'] = data.value.astype(int)
+    data["stat_group"] = data.key.apply(lambda x: x.split("__")[0])
+    data["stat_type"] = data.key.apply(lambda x: "__".join(x.split("__")[1:-1]))
+    data["stat_sub_type"] = data.key.apply(lambda x: "__".join(x.split("__")[-1:]))
+    data["key"] = data.key.apply(lambda x: "__".join(x.split("__")[1:]))
+    data = data[["session_start_time", "pilot", "stat_group", "stat_type",
+                 "stat_sub_type", "key", "value"]]
+    # data['stat_type'] = data['stat_type'].str.strip()
     data = data.merge(weapons, how='left', on='stat_type')
     data["category"] = data.category.combine_first(data.stat_group)
     data['stat_type'] = data.stat_type.apply(lambda x: "Total" if x == "" else x)
     data['category'] = data.category.apply(lambda x: "Kills" if x == "kills" else x)
     data['category'] = data.category.apply(lambda x: "Time" if x == "times" else x)
-    data = data.groupby(["pilot", "category", 'stat_type', "stat_sub_type"
-                         ], as_index=False).sum()
+    data = data.groupby(["pilot", "category", 'stat_type', "stat_sub_type"],
+                        as_index=False).sum()
     return data
 
 

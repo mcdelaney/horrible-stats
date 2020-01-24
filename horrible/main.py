@@ -103,17 +103,21 @@ async def json_data(request: Request, name: str):
     try:
         if name == "weapons_db":
             df = await db.fetch_all(query=weapon_types.select())
-            df = pd.DataFrame.from_records(df, index=None)
+            df = {"data": [list(d.values()) for d in df]}
         elif name == "stat_logs":
             df = await db.fetch_all(query=stat_files.select())
             df = pd.DataFrame.from_records(df, index=None)
             df['processed_at'] = df['processed_at'].apply(str)
             df['session_start_time'] = df['session_start_time'].apply(str)
+            df = df[["file_name", "session_start_time", "processed",
+                     "processed_at", "errors"]]
+            df = df.to_dict('split')
         elif name == "overall":
             df = await read_stats.collect_recs_kv()
+            df = df.to_dict('split')
         else:
             pass
     except Exception as e:
         logging.error(e)
         df = pd.DataFrame()
-    return JSONResponse(content=df.to_dict('split'))
+    return JSONResponse(content=df)

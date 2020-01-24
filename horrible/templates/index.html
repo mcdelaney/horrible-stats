@@ -1,60 +1,57 @@
 {% extends "base.html" %}
-
-  {% block navbar %}
-    <li class="nav-item">
-      <a class="nav-link active" href="/">Overall</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="/weapons">Weapon Efficiency</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="/survivability">Kills/Losses</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="/stats_logs">Log-DB-Status</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="/weapon_db">Weapon-DB</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="#">User Detail</a>
-    </li>
-  {% endblock %}
   {% block content %}
-  <table id="stats" class="display" style="width:100%">
-      <thead>
-          <tr>
-              <th>Pilot</th>
-              <th>Cateogry</th>
-              <th>Stat Type</th>
-              <th>Sub-Type</th>
-              <th>Value</th>
-          </tr>
-      </thead>
-  </table>
+    <table id="overall" class="table table-bordered table-hover" style="width:100%">
+    </table>
   {% endblock %}
-    {% block scripts %}
-      <script type="text/javascript">
-        $(document).ready(function() {
-            $('#stats').DataTable({
-              ajax: {
-                url: "/json_data?name=overall",
-                dataSrc: 'data'
-              },
-              "paging": false,
-              "pageLength": 50,
-              "rowId": "index",
-              "fixedColumns": true,
-              "autoWidth": true,
-              "lengthChange" : false,
-              "scrollY": 500,
-              "scrollX": true,
-              "order": [[ 4, "desc" ]],
-              "sScrollX": "100%",
-        //         "fixedColumns":   {
-        //           "leftColumns": 1
-        //         },
-            });
-        });
-      </script>
+  {% block scripts %}
+    <script type="text/javascript">
+      document.getElementById("base_link").classList.add('active');
+      $(document).ready(function() {
+          $('#overall').DataTable({
+            // serverSide: true,
+            ajax: {
+              url: "/json_data?name=overall",
+              dataSrc: 'data'
+            },
+            columns: [
+              { "title":"Pilot" },
+              { "title":"Category" },
+              { "title":"Stat Type" },
+              { "title":"Sub Type" },
+              { "title":"Value" }
+            ],
+            order: [[ 4, "desc" ]],
+            // rowGroup: {
+            //     dataSrc: [ 1, 0, 2,3 ]
+            // },
+            // columnDefs: [ {
+            //     targets: [ 0, 1, 2, 3 ],
+            //     visible: false
+            // } ],
+            paging: false,
+            pageLength: 50,
+            rowId: "index",
+            fixedColumns: false,
+            autoWidth: true,
+            lengthChange : false,
+            scrollY: 500,
+            scrollX: true,
+            sScrollX: "100%",
+          });
+          $('#overall tbody').on('click', 'td.details-control', function () {
+             var tr = $(this).closest('tr');
+             var row = table.row( tr );
+             if ( row.child.isShown() ) {
+                 // This row is already open - close it
+                 row.child.hide();
+                 tr.removeClass('shown');
+             }
+             else {
+                 // Open this row
+                 row.child( format(row.data()) ).show();
+                 tr.addClass('shown');
+             }
+         } );
+      });
+    </script>
   {% endblock %}

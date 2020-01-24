@@ -1,41 +1,11 @@
 {% extends "base.html" %}
-  {% block navbar %}
-    <li class="nav-item">
-      <a class="nav-link" href="/">Overall<span class="sr-only">Overall</span></a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="/weapons">Weapon Efficiency</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="/survivability">Kills/Losses</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link active" href="/stats_logs">Log-DB-Status</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="/weapon_db">Weapon-DB</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="#">User Detail</a>
-    </li>
-  {% endblock %}
   {% block content %}
-  <table id="stats" class="display" style="width:100%">
-      <thead>
-          <tr>
-              <th>File Name</th>
-              <th>Session Start Time</th>
-              <th>Processed</th>
-              <th>Processed At</th>
-              <th>Errors</th>
-          </tr>
-      </thead>
-  </table>
+    <table id="stats" class="table table-bordered table-hover" style="width:100%">
+    </table>
   {% endblock %}
-
   {% block scripts %}
-
     <script type="text/javascript">
+      document.getElementById("stats_logs_link").classList.add('active');
       $(document).ready(function() {
           $('#stats').DataTable( {
             processing: true,
@@ -43,14 +13,23 @@
               url: "/json_data?name=stat_logs",
               dataSrc: 'data'
             },
-            "rowId": "index",
-            "fixedColumns": true,
-            "autoWidth": true,
-            "lengthChange" : false,
-            "scrollY": 500,
-            "scrollX": true,
-            // "order": [[ 4, "desc" ]],
-            "sScrollX": "100%",
+            columns: [
+              { "title":"File Name" },
+              { "title":"Session Start Time" },
+              { "title":"Processed" },
+              { "title":"Processed At" },
+              { "title":"Errors" }
+            ],
+            order: [[ 1, "desc" ]],
+            rowId: "index",
+            paging: false,
+            pageLength: 50,
+            fixedColumns: false,
+            autoWidth: true,
+            lengthChange : false,
+            scrollY: 500,
+            scrollX: true,
+            sScrollX: "100%",
             }
           );
       });
