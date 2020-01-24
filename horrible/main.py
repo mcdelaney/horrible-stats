@@ -62,25 +62,18 @@ async def get_stats_logs(request: Request):
     await read_stats.sync_weapons()
     await read_stats.insert_gs_files_to_db()
     await read_stats.process_lua_records()
-    records = await db.fetch_all(query=stat_files.select())
-    records = pd.DataFrame.from_records(records, index=None)
-    context = {"request": request,
-               "data": records.to_html(table_id="stats", index=False)}
+    context = {"request": request}
     return templates.TemplateResponse("stats_logs.html", context)
 
 
 @app.get("/weapon_db")
 async def get_weapon_db_logs(request: Request):
-    records = await db.fetch_all(query=weapon_types.select())
-    records = pd.DataFrame.from_records(records, index=None)
-    context = {"request": request,
-               "data": records.to_html(table_id="stats", index=False)}
+    context = {"request": request}
     return templates.TemplateResponse("weapon_db.html", context)
 
 
 @app.get("/")
 async def new_stats(request: Request):
-    # df = await read_stats.get_dataframe()
     df = await read_stats.collect_recs_kv()
     context = {"request": request,
                "data": df.to_html(table_id="stats", index=False)}
@@ -104,6 +97,21 @@ async def suvival_stats(request: Request):
 
 
 @app.get("/json_data")
-async def json_data(request: Request):
-    df = await read_stats.get_dataframe()
-    return JSONResponse(content=df.to_json(orient="split", index=False))
+async def json_data(request: Request, name: str):
+    try:
+        if name == "weapons_db":
+            df = await db.fetch_all(query=weapon_types.select())
+            df = pd.DataFrame.from_records(df, index=None)
+        elif name == "stat_logs":
+            df = await db.fetch_all(query=stat_files.select())
+            df = pd.DataFrame.from_records(df, index=None)
+            df['processed_at'] = df['processed_at'].apply(str)
+            df['session_start_time'] = df['session_start_time'].apply(str)
+        elif name == "overall":
+            df = await read_stats.collect_recs_kv()
+        else:
+            pass
+    except Exception as e:
+        logging.error(e)
+        df = pd.DataFrame()
+    return JSONResponse(content=df.to_dict('split'))

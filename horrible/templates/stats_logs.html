@@ -9,8 +9,8 @@
     <li class="nav-item">
       <a class="nav-link" href="/survivability">Kills/Losses</a>
     </li>
-    <li class="nav-item active">
-      <a class="nav-link" href="/stats_logs">Log-DB-Status</a>
+    <li class="nav-item">
+      <a class="nav-link active" href="/stats_logs">Log-DB-Status</a>
     </li>
     <li class="nav-item">
       <a class="nav-link" href="/weapon_db">Weapon-DB</a>
@@ -19,14 +19,30 @@
       <a class="nav-link" href="#">User Detail</a>
     </li>
   {% endblock %}
-  <div style="width:100%">
-      {{data | safe}}
-  </div>
+  {% block content %}
+  <table id="stats" class="display" style="width:100%">
+      <thead>
+          <tr>
+              <th>File Name</th>
+              <th>Session Start Time</th>
+              <th>Processed</th>
+              <th>Processed At</th>
+              <th>Errors</th>
+          </tr>
+      </thead>
+  </table>
+  {% endblock %}
+
   {% block scripts %}
 
     <script type="text/javascript">
       $(document).ready(function() {
           $('#stats').DataTable( {
+            processing: true,
+            ajax: {
+              url: "/json_data?name=stat_logs",
+              dataSrc: 'data'
+            },
               "paging": "false",
               "pageLength": 75,
               "rowId": "index",

@@ -273,7 +273,7 @@ def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
     grouper = results.groupby(["pilot"])
     results = grouper.sum().reset_index()
 
-    results['losses__total_deaths'] = results['losses__crash'] + results["losses__pilotDeath"]
+    results['losses__total_deaths'] = results['losses__eject'] + results["losses__pilotDeath"]
     results["kills__A/A Kill Ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
     results["kills__A/A Kill Ratio"] = results["kills__A/A Kill Ratio"].round(1)
     results["kills__A/A Kills Total"] = results["kills__Planes__total"]
