@@ -32,11 +32,16 @@ async def update_all_logs_and_stats() -> NoReturn:
 async def sync_weapons() -> NoReturn:
     """Sync contents of data/weapons-db.csv with database."""
     weapons = pd.read_csv("data/weapon-db.csv").to_dict('records')
+
+    current_weapons = await db.fetch_all(query=weapon_types.select())
+    current_weapons = [weapon['name'] for weapon in current_weapons]
+
     for record in weapons:
         try:
-            query = weapon_types.insert()
-            await db.execute(query, values=record)
-            log.info(f"New weapon added to database: {record['name']}...")
+            if record['name'] not in current_weapons:
+                query = weapon_types.insert()
+                await db.execute(query, values=record)
+                log.info(f"New weapon added to database: {record['name']}...")
         except asyncpg.exceptions.UniqueViolationError:
             log.debug(f"weapon {record['name']} already exists...skipping...")
 
