@@ -4,7 +4,8 @@
   {% endblock %}
   {% block scripts %}
   <script type="text/javascript">
-    document.getElementById("survivability_link").classList.add('active');
+    document.getElementById("overall").classList.remove('active');
+    document.getElementById("survivability").classList.add('active');
     $(document).ready(function() {
         $('#stats').DataTable( {
             paging: "false",

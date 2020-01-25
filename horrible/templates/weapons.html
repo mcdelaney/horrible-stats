@@ -4,18 +4,19 @@
   {% endblock %}
   {% block scripts %}
     <script type="text/javascript">
-      document.getElementById("weapons_link").classList.add('active');
+      document.getElementById("overall").classList.remove('active');
+      document.getElementById("weapons").classList.add('active');
       $(document).ready(function() {
           $('#stats').DataTable( {
-              "paging": "false",
-              "pageLength": 50,
-              "rowId": "index",
-              "fixedColumns": false,
-              "autoWidth": true,
-              "lengthChange" : false,
-              // "scrollY": 300,
-              "scrollX": true,
-              "sScrollX": "100%",
+            paging: "false",
+            pageLength: 75,
+            rowId: "index",
+            fixedColumns: true,
+            autoWidth: false,
+            className: 'dt-body-center',
+            lengthChange : false,
+            scrollX: true,
+            sScrollX: "100%",
             }
           );
       });

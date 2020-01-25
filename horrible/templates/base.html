@@ -15,31 +15,34 @@
         <h1 class="display-4">Horrible Stats For A Horrible Server</h1>
 
           <nav class="navbar navbar-expand-lg navbar-light bg-light">
-            <a class="navbar-brand">AHS</a>
-            <ul class="nav nav-pills">
+            <a class="navbar-brand">
+              <img src="/static/images/tests_out.png" alt="">
+            </a>
+            <ul id="nav_set" class="nav nav-pills">
               <li class="nav-item">
-                <a id="base_link" class="nav-link" href="/">Overall</a>
+                <a id="overall" name="overall" class="nav-link active" href="/#" role="button">Overall</a>
               </li>
               <li class="nav-item">
-                <a  id="weapons_link" class="nav-link" href="/weapons">Weapon Efficiency</a>
+                <a  id="weapons" class="nav-link" href="/weapons">Weapon Efficiency</a>
               </li>
               <li class="nav-item">
-                <a  id="survivability_link" class="nav-link" href="/survivability">Kills/Losses</a>
+                <a  id="survivability" class="nav-link" href="/survivability">Kills/Losses</a>
               </li>
               <li class="nav-item">
-                <a id="stats_logs_link" class="nav-link" href="/stats_logs">Log-DB-Status</a>
+                <a id="stat_logs" name="stat_logs" class="nav-link" href="/#">Log-DB-Status</a>
               </li>
               <li class="nav-item">
-                <a id="weapons_db_link"  class="nav-link" href="/weapon_db">Weapon-DB</a>
+                <a id="weapon_db" name="weapon_db" class="nav-link" href="/#">Weapon-DB</a>
               </li>
               <li class="nav-item">
                 <a id="user_detail_link" class="nav-link" href="#">User Detail</a>
               </li>
             </ul>
           </nav>
-        <div>
-          {% block content %}
-          {% endblock %}
+          <div id="table_container" style="padding-top:15px">
+            {% block content %}
+            {% endblock %}
+          </div>
         </div>
       </div>
     </div>

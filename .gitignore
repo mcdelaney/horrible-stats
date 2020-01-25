@@ -6,3 +6,4 @@ dcs-storage-gcs.json
 horrible/cache/**
 **/**/scratch.py
 **/mission-stats/**/**
+*.DS_Store

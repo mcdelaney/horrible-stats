@@ -22,6 +22,13 @@ log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
 
 
+async def update_all_logs_and_stats() -> NoReturn:
+    """Sync weapon db, gs stats files, and process any new records."""
+    await sync_weapons()
+    await insert_gs_files_to_db()
+    await process_lua_records()
+
+
 async def sync_weapons() -> NoReturn:
     """Sync contents of data/weapons-db.csv with database."""
     weapons = pd.read_csv("data/weapon-db.csv").to_dict('records')
