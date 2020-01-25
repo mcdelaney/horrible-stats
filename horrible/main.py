@@ -58,9 +58,10 @@ async def resync_stat_file(request: Request, file_name: str):
 
 
 @app.get("/stat_logs")
-async def get_stat_logs(request: Request, background_tasks: BackgroundTasks):
+async def get_stat_logs(request: Request):
     """Get a json dictionary of mission-stat file status data."""
-    background_tasks.add_task(read_stats)
+    tasks = BackgroundTasks()
+    tasks.add_task(read_stats)
     data = await db.fetch_all(query=stat_files.select())
     data = pd.DataFrame.from_records(data, index=None)
     # Convert datetimes into strings because json cant serialize them otherwise.
