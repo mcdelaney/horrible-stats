@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <link rel="stylesheet" href="/main/css/main.css">
+    <link rel="stylesheet" href="/main/css/loader.css">
+    <link rel="stylesheet" href="/main/css/stars.css">
+    <!-- BS4 Datatable syles -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/rr-1.2.6/sc-2.0.1/datatables.min.css"/>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/rr-1.2.6/sc-2.0.1/datatables.min.js"></script>
+  </head>
+  <body>
+
+    <div id="particles-background" class="vertical-centered-box"></div>
+    <div id="particles-foreground" class="vertical-centered-box"></div>
+
+    <div class="container-fluid">
+        <div class="row">
+          <div class="col">
+          <nav class="navbar navbar-expand-lg navbar-light">
+            <a class="navbar-brand">
+              <img src="/main/images/full_brand.png" alt="">
+            </a>
+            <ul id="nav_set" class="nav nav-pills">
+              <li class="nav-item">
+                <a id="overall" name="overall" class="nav-link active" href="#" role="button">Overall</a>
+              </li>
+              <li class="nav-item">
+                <a  id="weapons" class="nav-link" href="#">Weapon Efficiency</a>
+              </li>
+              <li class="nav-item">
+                <a  id="survivability" class="nav-link" href="#">Kills/Losses</a>
+              </li>
+              <li class="nav-item">
+                <a id="stat_logs" name="stat_logs" class="nav-link" href="#">Log-DB-Status</a>
+              </li>
+              <li class="nav-item">
+                <a id="weapon_db" name="weapon_db" class="nav-link" href="#">Weapon-DB</a>
+              </li>
+              <li class="nav-item">
+                <a id="tacview" class="nav-link" href="#">Tacview</a>
+              </li>
+            </ul>
+            <style>
+          .navbar
+          {
+              border-bottom: 0.5px solid #D3D3D3;
+          }
+        </style>
+          </nav>
+
+          <div id="table_container" style="padding-top:15px">
+
+            <div id="overall_container">
+              <table id="overall_tbl" class="table table-dark table-bordered table-hover" style="width: 100%"></table>
+            </div>
+            <div id="weapon_db_container">
+              <table id="weapon_db_tbl" class="table table-dark table-bordered table-hover" style="width: 100%"></table>
+            </div>
+            <div id="stat_logs_container">
+              <table id="stat_logs_tbl" class="table table-dark table-bordered table-hover" style="width: 100%"></table>
+            </div>
+            <div id="weapons_container">
+              <table id="weapons_tbl" class="table table-dark table-bordered table-hover" style="width: 100%"></table>
+            </div>
+            <div id="survivability_container">
+              <table id="survivability_tbl" class="table table-dark table-bordered table-hover" style="width: 100%"></table>
+            </div>
+            <div id="tacview_container">
+              <table id="tacview_tbl" class="table table-dark table-bordered table-hover" style="width: 100%"></table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </body>
+  <script type="text/javascript" src="/main/js/stars.js"></script>
+  <script type="text/javascript" src="/main/js/main.js"></script>
+</html>

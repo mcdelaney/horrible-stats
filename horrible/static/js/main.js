@@ -15,49 +15,37 @@ function clear_table(table_id) {
 
 function load_dt(path) {
   console.log("Loading table: " + path);
-
   // jQuery node accessor for table.  Matches html tag.
   var tbl_nm = "#" +  path + "_tbl";
+  jQuery.getJSON("/" + path, function( data ) {
 
-  var colKeys = {
-    "overall":  [
-      { "title":"Pilot" },
-      { "title":"Category" },
-      { "title":"Stat Type" },
-      { "title":"Sub Type" },
-      { "title":"Value" }
-    ],
-    "weapon_db": [
-      { "title":"Name" },
-      { "title":"Category" },
-      { "title":"Type" }
-    ],
-    "tacview": [
-      {"title": "Status"}
-    ],
-    "stat_logs": [
-      { "title":"File Name" },
-      { "title":"Session Start Time" },
-      { "title":"Processed" },
-      { "title":"Processed At" },
-      { "title":"Errors" }
-    ]
-  };
+  var cols = []
+  for (i = 0; i < data.columns.length; i++) {
+    var col_nm = data.columns[i].split("_");
+    for (var n = 0; n < col_nm.length; n++) {
+      col_nm[n] = col_nm[n].charAt(0).toUpperCase() + col_nm[n].slice(1);
+    }
+    cols.push({"title": col_nm.join(" ")});
+  }
 
   var sortKeys = {
     "overall":  [[ 4, "desc" ]],
     "stat_logs":  [[ 1, "desc" ]],
     "weapon_db": [],
-    "tacview": []
+    "tacview": [],
+    "weapons": [],
+    "survivability": [[1, "desc"]]
   }
 
   $(tbl_nm).DataTable({
-    ajax: {
-      url: "/" + path,
-      dataSrc: 'data'
-    },
-    columns:colKeys[path],
+    data: data.data,
+    columns: cols,
     order: sortKeys[path],
+    // processing: true,
+    // language: {
+    //   processing: '<section class="wrapper"><div class="spinner"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></section>'
+    // },
+
     // rowGroup: {
     //     dataSrc: [ 1, 0, 2,3 ]
     // },
@@ -71,10 +59,12 @@ function load_dt(path) {
     fixedColumns: false,
     autoWidth: true,
     lengthChange : false,
-    scrollY: 500,
+    scrollY: 600,
+    info: false,
     scrollX: true,
     sScrollX: "100%",
   });
+});
 };
 
 

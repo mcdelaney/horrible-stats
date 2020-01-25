@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import FastAPI, BackgroundTasks
-from starlette.responses import JSONResponse, RedirectResponse
+from starlette.responses import JSONResponse, RedirectResponse, HTMLResponse
 from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
@@ -18,7 +18,7 @@ log.setLevel(level=logging.INFO)
 
 templates = Jinja2Templates(directory='templates')
 app = FastAPI("Stat-Server")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/main", StaticFiles(directory="static", html=True), name="static")
 
 
 @app.on_event("startup")
@@ -78,9 +78,12 @@ async def get_stat_logs(request: Request):
 @app.get("/weapon_db")
 async def get_weapon_db_logs(request: Request):
     """Get a json dictionary of categorized weapons used for groupings."""
-    df = await db.fetch_all(query=weapon_types.select())
-    df = {"data": [list(d.values()) for d in df]}
-    return JSONResponse(content=df)
+    data = await db.fetch_all(query=weapon_types.select())
+    content = {"data": [], "columns": list(data[0].keys())}
+    for row in data:
+        content['data'].append(list(row.values()))
+    # log.info(content)
+    return JSONResponse(content=content)
 
 
 @app.get("/overall")
@@ -94,47 +97,20 @@ async def get_overall_stats(request: Request):
 @app.get("/")
 async def serve_homepage(request: Request):
     """Serve the index.html template."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    with open("static/index.html", mode='r') as fp_:
+        page = fp_.read()
+    return HTMLResponse(page)
 
 
 @app.get("/weapons")
 async def weapon_stats(request: Request):
     """Return a rendered template with a table displaying per-weapon stats."""
-    df = await read_stats.get_dataframe(subset=["weapons"])
-    context = {"request": request,
-               "data": df.to_html(table_id="stats", index=False)}
-    return templates.TemplateResponse("weapons.html", context)
+    data = await read_stats.get_dataframe(subset=["weapons"])
+    return JSONResponse(content=data.to_dict('split'))
 
 
 @app.get("/survivability")
 async def suvival_stats(request: Request):
     """Return a rendered template showing kill/loss statistics."""
-    df = await read_stats.get_dataframe(subset=["kills", "losses"])
-    context = {"request": request,
-               "data": df.to_html(table_id="stats", index=False)}
-    return templates.TemplateResponse("survivability.html", context)
-
-
-# @app.get("/json_data")
-# async def json_data(request: Request, name: str):
-#     try:
-#         if name == "weapon_db":
-#             df = await db.fetch_all(query=weapon_types.select())
-#             df = {"data": [list(d.values()) for d in df]}
-#         elif name == "stat_logs":
-#             df = await db.fetch_all(query=stat_files.select())
-#             df = pd.DataFrame.from_records(df, index=None)
-#             df['processed_at'] = df['processed_at'].apply(str)
-#             df['session_start_time'] = df['session_start_time'].apply(str)
-#             df = df[["file_name", "session_start_time", "processed",
-#                      "processed_at", "errors"]]
-#             df = df.to_dict('split')
-#         elif name == "overall":
-#             df = await read_stats.collect_recs_kv()
-#             df = df.to_dict('split')
-#         else:
-#             pass
-#     except Exception as e:
-#         log.error(e)
-#         df = pd.DataFrame()
-#     return JSONResponse(content=df)
+    data = await read_stats.get_dataframe(subset=["kills", "losses"])
+    return JSONResponse(content=data.to_dict("split"))
