@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 import requests
-from utils import get_gcs_bucket
+from stats.gcs_config import get_gcs_bucket
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                         help="Name of remote bucket destination subdir.")
     parser.add_argument("--delete", action="store_true",
                         help="If set, files will be deleted after upload.")
-    parser.add_argument("--env", default='stg', type=str,
+    parser.add_argument("--env", default='prod', type=str,
                         help="Prod or stg.")
     args = parser.parse_args()
 
