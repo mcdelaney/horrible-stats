@@ -1,57 +1,24 @@
 {% extends "base.html" %}
   {% block content %}
-    <table id="overall" class="table table-bordered table-hover" style="width:100%">
-    </table>
+    <div id="overall_container">
+      <table id="overall_tbl" class="table table-bordered table-hover" style="width: 100%"></table>
+    </div>
+    <div id="weapon_db_container">
+      <table id="weapon_db_tbl" class="table table-bordered table-hover" style="width: 100%"></table>
+    </div>
+    <div id="stat_logs_container">
+      <table id="stat_logs_tbl" class="table table-bordered table-hover" style="width: 100%"></table>
+    </div>
+    <div id="weapons_container">
+      <table id="weapons_tbl" class="table table-bordered table-hover" style="width: 100%"></table>
+    </div>
+    <div id="survivability_container">
+      <table id="survivability_tbl" class="table table-bordered table-hover" style="width: 100%"></table>
+    </div>
+    <div id="tacview_container">
+      <table id="tacview_tbl" class="table table-bordered table-hover" style="width: 100%"></table>
+    </div>
   {% endblock %}
   {% block scripts %}
-    <script type="text/javascript">
-      document.getElementById("base_link").classList.add('active');
-      $(document).ready(function() {
-          $('#overall').DataTable({
-            // serverSide: true,
-            ajax: {
-              url: "/json_data?name=overall",
-              dataSrc: 'data'
-            },
-            columns: [
-              { "title":"Pilot" },
-              { "title":"Category" },
-              { "title":"Stat Type" },
-              { "title":"Sub Type" },
-              { "title":"Value" }
-            ],
-            order: [[ 4, "desc" ]],
-            // rowGroup: {
-            //     dataSrc: [ 1, 0, 2,3 ]
-            // },
-            // columnDefs: [ {
-            //     targets: [ 0, 1, 2, 3 ],
-            //     visible: false
-            // } ],
-            paging: false,
-            pageLength: 50,
-            rowId: "index",
-            fixedColumns: false,
-            autoWidth: true,
-            lengthChange : false,
-            scrollY: 500,
-            scrollX: true,
-            sScrollX: "100%",
-          });
-          $('#overall tbody').on('click', 'td.details-control', function () {
-             var tr = $(this).closest('tr');
-             var row = table.row( tr );
-             if ( row.child.isShown() ) {
-                 // This row is already open - close it
-                 row.child.hide();
-                 tr.removeClass('shown');
-             }
-             else {
-                 // Open this row
-                 row.child( format(row.data()) ).show();
-                 tr.addClass('shown');
-             }
-         } );
-      });
-    </script>
+    <script type="text/javascript" src="/static/js/table_loader.js"></script>
   {% endblock %}
