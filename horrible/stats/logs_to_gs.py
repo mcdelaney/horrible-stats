@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 import requests
-from stats.gcs_config import get_gcs_bucket
+from gcs_config import get_gcs_bucket
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
