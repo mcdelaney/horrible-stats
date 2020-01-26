@@ -254,10 +254,51 @@ async def weapon_type_efficiency() -> pd.DataFrame:
 
 async def calculate_overall_stats() -> pd.DataFrame:
     """Calculate per-user/category/sub-type metrics."""
-    data = await collect_recs_kv()
-    data = data.groupby(["pilot", "category", "metric"],
-                        as_index=False).sum()
-    return data
+    df = await collect_recs_kv()
+    df = df.groupby(["pilot", "category", "metric"],
+                    as_index=False).sum()
+
+    df = df[~df['metric'].isin(['hit', 'crash'])]
+    df = df[df['category'].isin(
+        ['Air-to-Air', 'Air-to-Surface', 'Bomb', 'Gun', 'losses'])]
+
+    df['col'] = df[['category', 'metric']].apply(lambda x: ' '.join(x), axis=1)
+    df.drop(labels=['category', 'metric'], axis=1, inplace=True)
+    df = df.pivot(index="pilot", columns="col", values="value")
+    df.fillna(0, inplace=True)
+    df.reset_index(level=0, inplace=True)
+
+    df["Total Losses"] = df['losses pilotDeath'] + df['losses eject']
+    tmp = (df['Air-to-Air kills'] / df['Total Losses']).round(2)
+    df.insert(1, "A/A Kill Ratio", tmp)
+
+    df["A/A P(Kill)"] = ((df['Air-to-Air kills'] / df['Air-to-Air shot'])*100).round(1)
+    df["A/A P(Hit)"] = ((df['Air-to-Air numHits'] / df['Air-to-Air shot'])*100).round(1)
+
+    df["A/G Dropped"] = df['Air-to-Surface shot'] + df['Bomb shot']
+    df["A/G Kills"] = df['Air-to-Surface kills'] + df['Bomb kills']
+    df["A/G numHits"] = df['Air-to-Surface numHits'] + df['Bomb numHits']
+
+    df["A/G P(Hit)"] = ((df['A/G numHits'] / df['A/G Dropped'])*100).round(1)
+    df["A/G P(Kill)"] = ((df['A/G Kills'] / df['A/G Dropped'])*100).round(1)
+
+    df.drop(["losses pilotDeath", "losses eject",
+             "Air-to-Air shot", "Air-to-Air numHits",
+             "Air-to-Surface shot", "Air-to-Surface numHits", "Air-to-Surface kills",
+             "Bomb shot", "Bomb numHits", "Bomb kills",
+             "A/G Kills"
+             ], axis=1, inplace=True)
+
+    df.fillna(0, inplace=True)
+    df = df.replace([np.inf, -np.inf], 0)
+    df.columns = [c.replace('numHits', 'Hits') for c in df.columns]
+    cols_out = [c for c in df.columns if c != "pilot"]
+    cols_out.sort()
+    cols_out = ['pilot'] + cols_out
+
+    df = df[cols_out]
+
+    return df
 
 
 def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
@@ -272,7 +313,7 @@ def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
     data["kills__A/A Kills Total"] = data["kills__Planes__total"]
     data.drop(labels=["kills__Planes__total"], axis=1, inplace=True)
 
-    data = data.replace([np.inf, -np.inf], np.nan)
+    data = data.replace([np.inf, -np.inf, np.nan], 0.0)
 
     prio_cols = ["pilot",
                  "kills__A/A Kill Ratio",

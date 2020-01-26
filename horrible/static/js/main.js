@@ -29,7 +29,7 @@ function load_dt(path) {
   }
 
   var sortKeys = {
-    "overall":  [[ 3, "desc" ]],
+    "overall":  [[ 1, "desc" ]],
     "stat_logs":  [[ 1, "desc" ]],
     "weapon_db": [],
     "tacview": [],
