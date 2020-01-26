@@ -282,10 +282,14 @@ async def calculate_overall_stats() -> pd.DataFrame:
     df["A/G P(Hit)"] = ((df['A/G numHits'] / df['A/G Dropped'])*100).round(1)
     df["A/G P(Kill)"] = ((df['A/G Kills'] / df['A/G Dropped'])*100).round(1)
 
+    df["Gun P(Hit)"] = ((df['Gun numHits'] / df['Gun shot'])*100).round(1)
+    df["Gun P(Kill)"] = ((df['Gun kills'] / df['Gun shot'])*100).round(1)
+
     df.drop(["losses pilotDeath", "losses eject",
              "Air-to-Air shot", "Air-to-Air numHits",
              "Air-to-Surface shot", "Air-to-Surface numHits", "Air-to-Surface kills",
              "Bomb shot", "Bomb numHits", "Bomb kills",
+             "Gun numHits", "Gun kills",
              "A/G Kills"
              ], axis=1, inplace=True)
 
