@@ -107,6 +107,14 @@ async def get_overall_stats(request: Request):
     return JSONResponse(content=data)
 
 
+@app.get("/detail")
+async def get_detail_stats(request: Request):
+    """Get a json dictionary of grouped statistics as key-value pairs."""
+    data = await read_stats.all_category_grouped()
+    data = data.to_dict('split')
+    return JSONResponse(content=data)
+
+
 @app.get("/")
 async def serve_homepage(request: Request):
     """Serve the index.html template."""

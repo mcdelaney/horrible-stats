@@ -244,10 +244,10 @@ async def collect_recs_kv() -> pd.DataFrame:
     return data
 
 
-async def weapon_type_efficiency() -> pd.DataFrame:
+async def all_category_grouped() -> pd.DataFrame:
     """Calculate percentage hit/kill per user, per weapon category."""
     data = await collect_recs_kv()
-    data = data.groupby(["pilot", "category", 'metric'],
+    data = data.groupby(["pilot", "category", 'stat_type', 'metric'],
                         as_index=False).sum()
     return data
 

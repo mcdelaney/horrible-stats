@@ -32,6 +32,7 @@ function load_dt(path) {
     "overall":  [[ 1, "desc" ]],
     "stat_logs":  [[ 1, "desc" ]],
     "weapon_db": [],
+    "detail": [[data.columns.length-1, "desc"]],
     "tacview": [],
     "weapons": [],
     "survivability": [[1, "desc"]],
