@@ -170,7 +170,6 @@ async def process_lua_records() -> NoReturn:
 
         except Exception as err:
             log.error(f"Error handling file: \n\t{stat['file_name']}\n\t{err}")
-
             traceback.print_tb(err.__traceback__)
             await db.execute(f"""UPDATE mission_stat_files
                              SET errors = (
@@ -193,9 +192,9 @@ async def process_lua_records() -> NoReturn:
 async def collect_stat_recs() -> pd.DataFrame:
     data = []
     async for rec in db.iterate("""SELECT record, files.session_start_time
-                                FROM mission_stats
-                                LEFT JOIN mission_stat_files files
-                                USING (file_name)
+                                    FROM mission_stats
+                                    LEFT JOIN mission_stat_files files
+                                    USING (file_name)
                                 """):
         tmp = json.loads(rec['record'])
         tmp['session_stat_time'] = rec['session_start_time']
@@ -234,10 +233,11 @@ async def collect_recs_kv() -> pd.DataFrame:
     data["stat_group"] = data.key.apply(lambda x: x.split("__")[0])
     data["stat_type"] = data.key.apply(lambda x: "__".join(x.split("__")[1:-1]))
     data["metric"] = data.key.apply(lambda x: "__".join(x.split("__")[-1:]))
+
     data["key"] = data.key.apply(lambda x: "__".join(x.split("__")[1:]))
     data = data[["session_start_time", "pilot", "stat_group", "stat_type",
                  "metric", "key", "value"]]
-
+    data = data[data.metric != "hit"]
     data = data.merge(weapons, how='left', on='stat_type')
     data["category"] = data.category.combine_first(data.stat_group)
     data['stat_type'] = data.stat_type.apply(lambda x: "Total" if x == "" else x)
@@ -300,6 +300,7 @@ async def calculate_overall_stats() -> pd.DataFrame:
     df.columns = [c.replace('numHits', 'Hits') for c in df.columns]
     df.columns = [c.replace('Air-to-Air', 'A/A') for c in df.columns]
     df.columns = [c.replace(' shot', ' Shot') for c in df.columns]
+    df.columns = [c.replace(' kills', ' Kills') for c in df.columns]
     cols_out = [c for c in df.columns if c != "pilot"]
     cols_out.sort()
     cols_out = ['pilot'] + cols_out

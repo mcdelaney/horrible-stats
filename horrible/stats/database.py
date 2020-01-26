@@ -82,5 +82,7 @@ frametimes = sqlalchemy.Table(
 
 
 config = Config('.env')
-DATABASE_URL = config('DATABASE_URL')
+DATABASE_URL = config(
+    'DATABASE_URL',
+    default="postgresql://localhost:5432/dcs?user=prod&password=pwd")
 db = databases.Database(DATABASE_URL)
