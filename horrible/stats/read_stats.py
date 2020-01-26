@@ -43,8 +43,10 @@ async def sync_weapons() -> NoReturn:
                 query = weapon_types.insert()
                 await db.execute(query, values=record)
                 log.info(f"New weapon added to database: {record['name']}...")
+            else:
+                log.debug(f"weapon {record['name']} already exists...skipping...")
         except asyncpg.exceptions.UniqueViolationError:
-            log.debug(f"weapon {record['name']} already exists...skipping...")
+            log.error(f"Weapon {record['name']} already exists!")
 
 
 def lua_tbl_to_py(lua_tbl) -> Dict:

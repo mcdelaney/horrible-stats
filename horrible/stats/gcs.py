@@ -20,6 +20,7 @@ def get_gcs_bucket(bucket="horrible-server"):
 
 async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table) -> NoReturn:
     """Ensure all gs files are in database."""
+    log.info(f"Syncing gs files at {bucket_prefix} to table {table.name}...")
     bucket = get_gcs_bucket()
     stats_list = bucket.client.list_blobs(bucket, prefix=bucket_prefix)
     files = await db.fetch_all(f"SELECT file_name FROM {table.name}")
