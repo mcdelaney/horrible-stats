@@ -102,7 +102,7 @@ async def get_weapon_db_logs(request: Request):
 @app.get("/overall")
 async def get_overall_stats(request: Request):
     """Get a json dictionary of grouped statistics as key-value pairs."""
-    data = await read_stats.collect_recs_kv()
+    data = await read_stats.calculate_overall_stats()
     data = data.to_dict('split')
     return JSONResponse(content=data)
 

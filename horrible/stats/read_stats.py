@@ -231,17 +231,31 @@ async def collect_recs_kv() -> pd.DataFrame:
     data['value'] = data.value.astype(int)
     data["stat_group"] = data.key.apply(lambda x: x.split("__")[0])
     data["stat_type"] = data.key.apply(lambda x: "__".join(x.split("__")[1:-1]))
-    data["stat_sub_type"] = data.key.apply(lambda x: "__".join(x.split("__")[-1:]))
+    data["metric"] = data.key.apply(lambda x: "__".join(x.split("__")[-1:]))
     data["key"] = data.key.apply(lambda x: "__".join(x.split("__")[1:]))
     data = data[["session_start_time", "pilot", "stat_group", "stat_type",
-                 "stat_sub_type", "key", "value"]]
-    # data['stat_type'] = data['stat_type'].str.strip()
+                 "metric", "key", "value"]]
+
     data = data.merge(weapons, how='left', on='stat_type')
     data["category"] = data.category.combine_first(data.stat_group)
     data['stat_type'] = data.stat_type.apply(lambda x: "Total" if x == "" else x)
     data['category'] = data.category.apply(lambda x: "Kills" if x == "kills" else x)
     data['category'] = data.category.apply(lambda x: "Time" if x == "times" else x)
-    data = data.groupby(["pilot", "category", 'stat_type', "stat_sub_type"],
+    return data
+
+
+async def weapon_type_efficiency() -> pd.DataFrame:
+    """Calculate percentage hit/kill per user, per weapon category."""
+    data = await collect_recs_kv()
+    data = data.groupby(["pilot", "category", 'metric'],
+                        as_index=False).sum()
+    return data
+
+
+async def calculate_overall_stats() -> pd.DataFrame:
+    """Calculate per-user/category/sub-type metrics."""
+    data = await collect_recs_kv()
+    data = data.groupby(["pilot", "category", "metric"],
                         as_index=False).sum()
     return data
 
