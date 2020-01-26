@@ -269,11 +269,12 @@ async def calculate_overall_stats() -> pd.DataFrame:
     df.reset_index(level=0, inplace=True)
 
     df["Total Losses"] = df['losses pilotDeath'] + df['losses eject']
-    tmp = (df['Air-to-Air kills'] / df['Total Losses']).round(2)
+    tmp = ((df['Air-to-Air kills']+df['Gun kills']) / df['Total Losses']).round(2)
     df.insert(1, "A/A Kill Ratio", tmp)
 
-    df["A/A P(Kill)"] = ((df['Air-to-Air kills'] / df['Air-to-Air shot'])*100).round(1)
-    df["A/A P(Hit)"] = ((df['Air-to-Air numHits'] / df['Air-to-Air shot'])*100).round(1)
+    df["A/A P(Kill)"] = ((df['Air-to-Air kills']/df['Air-to-Air shot'])*100).round(1)
+    df["A/A P(Hit)"] = ((df['Air-to-Air numHits'] / df['Air-to-Air shot']
+                         )*100).round(1)
 
     df["A/G Dropped"] = df['Air-to-Surface shot'] + df['Bomb shot']
     df["A/G Kills"] = df['Air-to-Surface kills'] + df['Bomb kills']
@@ -286,16 +287,17 @@ async def calculate_overall_stats() -> pd.DataFrame:
     df["Gun P(Kill)"] = ((df['Gun kills'] / df['Gun shot'])*100).round(1)
 
     df.drop(["losses pilotDeath", "losses eject",
-             "Air-to-Air shot", "Air-to-Air numHits",
+             "Air-to-Air numHits",  "Gun numHits", "Bomb numHits",
              "Air-to-Surface shot", "Air-to-Surface numHits", "Air-to-Surface kills",
-             "Bomb shot", "Bomb numHits", "Bomb kills",
-             "Gun numHits", "Gun kills",
-             "A/G Kills"
+             "Bomb shot",
+             # "Bomb kills", "Air-to-Air kills", "A/G Kills", "Gun kills",
              ], axis=1, inplace=True)
 
     df.fillna(0, inplace=True)
     df = df.replace([np.inf, -np.inf], 0)
     df.columns = [c.replace('numHits', 'Hits') for c in df.columns]
+    df.columns = [c.replace('Air-to-Air', 'A/A') for c in df.columns]
+    df.columns = [c.replace(' shot', ' Shot') for c in df.columns]
     cols_out = [c for c in df.columns if c != "pilot"]
     cols_out.sort()
     cols_out = ['pilot'] + cols_out
