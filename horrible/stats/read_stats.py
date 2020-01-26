@@ -1,20 +1,18 @@
-import asyncpg
-import json
-import datetime
-from typing import List, Dict, NoReturn
 import logging
+import json
 from pathlib import Path
-import re
 import threading
 import traceback
+from typing import List, Dict, NoReturn
 
+import asyncpg
 from lupa import LuaRuntime
 import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 
-from stats.gcs_config import get_gcs_bucket
-from stats.database import db, weapon_types, stat_files, mission_stats
+from . import (db, weapon_types, stat_files, mission_stats, get_gcs_bucket,
+               sync_gs_files_with_db, frametime_files)
 
 
 logging.basicConfig(level=logging.INFO)
@@ -24,9 +22,12 @@ log.setLevel(level=logging.INFO)
 
 async def update_all_logs_and_stats() -> NoReturn:
     """Sync weapon db, gs stats files, and process any new records."""
+    log.info("Syncing log files and updating stats...")
     await sync_weapons()
-    await insert_gs_files_to_db()
+    await sync_gs_files_with_db('mission-stats/', stat_files)
+    await sync_gs_files_with_db('frametime/', frametime_files)
     await process_lua_records()
+    log.info("All log and stats files updated...")
 
 
 async def sync_weapons() -> NoReturn:
@@ -44,32 +45,6 @@ async def sync_weapons() -> NoReturn:
                 log.info(f"New weapon added to database: {record['name']}...")
         except asyncpg.exceptions.UniqueViolationError:
             log.debug(f"weapon {record['name']} already exists...skipping...")
-
-
-async def insert_gs_files_to_db() -> NoReturn:
-    """Ensure all gs files are in database."""
-    bucket = get_gcs_bucket()
-    stats_list = bucket.client.list_blobs(bucket, prefix="mission-stats/")
-    files = await db.fetch_all("SELECT file_name FROM mission_stat_files")
-    files = [file["file_name"] for file in files]
-    for stat_file in stats_list:
-        if stat_file.name in files:
-            log.debug(f"File: {stat_file.name} already recorded...")
-            continue
-        if stat_file.name == "mission-stats/":
-            continue
-
-        try:
-            log.info(f"Inserting stat file: {stat_file.name}")
-            await db.execute(stat_files.insert(),
-                             {'file_name': stat_file.name,
-                              'session_start_time': parse_ts(stat_file.name),
-                              'processed': False,
-                              'processed_at': None,
-                              'errors': 0})
-        except asyncpg.exceptions.UniqueViolationError:
-            log.error("File already has been inserted!")
-            raise asyncpg.exceptions.UniqueViolationError
 
 
 def lua_tbl_to_py(lua_tbl) -> Dict:
@@ -98,14 +73,6 @@ def lua_tbl_to_py(lua_tbl) -> Dict:
     except AttributeError:
         return lua_tbl
     return out
-
-
-def parse_ts(path: str) -> datetime.datetime:
-    file = Path(path).name
-    m = re.search("([A-z]{3} [0-9]{1,2}, [0-9]{4} at [0-9]{2} [0-9]{2} [0-9]{2})",
-                  file)
-    parsed = m.group().replace("at ", "")
-    return datetime.datetime.strptime(parsed, "%b %d, %Y %H %M %S")
 
 
 def result_to_flat_dict(result: dict) -> dict:
@@ -282,20 +249,18 @@ async def collect_recs_kv() -> pd.DataFrame:
 def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
     """Compute additional metrics, reorder columns, and sort."""
     grouper = results.groupby(["pilot"])
-    results = grouper.sum().reset_index()
+    data = grouper.sum().reset_index()
 
-    results['losses__total_deaths'] = results['losses__eject'] + results["losses__pilotDeath"]
-    results["kills__A/A Kill Ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
-    results["kills__A/A Kill Ratio"] = results["kills__A/A Kill Ratio"].round(1)
-    results["kills__A/A Kills Total"] = results["kills__Planes__total"]
-    results.drop(labels=["kills__Planes__total"], axis=1, inplace=True)
+    data['losses__total_deaths'] = data['losses__eject'] + data["losses__pilotDeath"]
+    data["kills__A/A Kill Ratio"] = (data["kills__Planes__total"] /
+                                     data["losses__total_deaths"])
+    data["kills__A/A Kill Ratio"] = data["kills__A/A Kill Ratio"].round(1)
+    data["kills__A/A Kills Total"] = data["kills__Planes__total"]
+    data.drop(labels=["kills__Planes__total"], axis=1, inplace=True)
 
-    # results["weapons__Prob_Hit"] = results["weapons__A/A Kill Ratio"].round(1)
-
-    results = results.replace([np.inf, -np.inf], np.nan)
+    data = data.replace([np.inf, -np.inf], np.nan)
 
     prio_cols = ["pilot",
-                 # "total_sessions",
                  "kills__A/A Kill Ratio",
                  "kills__A/A Kills Total",
                  "losses__total_deaths",
@@ -308,17 +273,17 @@ def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
 
     for i, col in enumerate(prio_cols):
         try:
-            tmp = results[col]
-            results.drop(labels=[col], axis=1, inplace=True)
-            results.insert(i, col, tmp)
+            tmp = data[col]
+            data.drop(labels=[col], axis=1, inplace=True)
+            data.insert(i, col, tmp)
         except KeyError:
             log.error(f"Key {col} not in cols:")
-            for c in results.columns:
+            for c in data.columns:
                 log.error(f"\t{c}")
 
-    results.fillna(0, inplace=True)
-    results = results.sort_values(by="kills__A/A Kill Ratio", ascending=False)
-    return results
+    data.fillna(0, inplace=True)
+    data = data.sort_values(by="kills__A/A Kill Ratio", ascending=False)
+    return data
 
 
 def format_cols(df: pd.DataFrame) -> pd.DataFrame:
@@ -326,12 +291,12 @@ def format_cols(df: pd.DataFrame) -> pd.DataFrame:
     not_ints = ['kills__A/A Kill Ratio']
     for c in df.columns:
         if "times__" in c:
-            df[c] = df[c].apply(lambda x: int(round(x/60)))
+            df[c] = df[c].apply(lambda x: int(round(x / 60)))
 
     to_int_cols = []
     for c in df.columns:
-        if any([x in c for x in ['weapons__', 'kills__', 'losses__']]) and \
-         c not in not_ints:
+        if (any([x in c for x in ['weapons__', 'kills__', 'losses__']]) and
+                c not in not_ints):
             to_int_cols.append(c)
     if to_int_cols:
         df[to_int_cols] = df[to_int_cols].applymap(int)

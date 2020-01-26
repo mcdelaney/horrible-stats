@@ -35,6 +35,7 @@ function load_dt(path) {
     "tacview": [],
     "weapons": [],
     "survivability": [[1, "desc"]]
+    "frametime_logs": [[1, "desc"]]
   }
 
   $(tbl_nm).DataTable({

@@ -24,4 +24,19 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
       record json
   );
 
+  CREATE TABLE IF NOT EXISTS frametime_files (
+      file_name VARCHAR(500) PRIMARY KEY,
+      session_start_time TIMESTAMP,
+      processed boolean DEFAULT FALSE,
+      processed_at timestamp DEFAULT NULL,
+      uploaded_at timestamp DEFAULT date_trunc('second', CURRENT_TIMESTAMP),
+      errors INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS frametimes (
+      file_name VARCHAR(500) REFERENCES frametime_files(file_name),
+      frame_ts TIMESTAMP,
+      ts_fps FLOAT
+  );
+
 EOSQL
