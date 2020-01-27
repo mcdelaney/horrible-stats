@@ -20,8 +20,8 @@ def parse_mission_stat_ts(path: str) -> datetime.datetime:
 def parse_frametime_ts(path: str) -> datetime.datetime:
     file = Path(path).name
     file = file.replace("fps_tracklog", "")
-    file = float(file.replace(".log", ""))
-    return datetime.datetime.fromtimestamp(file)
+    file = round(float(file.replace(".log", "")), 2)
+    return datetime.datetime.fromtimestamp(file).replace(microsecond=0)
 
 
 file_format_ref = {
