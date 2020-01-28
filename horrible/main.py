@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from fastapi import FastAPI, BackgroundTasks
 from starlette.responses import JSONResponse, RedirectResponse, HTMLResponse
@@ -9,7 +8,7 @@ from starlette.requests import Request
 import pandas as pd
 import sqlalchemy as sa
 
-from stats import db, weapon_types, stat_files, read_stats, frametime_files, get_gcs_bucket
+from stats import db, weapon_types, stat_files, read_stats, frametime_files
 
 
 logging.basicConfig(level=logging.INFO)
@@ -73,6 +72,7 @@ async def get_stat_logs(request: Request):
                      "processed_at", "errors"]]
         data = data.to_dict('split')
     except Exception as e:
+        log.error(e.message)
         return JSONResponse(content={})
     return JSONResponse(content=data)
 
