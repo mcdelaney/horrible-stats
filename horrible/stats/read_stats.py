@@ -286,7 +286,13 @@ async def collect_recs_kv() -> pd.DataFrame:
 
     data = pd.concat(data)
     data = data[data.value != ""]
-    data['value'] = data.value.astype(int)
+    try:
+        data['value'] = data.value.astype(int)
+    except TypeError as err:
+        for elem in data.value.values():
+            if isinstance(elem, dict):
+                log.info(data.value)
+        raise err
     data["stat_group"] = data.key.apply(lambda x: x.split("__")[0])
     data["stat_type"] = data.key.apply(lambda x: "__".join(x.split("__")[1:-1]))
     data["metric"] = data.key.apply(lambda x: "__".join(x.split("__")[-1:]))
