@@ -61,16 +61,19 @@ async def get_stat_logs(request: Request):
     """Get a json dictionary of mission-stat file status data."""
     tasks = BackgroundTasks()
     tasks.add_task(read_stats.update_all_logs_and_stats)
-    data = await db.fetch_all(query=stat_files.select())
-    data = pd.DataFrame.from_records(data, index=None)
-    # Convert datetimes into strings because json cant serialize them otherwise.
-    data['processed_at'] = data['processed_at'].apply(str)
-    data['session_start_time'] = data['session_start_time'].apply(str)
-    # Make sure columns are correctly ordered.
-    # This table will render incorrectly if we dont... I don't know why.
-    data = data[["file_name", "session_start_time", "processed",
-                 "processed_at", "errors"]]
-    data = data.to_dict('split')
+    try:
+        data = await db.fetch_all(query=stat_files.select())
+        data = pd.DataFrame.from_records(data, index=None)
+        # Convert datetimes into strings because json cant serialize them otherwise.
+        data['processed_at'] = data['processed_at'].apply(str)
+        data['session_start_time'] = data['session_start_time'].apply(str)
+        # Make sure columns are correctly ordered.
+        # This table will render incorrectly if we dont... I don't know why.
+        data = data[["file_name", "session_start_time", "processed",
+                     "processed_at", "errors"]]
+        data = data.to_dict('split')
+    except Exception as e:
+        return JSONResponse(content={})
     return JSONResponse(content=data)
 
 

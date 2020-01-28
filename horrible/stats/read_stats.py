@@ -1,4 +1,4 @@
-from io import BytesIO
+import collections
 import logging
 import json
 from pathlib import Path
@@ -7,7 +7,6 @@ import traceback
 from typing import List, Dict, NoReturn
 
 import asyncpg
-from google.cloud.storage import Blob
 from lupa import LuaRuntime
 import numpy as np
 import pandas as pd
@@ -134,25 +133,19 @@ def lua_tbl_to_py(lua_tbl) -> Dict:
     return out
 
 
-def result_to_flat_dict(result: dict) -> dict:
-    """Flatten nested keys for DataFrame."""
-    try:
-        for k in list(result.keys()):
-            if isinstance(result[k], dict):
-                subdict = result.pop(k)
-                for subkey, v in subdict.items():
-                    if isinstance(v, dict):
-                        for sub_sub_key, val in v.items():
-                            # This is gross but it's never nested more than 2 levels.
-                            result[f"{k}__{subkey}__{sub_sub_key}"] = val
-                    elif isinstance(v, list):
-                        result[f"{k}__{subkey}"] = ", ".join(v)
-                    else:
-                        result[f"{k}__{subkey}"] = v
-    except Exception as e:
-        raise e
+def result_to_flat_dict(record: dict, parent: str = '', sep: str = '__') -> dict:
+    items = []
+    for k, v in record.items():
+        if not parent or k.startswith('weapon'):
+            new_key = k
+        else:
+            new_key = f"{parent}{sep}{k}"
 
-    return result
+        if isinstance(v, collections.MutableMapping):
+            items.extend(result_to_flat_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
 
 def read_lua_table(stat: Path) -> List:
@@ -241,7 +234,8 @@ async def process_lua_records() -> NoReturn:
                 for stat in stat_parsed:
                     for key, value in stat.items():
                         log.error(f"{key}: {value}")
-            except Exception:
+            except Exception as err:
+                log.error(err.message)
                 log.error("Could not print table state...")
                 pass
 
@@ -289,9 +283,10 @@ async def collect_recs_kv() -> pd.DataFrame:
     try:
         data['value'] = data.value.astype(int)
     except TypeError as err:
-        for elem in data.value.values():
-            if isinstance(elem, dict):
-                log.info(data.value)
+        for i, elem in data.iterrows():
+            if isinstance(elem['value'], dict):
+                log.info(elem['value'])
+                log.info(elem['session_start_time'])
         raise err
     data["stat_group"] = data.key.apply(lambda x: x.split("__")[0])
     data["stat_type"] = data.key.apply(lambda x: "__".join(x.split("__")[1:-1]))
