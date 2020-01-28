@@ -10,6 +10,28 @@
 /* ==========================================================================
    Base styles: opinionated defaults
    ========================================================================== */
+ .chartWrapper {
+     position: relative;
+
+ }
+
+ .chartWrapper > canvas {
+     position: absolute;
+     left: 0;
+     top: 0;
+     pointer-events:none;
+ }
+.chartAreaWrapper {
+   overflow-x: scroll;
+     position: relative;
+     width: 100%;
+ }
+
+ .chartAreaWrapper2 {
+
+     position: relative;
+     height: 300px;
+ }
 
 html {
   color: #222;

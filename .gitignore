@@ -7,3 +7,4 @@ horrible/cache/**
 **/**/scratch.py
 **/mission-stats/**/**
 *.DS_Store
+**/frametimes/**

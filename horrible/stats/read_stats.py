@@ -1,3 +1,4 @@
+from io import BytesIO
 import logging
 import json
 from pathlib import Path
@@ -6,6 +7,7 @@ import traceback
 from typing import List, Dict, NoReturn
 
 import asyncpg
+from google.cloud.storage import Blob
 from lupa import LuaRuntime
 import numpy as np
 import pandas as pd
@@ -28,6 +30,61 @@ async def update_all_logs_and_stats() -> NoReturn:
     await sync_gs_files_with_db('frametime/', frametime_files)
     await process_lua_records()
     log.info("All log and stats files updated...")
+
+
+def pctile(n):
+    def percentile_(x):
+        return np.percentile(x, n)
+    percentile_.__name__ = 'percentile_%s' % n
+    return percentile_
+
+
+def read_frametime(filename: str, pctile: int = 50) -> List:
+    """Given a google-storage blob, return a dataframe with frametime stats."""
+    Path("frametimes").mkdir(parents=True, exist_ok=True)
+    local_file = Path('frametimes').joinpath(Path(filename).name)
+    if not local_file.exists():
+        bucket = get_gcs_bucket()
+        log.info(f"Downloading file: {filename} to location: {local_file}...")
+        log.info(f"{str(filename)==str(local_file)}")
+        blob = bucket.get_blob(str(filename))
+        with local_file.open('wb') as fp_:
+            blob.download_to_file(fp_)
+        log.info("File downloaded successfully...")
+    else:
+        log.info("File exists in local cache...")
+
+    with local_file.open('rb') as fp_:
+        raw_text = fp_.read().decode().split()
+    rec = np.array(raw_text, dtype=np.float)
+    fps = np.float64(1)/(rec[1:, ] - rec[:-1])
+    fps = fps.astype(np.int64)
+    tstamp_fps = np.stack([fps, rec[1:, ]], axis=1)
+    df = pd.DataFrame(tstamp_fps, columns=['fps', 'tstamp'])
+
+    df['tstamp'] = pd.to_datetime(df['tstamp'], unit='s')
+    dfgroup = df.groupby(pd.Grouper(key='tstamp', freq='1s'))
+
+    max = 5000
+    # nrows = len(dfgroup.groups)
+    nrows = max
+    out = {'labels': [None]*nrows,
+           'data': [None]*nrows,
+           'points': [None]*nrows,
+           'name': f"FPS: {pctile} Percentile"
+           }
+    i = 0
+    max = 50
+    for group, data in dfgroup:
+        ptile = int(np.percentile(data.fps, pctile))
+        tstamp = group.strftime("%Y-%M-%d %H:%m:%S")
+        out['labels'][i] = tstamp
+        out['data'][i] = {'x': i, 'y': ptile}
+        out['points'][i] = ptile
+        i += 1
+        if i >= max:
+            break
+    return out
 
 
 async def sync_weapons() -> NoReturn:

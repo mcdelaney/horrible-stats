@@ -8,11 +8,16 @@
     <!-- BS4 Datatable syles -->
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/rr-1.2.6/sc-2.0.1/datatables.min.css"/>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/jq-3.3.1/dt-1.10.20/fc-3.3.0/rr-1.2.6/sc-2.0.1/datatables.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.min.js"></script>
+
+    <!-- <script type="text/html" src="https://cdnjs.com/libraries/Chart.js"></script> -->
   </head>
   <body>
 
-    <div id="particles-background" class="vertical-centered-box"></div>
-    <div id="particles-foreground" class="vertical-centered-box"></div>
+    <!-- <div id="particles-background" class="vertical-centered-box"></div>
+    <div id="particles-foreground" class="vertical-centered-box"></div> -->
 
     <div class="container-fluid">
         <div class="row">
@@ -46,6 +51,9 @@
               <li class="nav-item">
                 <a id="frametime_logs" class="nav-link" href="#">Frametime Logs</a>
               </li>
+              <!-- <li class="nav-item">
+                <a id="frametime_charts" class="nav-link" href="#">Frametime Charts</a>
+              </li> -->
             </ul>
             <style>
           .navbar
@@ -81,12 +89,21 @@
             <div id="frametime_logs_container">
               <table id="frametime_logs_tbl" class="table table-dark table-bordered table-hover" style="width: 100%"></table>
             </div>
+            <!-- <div id="frametime_charts_container">
+              <div class="chartWrapper">
+                <div class="chartAreaWrapper">
+                  <div class="chartAreaWrapper2">
+                    <canvas id="frametime_charts_chart"></canvas>
+                  </div>
+                </div>
+                <canvas id="myChartAxis" height="300" width="0"></canvas>
+              </div>
+            </div> -->
           </div>
         </div>
       </div>
     </div>
-    </div>
   </body>
-  <script type="text/javascript" src="/main/js/stars.js"></script>
+  <!-- <script type="text/javascript" src="/main/js/stars.js"></script> -->
   <script type="text/javascript" src="/main/js/main.js"></script>
 </html>

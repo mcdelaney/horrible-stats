@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 from fastapi import FastAPI, BackgroundTasks
 from starlette.responses import JSONResponse, RedirectResponse, HTMLResponse
@@ -6,8 +7,9 @@ from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
 import pandas as pd
+import sqlalchemy as sa
 
-from stats import db, weapon_types, stat_files, read_stats, frametime_files
+from stats import db, weapon_types, stat_files, read_stats, frametime_files, get_gcs_bucket
 
 
 logging.basicConfig(level=logging.INFO)
@@ -75,7 +77,7 @@ async def get_stat_logs(request: Request):
 @app.get("/frametime_logs")
 async def get_frametime_logs(request: Request):
     """Get a json dictionary of mission-stat file status data."""
-    data = await db.fetch_all(query=frametime_files.select())
+    data = await db.fetch_all(frametime_files.select())
     data = pd.DataFrame.from_records(data, index=None)
     # Convert datetimes into strings because json cant serialize them otherwise.
     data['processed_at'] = data['processed_at'].apply(str)
@@ -85,6 +87,17 @@ async def get_frametime_logs(request: Request):
     data = data[["file_name", "session_start_time", "processed",
                  "processed_at", "errors"]]
     data = data.to_dict('split')
+    return JSONResponse(content=data)
+
+
+@app.get("/frametime_charts")
+async def get_frametime_charts(request: Request, pctile: int = 50):
+    """Get a dataframe of frametime records."""
+    files = await db.fetch_one(frametime_files.select().order_by(
+        sa.desc(sa.text("session_start_time"))))
+    log.info("Looking up most recent log file...")
+    data = read_stats.read_frametime(filename=files['file_name'],
+                                     pctile=pctile)
     return JSONResponse(content=data)
 
 

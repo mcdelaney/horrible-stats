@@ -36,7 +36,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
   CREATE TABLE IF NOT EXISTS frametimes (
       file_name VARCHAR(500) REFERENCES frametime_files(file_name),
       frame_ts TIMESTAMP,
-      ts_fps FLOAT
+      ts_fps INT
   );
 
 EOSQL

@@ -12,6 +12,72 @@ function clear_table(table_id) {
   }
 }
 
+function load_chart(path, pctile) {
+  console.log("Loading chart for: " + path);
+  var timeFormat = "YYYY-MM-DD HH:mm:ss";
+  var chart_nm = path + "_chart";
+  jQuery.getJSON("/" + path + "?pctile=" + pctile,
+    function( data ) {
+    // Create the chart.js data structure using 'labels' and 'data'
+      // var stamps = []
+      // data.labels.forEach(function(elem) {
+      //   console.log(elem);
+      // //   var tmp = moment(elem, "YYYY-MM-DD HH:mm:ss");
+      // //   stamps.push(tmp);
+      // });
+
+      var ctx = document.getElementById(chart_nm).getContext('2d');
+      var chart = new Chart(ctx, {
+        type: 'line',
+        // labels: ['Percentile 10 FPS'],
+        data: {
+          labels: data.labels,
+          datasets : [{
+            data: data.data,
+            label: 'Percentile 10 FPS'
+          }],
+        },
+        options: {
+          // showLine: true,
+          scales: {
+            xAxes: [{
+               type: 'time',
+               time: {
+                   parser: timeFormat,
+                   unit: 'second',
+                   // round: 'day'
+                   tooltipFormat: 'YYYY-MM-DD HH:mm:ss',
+                   // displayFormats: {
+                   //   second: 'h:mm:ss a',
+                   //     minute: 'HH:mm',
+                   //     hour: 'HH'
+                   // }
+               }
+               // display: true,
+               // scaleLabel: {
+               //     display: true,
+               //     labelString: 'Time'
+               // }
+            }]
+
+      //       xAxes: [{
+      //         type: 'time',
+      //         scaleLabel: {
+      //                   display:     true,
+      //                   labelString: 'Date'
+      //               },
+      //         time:       {
+      //           unit: 'second',
+      //           parser: timeFormat,
+      //           tooltipFormat: 'll'
+      //         },
+      //       }]
+          }
+        }
+      });
+
+  })
+};
 
 function load_dt(path) {
   console.log("Loading table: " + path);
@@ -99,8 +165,18 @@ for (var i = 0; i < btns.length; i++) {
     this.className += " active";
     var tbl_container = document.getElementById("table_container");
     var active_tbl = document.getElementById(this.id + "_tbl");
-    tbl_container.prepend(active_tbl);
-    load_dt(this.id);
+    if (this.id === "frametime_charts") {
+      load_chart(this.id, 50);
+      console.log("Prepending table...")
+      tbl_container.prepend(active_tbl);
+    }else{
+      load_dt(this.id);
+      console.log("Prepending table...")
+      tbl_container.prepend(active_tbl);
+    }
+
+
+
   });
 }
 
