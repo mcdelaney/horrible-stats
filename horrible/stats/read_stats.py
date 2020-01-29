@@ -1,20 +1,19 @@
-import asyncpg
-import json
-import datetime
-from typing import List, Dict, NoReturn
+import collections
 import logging
+import json
 from pathlib import Path
-import re
 import threading
 import traceback
+from typing import List, Dict, NoReturn
 
+import asyncpg
 from lupa import LuaRuntime
 import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 
-from stats.gcs_config import get_gcs_bucket
-from stats.database import db, weapon_types, stat_files, mission_stats
+from . import (db, weapon_types, stat_files, mission_stats, get_gcs_bucket,
+               sync_gs_files_with_db, frametime_files)
 
 
 logging.basicConfig(level=logging.INFO)
@@ -22,42 +21,88 @@ log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
 
 
+async def update_all_logs_and_stats() -> NoReturn:
+    """Sync weapon db, gs stats files, and process any new records."""
+    log.info("Syncing log files and updating stats...")
+    await sync_weapons()
+    await sync_gs_files_with_db('mission-stats/', stat_files)
+    await sync_gs_files_with_db('frametime/', frametime_files)
+    await process_lua_records()
+    log.info("All log and stats files updated...")
+
+
+def pctile(n):
+    def percentile_(x):
+        return np.percentile(x, n)
+    percentile_.__name__ = 'percentile_%s' % n
+    return percentile_
+
+
+def read_frametime(filename: str, pctile: int = 50) -> List:
+    """Given a google-storage blob, return a dataframe with frametime stats."""
+    Path("frametimes").mkdir(parents=True, exist_ok=True)
+    local_file = Path('frametimes').joinpath(Path(filename).name)
+    if not local_file.exists():
+        bucket = get_gcs_bucket()
+        log.info(f"Downloading file: {filename} to location: {local_file}...")
+        log.info(f"{str(filename)==str(local_file)}")
+        blob = bucket.get_blob(str(filename))
+        with local_file.open('wb') as fp_:
+            blob.download_to_file(fp_)
+        log.info("File downloaded successfully...")
+    else:
+        log.info("File exists in local cache...")
+
+    with local_file.open('rb') as fp_:
+        raw_text = fp_.read().decode().split()
+    rec = np.array(raw_text, dtype=np.float)
+    fps = np.float64(1)/(rec[1:, ] - rec[:-1])
+    fps = fps.astype(np.int64)
+    tstamp_fps = np.stack([fps, rec[1:, ]], axis=1)
+    df = pd.DataFrame(tstamp_fps, columns=['fps', 'tstamp'])
+
+    df['tstamp'] = pd.to_datetime(df['tstamp'], unit='s')
+    dfgroup = df.groupby(pd.Grouper(key='tstamp', freq='1s'))
+
+    max = 5000
+    # nrows = len(dfgroup.groups)
+    nrows = max
+    out = {'labels': [None]*nrows,
+           'data': [None]*nrows,
+           'points': [None]*nrows,
+           'name': f"FPS: {pctile} Percentile"
+           }
+    i = 0
+    max = 50
+    for group, data in dfgroup:
+        ptile = int(np.percentile(data.fps, pctile))
+        tstamp = group.strftime("%Y-%M-%d %H:%m:%S")
+        out['labels'][i] = tstamp
+        out['data'][i] = {'x': i, 'y': ptile}
+        out['points'][i] = ptile
+        i += 1
+        if i >= max:
+            break
+    return out
+
+
 async def sync_weapons() -> NoReturn:
     """Sync contents of data/weapons-db.csv with database."""
     weapons = pd.read_csv("data/weapon-db.csv").to_dict('records')
+
+    current_weapons = await db.fetch_all(query=weapon_types.select())
+    current_weapons = [weapon['name'] for weapon in current_weapons]
+
     for record in weapons:
         try:
-            query = weapon_types.insert()
-            await db.execute(query, values=record)
-            log.info(f"New weapon added to database: {record['name']}...")
+            if record['name'] not in current_weapons:
+                query = weapon_types.insert()
+                await db.execute(query, values=record)
+                log.info(f"New weapon added to database: {record['name']}...")
+            else:
+                log.debug(f"weapon {record['name']} already exists...skipping...")
         except asyncpg.exceptions.UniqueViolationError:
-            log.debug(f"weapon {record['name']} already exists...skipping...")
-
-
-async def insert_gs_files_to_db() -> NoReturn:
-    """Ensure all gs files are in database."""
-    bucket = get_gcs_bucket()
-    stats_list = bucket.client.list_blobs(bucket, prefix="mission-stats/")
-    files = await db.fetch_all("SELECT file_name FROM mission_stat_files")
-    files = [file["file_name"] for file in files]
-    for stat_file in stats_list:
-        if stat_file.name in files:
-            log.debug(f"File: {stat_file.name} already recorded...")
-            continue
-        if stat_file.name == "mission-stats/":
-            continue
-
-        try:
-            log.info(f"Inserting stat file: {stat_file.name}")
-            await db.execute(stat_files.insert(),
-                             {'file_name': stat_file.name,
-                              'session_start_time': parse_ts(stat_file.name),
-                              'processed': False,
-                              'processed_at': None,
-                              'errors': 0})
-        except asyncpg.exceptions.UniqueViolationError:
-            log.error("File already has been inserted!")
-            raise asyncpg.exceptions.UniqueViolationError
+            log.error(f"Weapon {record['name']} already exists!")
 
 
 def lua_tbl_to_py(lua_tbl) -> Dict:
@@ -88,33 +133,19 @@ def lua_tbl_to_py(lua_tbl) -> Dict:
     return out
 
 
-def parse_ts(path: str) -> datetime.datetime:
-    file = Path(path).name
-    m = re.search("([A-z]{3} [0-9]{1,2}, [0-9]{4} at [0-9]{2} [0-9]{2} [0-9]{2})",
-                  file)
-    parsed = m.group().replace("at ", "")
-    return datetime.datetime.strptime(parsed, "%b %d, %Y %H %M %S")
+def result_to_flat_dict(record: dict, parent: str = '', sep: str = '__') -> dict:
+    items = []
+    for k, v in record.items():
+        if not parent or k.startswith('weapon'):
+            new_key = k
+        else:
+            new_key = f"{parent}{sep}{k}"
 
-
-def result_to_flat_dict(result: dict) -> dict:
-    """Flatten nested keys for DataFrame."""
-    try:
-        for k in list(result.keys()):
-            if isinstance(result[k], dict):
-                subdict = result.pop(k)
-                for subkey, v in subdict.items():
-                    if isinstance(v, dict):
-                        for sub_sub_key, val in v.items():
-                            # This is gross but it's never nested more than 2 levels.
-                            result[f"{k}__{subkey}__{sub_sub_key}"] = val
-                    elif isinstance(v, list):
-                        result[f"{k}__{subkey}"] = ", ".join(v)
-                    else:
-                        result[f"{k}__{subkey}"] = v
-    except Exception as e:
-        raise e
-
-    return result
+        if isinstance(v, collections.MutableMapping):
+            items.extend(result_to_flat_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
 
 def read_lua_table(stat: Path) -> List:
@@ -189,7 +220,6 @@ async def process_lua_records() -> NoReturn:
 
         except Exception as err:
             log.error(f"Error handling file: \n\t{stat['file_name']}\n\t{err}")
-
             traceback.print_tb(err.__traceback__)
             await db.execute(f"""UPDATE mission_stat_files
                              SET errors = (
@@ -204,7 +234,8 @@ async def process_lua_records() -> NoReturn:
                 for stat in stat_parsed:
                     for key, value in stat.items():
                         log.error(f"{key}: {value}")
-            except Exception:
+            except Exception as err:
+                log.error(err.message)
                 log.error("Could not print table state...")
                 pass
 
@@ -212,9 +243,9 @@ async def process_lua_records() -> NoReturn:
 async def collect_stat_recs() -> pd.DataFrame:
     data = []
     async for rec in db.iterate("""SELECT record, files.session_start_time
-                                FROM mission_stats
-                                LEFT JOIN mission_stat_files files
-                                USING (file_name)
+                                    FROM mission_stats
+                                    LEFT JOIN mission_stat_files files
+                                    USING (file_name)
                                 """):
         tmp = json.loads(rec['record'])
         tmp['session_stat_time'] = rec['session_start_time']
@@ -249,41 +280,109 @@ async def collect_recs_kv() -> pd.DataFrame:
 
     data = pd.concat(data)
     data = data[data.value != ""]
-    data['value'] = data.value.astype(int)
+    try:
+        data['value'] = data.value.astype(int)
+    except TypeError as err:
+        for i, elem in data.iterrows():
+            if isinstance(elem['value'], dict):
+                log.info(elem['value'])
+                log.info(elem['session_start_time'])
+        raise err
     data["stat_group"] = data.key.apply(lambda x: x.split("__")[0])
     data["stat_type"] = data.key.apply(lambda x: "__".join(x.split("__")[1:-1]))
-    data["stat_sub_type"] = data.key.apply(lambda x: "__".join(x.split("__")[-1:]))
+    data["metric"] = data.key.apply(lambda x: "__".join(x.split("__")[-1:]))
+
     data["key"] = data.key.apply(lambda x: "__".join(x.split("__")[1:]))
     data = data[["session_start_time", "pilot", "stat_group", "stat_type",
-                 "stat_sub_type", "key", "value"]]
-    # data['stat_type'] = data['stat_type'].str.strip()
+                 "metric", "key", "value"]]
+    data = data[data.metric != "hit"]
     data = data.merge(weapons, how='left', on='stat_type')
     data["category"] = data.category.combine_first(data.stat_group)
     data['stat_type'] = data.stat_type.apply(lambda x: "Total" if x == "" else x)
     data['category'] = data.category.apply(lambda x: "Kills" if x == "kills" else x)
     data['category'] = data.category.apply(lambda x: "Time" if x == "times" else x)
-    data = data.groupby(["pilot", "category", 'stat_type', "stat_sub_type"],
+    return data
+
+
+async def all_category_grouped() -> pd.DataFrame:
+    """Calculate percentage hit/kill per user, per weapon category."""
+    data = await collect_recs_kv()
+    data = data.groupby(["pilot", "category", 'stat_type', 'metric'],
                         as_index=False).sum()
     return data
+
+
+async def calculate_overall_stats() -> pd.DataFrame:
+    """Calculate per-user/category/sub-type metrics."""
+    df = await collect_recs_kv()
+    df = df.groupby(["pilot", "category", "metric"],
+                    as_index=False).sum()
+
+    df = df[~df['metric'].isin(['hit', 'crash'])]
+    df = df[df['category'].isin(
+        ['Air-to-Air', 'Air-to-Surface', 'Bomb', 'Gun', 'losses'])]
+
+    df['col'] = df[['category', 'metric']].apply(lambda x: ' '.join(x), axis=1)
+    df.drop(labels=['category', 'metric'], axis=1, inplace=True)
+    df = df.pivot(index="pilot", columns="col", values="value")
+    df.fillna(0, inplace=True)
+    df.reset_index(level=0, inplace=True)
+
+    df["Total Losses"] = df['losses pilotDeath'] + df['losses eject']
+    tmp = ((df['Air-to-Air kills']+df['Gun kills']) / df['Total Losses']).round(2)
+    df.insert(1, "A/A Kill Ratio", tmp)
+
+    df["A/A P(Kill)"] = ((df['Air-to-Air kills']/df['Air-to-Air shot'])*100).round(1)
+    df["A/A P(Hit)"] = ((df['Air-to-Air numHits'] / df['Air-to-Air shot']
+                         )*100).round(1)
+
+    df["A/G Dropped"] = df['Air-to-Surface shot'] + df['Bomb shot']
+    df["A/G Kills"] = df['Air-to-Surface kills'] + df['Bomb kills']
+    df["A/G numHits"] = df['Air-to-Surface numHits'] + df['Bomb numHits']
+
+    df["A/G P(Hit)"] = ((df['A/G numHits'] / df['A/G Dropped'])*100).round(1)
+    df["A/G P(Kill)"] = ((df['A/G Kills'] / df['A/G Dropped'])*100).round(1)
+
+    df["Gun P(Hit)"] = ((df['Gun numHits'] / df['Gun shot'])*100).round(1)
+    df["Gun P(Kill)"] = ((df['Gun kills'] / df['Gun shot'])*100).round(1)
+
+    df.drop(["losses pilotDeath", "losses eject",
+             "Air-to-Air numHits",  "Gun numHits", "Bomb numHits",
+             "Air-to-Surface shot", "Air-to-Surface numHits", "Air-to-Surface kills",
+             "Bomb shot",
+             # "Bomb kills", "Air-to-Air kills", "A/G Kills", "Gun kills",
+             ], axis=1, inplace=True)
+
+    df.fillna(0, inplace=True)
+    df = df.replace([np.inf, -np.inf], 0)
+    df.columns = [c.replace('numHits', 'Hits') for c in df.columns]
+    df.columns = [c.replace('Air-to-Air', 'A/A') for c in df.columns]
+    df.columns = [c.replace(' shot', ' Shot') for c in df.columns]
+    df.columns = [c.replace(' kills', ' Kills') for c in df.columns]
+    cols_out = [c for c in df.columns if c != "pilot"]
+    cols_out.sort()
+    cols_out = ['pilot'] + cols_out
+
+    df = df[cols_out]
+
+    return df
 
 
 def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
     """Compute additional metrics, reorder columns, and sort."""
     grouper = results.groupby(["pilot"])
-    results = grouper.sum().reset_index()
+    data = grouper.sum().reset_index()
 
-    results['losses__total_deaths'] = results['losses__eject'] + results["losses__pilotDeath"]
-    results["kills__A/A Kill Ratio"] = results["kills__Planes__total"]/results["losses__total_deaths"]
-    results["kills__A/A Kill Ratio"] = results["kills__A/A Kill Ratio"].round(1)
-    results["kills__A/A Kills Total"] = results["kills__Planes__total"]
-    results.drop(labels=["kills__Planes__total"], axis=1, inplace=True)
+    data['losses__total_deaths'] = data['losses__eject'] + data["losses__pilotDeath"]
+    data["kills__A/A Kill Ratio"] = (data["kills__Planes__total"] /
+                                     data["losses__total_deaths"])
+    data["kills__A/A Kill Ratio"] = data["kills__A/A Kill Ratio"].round(1)
+    data["kills__A/A Kills Total"] = data["kills__Planes__total"]
+    data.drop(labels=["kills__Planes__total"], axis=1, inplace=True)
 
-    # results["weapons__Prob_Hit"] = results["weapons__A/A Kill Ratio"].round(1)
-
-    results = results.replace([np.inf, -np.inf], np.nan)
+    data = data.replace([np.inf, -np.inf, np.nan], 0.0)
 
     prio_cols = ["pilot",
-                 # "total_sessions",
                  "kills__A/A Kill Ratio",
                  "kills__A/A Kills Total",
                  "losses__total_deaths",
@@ -296,17 +395,17 @@ def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
 
     for i, col in enumerate(prio_cols):
         try:
-            tmp = results[col]
-            results.drop(labels=[col], axis=1, inplace=True)
-            results.insert(i, col, tmp)
+            tmp = data[col]
+            data.drop(labels=[col], axis=1, inplace=True)
+            data.insert(i, col, tmp)
         except KeyError:
             log.error(f"Key {col} not in cols:")
-            for c in results.columns:
+            for c in data.columns:
                 log.error(f"\t{c}")
 
-    results.fillna(0, inplace=True)
-    results = results.sort_values(by="kills__A/A Kill Ratio", ascending=False)
-    return results
+    data.fillna(0, inplace=True)
+    data = data.sort_values(by="kills__A/A Kill Ratio", ascending=False)
+    return data
 
 
 def format_cols(df: pd.DataFrame) -> pd.DataFrame:
@@ -314,12 +413,12 @@ def format_cols(df: pd.DataFrame) -> pd.DataFrame:
     not_ints = ['kills__A/A Kill Ratio']
     for c in df.columns:
         if "times__" in c:
-            df[c] = df[c].apply(lambda x: int(round(x/60)))
+            df[c] = df[c].apply(lambda x: int(round(x / 60)))
 
     to_int_cols = []
     for c in df.columns:
-        if any([x in c for x in ['weapons__', 'kills__', 'losses__']]) and \
-         c not in not_ints:
+        if (any([x in c for x in ['weapons__', 'kills__', 'losses__']]) and
+                c not in not_ints):
             to_int_cols.append(c)
     if to_int_cols:
         df[to_int_cols] = df[to_int_cols].applymap(int)

@@ -1,37 +1,33 @@
 import logging
 
-from fastapi import FastAPI
-from starlette.responses import JSONResponse, RedirectResponse
+from fastapi import FastAPI, BackgroundTasks
+from starlette.responses import JSONResponse, RedirectResponse, HTMLResponse
 from starlette.templating import Jinja2Templates
+from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
 import pandas as pd
+import sqlalchemy as sa
 
-from stats import read_stats
-from stats.database import db, weapon_types, stat_files
+from stats import db, weapon_types, stat_files, read_stats, frametime_files
 
 
 logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
+log.setLevel(level=logging.INFO)
+
+
 templates = Jinja2Templates(directory='templates')
-
-
-class StatServer(FastAPI):
-    def __init__(self, *kwargs, **args):
-        FastAPI.__init__(self, "Stat_server")
-        self.columns = []
-
-
-app = StatServer()
+app = FastAPI("Stat-Server")
+app.mount("/main", StaticFiles(directory="static", html=True), name="static")
 
 
 @app.on_event("startup")
 async def database_connect():
     try:
         await db.connect()
-        await read_stats.sync_weapons()
-        await read_stats.insert_gs_files_to_db()
-        await read_stats.process_lua_records()
+        await read_stats.update_all_logs_and_stats()
     except Exception as err:
-        logging.error(f"Could not conect to database at {db.url}!")
+        log.error(f"Could not conect to database at {db.url}!")
         raise err
 
 
@@ -59,65 +55,99 @@ async def resync_stat_file(request: Request, file_name: str):
     return RedirectResponse("/stats_logs")
 
 
-@app.get("/stats_logs")
-async def get_stats_logs(request: Request):
-    await read_stats.sync_weapons()
-    await read_stats.insert_gs_files_to_db()
-    await read_stats.process_lua_records()
-    context = {"request": request}
-    return templates.TemplateResponse("stats_logs.html", context)
+@app.get("/stat_logs")
+async def get_stat_logs(request: Request):
+    """Get a json dictionary of mission-stat file status data."""
+    tasks = BackgroundTasks()
+    tasks.add_task(read_stats.update_all_logs_and_stats)
+    try:
+        data = await db.fetch_all(query=stat_files.select())
+        data = pd.DataFrame.from_records(data, index=None)
+        # Convert datetimes into strings because json cant serialize them otherwise.
+        data['processed_at'] = data['processed_at'].apply(str)
+        data['session_start_time'] = data['session_start_time'].apply(str)
+        # Make sure columns are correctly ordered.
+        # This table will render incorrectly if we dont... I don't know why.
+        data = data[["file_name", "session_start_time", "processed",
+                     "processed_at", "errors"]]
+        data = data.to_dict('split')
+    except Exception as e:
+        log.error(e.message)
+        return JSONResponse(content={})
+    return JSONResponse(content=data)
+
+
+@app.get("/frametime_logs")
+async def get_frametime_logs(request: Request):
+    """Get a json dictionary of mission-stat file status data."""
+    data = await db.fetch_all(frametime_files.select())
+    data = pd.DataFrame.from_records(data, index=None)
+    # Convert datetimes into strings because json cant serialize them otherwise.
+    data['processed_at'] = data['processed_at'].apply(str)
+    data['session_start_time'] = data['session_start_time'].apply(str)
+    # Make sure columns are correctly ordered.
+    # This table will render incorrectly if we dont... I don't know why.
+    data = data[["file_name", "session_start_time", "processed",
+                 "processed_at", "errors"]]
+    data = data.to_dict('split')
+    return JSONResponse(content=data)
+
+
+@app.get("/frametime_charts")
+async def get_frametime_charts(request: Request, pctile: int = 50):
+    """Get a dataframe of frametime records."""
+    files = await db.fetch_one(frametime_files.select().order_by(
+        sa.desc(sa.text("session_start_time"))))
+    log.info("Looking up most recent log file...")
+    data = read_stats.read_frametime(filename=files['file_name'],
+                                     pctile=pctile)
+    return JSONResponse(content=data)
 
 
 @app.get("/weapon_db")
 async def get_weapon_db_logs(request: Request):
-    context = {"request": request}
-    return templates.TemplateResponse("weapon_db.html", context)
+    """Get a json dictionary of categorized weapons used for groupings."""
+    data = await db.fetch_all(query=weapon_types.select())
+    content = {"data": [], "columns": list(data[0].keys())}
+    for row in data:
+        content['data'].append(list(row.values()))
+    # log.info(content)
+    return JSONResponse(content=content)
+
+
+@app.get("/overall")
+async def get_overall_stats(request: Request):
+    """Get a json dictionary of grouped statistics as key-value pairs."""
+    data = await read_stats.calculate_overall_stats()
+    data = data.to_dict('split')
+    return JSONResponse(content=data)
+
+
+@app.get("/detail")
+async def get_detail_stats(request: Request):
+    """Get a json dictionary of grouped statistics as key-value pairs."""
+    data = await read_stats.all_category_grouped()
+    data = data.to_dict('split')
+    return JSONResponse(content=data)
 
 
 @app.get("/")
-async def new_stats(request: Request):
-    df = await read_stats.collect_recs_kv()
-    context = {"request": request,
-               "data": df.to_html(table_id="stats", index=False)}
-    return templates.TemplateResponse("index.html", context)
+async def serve_homepage(request: Request):
+    """Serve the index.html template."""
+    with open("static/index.html", mode='r') as fp_:
+        page = fp_.read()
+    return HTMLResponse(page)
 
 
 @app.get("/weapons")
 async def weapon_stats(request: Request):
-    df = await read_stats.get_dataframe(subset=["weapons"])
-    context = {"request": request,
-               "data": df.to_html(table_id="stats", index=False)}
-    return templates.TemplateResponse("weapons.html", context)
+    """Return a rendered template with a table displaying per-weapon stats."""
+    data = await read_stats.get_dataframe(subset=["weapons"])
+    return JSONResponse(content=data.to_dict('split'))
 
 
 @app.get("/survivability")
 async def suvival_stats(request: Request):
-    df = await read_stats.get_dataframe(subset=["kills", "losses"])
-    context = {"request": request,
-               "data": df.to_html(table_id="stats", index=False)}
-    return templates.TemplateResponse("survivability.html", context)
-
-
-@app.get("/json_data")
-async def json_data(request: Request, name: str):
-    try:
-        if name == "weapons_db":
-            df = await db.fetch_all(query=weapon_types.select())
-            df = {"data": [list(d.values()) for d in df]}
-        elif name == "stat_logs":
-            df = await db.fetch_all(query=stat_files.select())
-            df = pd.DataFrame.from_records(df, index=None)
-            df['processed_at'] = df['processed_at'].apply(str)
-            df['session_start_time'] = df['session_start_time'].apply(str)
-            df = df[["file_name", "session_start_time", "processed",
-                     "processed_at", "errors"]]
-            df = df.to_dict('split')
-        elif name == "overall":
-            df = await read_stats.collect_recs_kv()
-            df = df.to_dict('split')
-        else:
-            pass
-    except Exception as e:
-        logging.error(e)
-        df = pd.DataFrame()
-    return JSONResponse(content=df)
+    """Return a rendered template showing kill/loss statistics."""
+    data = await read_stats.get_dataframe(subset=["kills", "losses"])
+    return JSONResponse(content=data.to_dict("split"))
