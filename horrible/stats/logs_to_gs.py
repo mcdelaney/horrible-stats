@@ -22,7 +22,7 @@ def upload_files(local_path_glob: Path, remote_subdir: str, delete_files: bool):
             blob = bucket.blob(gs_filename)
             meta = bucket.get_blob(gs_filename)
             if blob.exists() and file.stat().st_mtime <= meta.updated.timestamp():
-                log.info(f"Skipping file {file.name}...already uploaded")
+                log.debug(f"Skipping file {file.name}...already uploaded")
             else:
                 if blob.exists():
                     log.info("Updating file...has changed since last update...")
