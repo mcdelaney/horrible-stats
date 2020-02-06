@@ -21,12 +21,12 @@ log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
 
 
-async def update_all_logs_and_stats() -> NoReturn:
+async def update_all_logs_and_stats(db) -> NoReturn:
     """Sync weapon db, gs stats files, and process any new records."""
     log.info("Syncing log files and updating stats...")
     await sync_weapons()
-    await sync_gs_files_with_db('mission-stats/', stat_files)
-    await sync_gs_files_with_db('frametime/', frametime_files)
+    await sync_gs_files_with_db('mission-stats/', stat_files, db)
+    await sync_gs_files_with_db('frametime/', frametime_files, db)
     await process_lua_records()
     log.info("All log and stats files updated...")
 

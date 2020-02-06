@@ -25,7 +25,7 @@ app.mount("/main", StaticFiles(directory="static", html=True), name="static")
 async def database_connect():
     try:
         await db.connect()
-        await read_stats.update_all_logs_and_stats()
+        await read_stats.update_all_logs_and_stats(db)
     except Exception as err:
         log.error(f"Could not conect to database at {db.url}!")
         raise err

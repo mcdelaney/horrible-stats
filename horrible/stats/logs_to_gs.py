@@ -1,22 +1,24 @@
+import asyncio
 import argparse
 import gzip
 import logging
 from pathlib import Path
 
 import requests
-from gcs import get_gcs_bucket
+from database import stat_files, db
+from gcs import get_gcs_bucket, sync_gs_files_with_db
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
 
 
-def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
+async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool, db):
     """Upload files to GCP bucket."""
     bucket = get_gcs_bucket()
     for file_ in local_path_glob:
         try:
-            log.info(f"Uploading {file_.absolute()} to {remote_subdir}")
+            log.debug(f"Processing {file_.absolute()}...")
             gs_filename = f"{remote_subdir}/{file_.name}"
             blob = bucket.blob(gs_filename)
             meta = bucket.get_blob(gs_filename)
@@ -25,7 +27,7 @@ def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
             else:
                 if blob.exists():
                     log.info("Updating file...has changed since last update...")
-                log.info("Uploading file...")
+                log.info(f"Uploading file {file_.absolute()} to {remote_subdir}...")
 
                 with file_.open('rb') as fp_:
                     content = fp_.read()
@@ -44,6 +46,7 @@ def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
             log.error(e)
             log.info("File is open...skipping...")
     requests.get("http://ahorribleserver.com/check_db_files")
+    # await sync_gs_files_with_db("mission-stats", stat_files, db)
 
 
 if __name__ == "__main__":
@@ -65,4 +68,4 @@ if __name__ == "__main__":
         args.delete = False
 
     local_glob = args.local_path.glob(args.local_suffix)
-    upload_files(local_glob, args.remote_subdir, args.delete)
+    asyncio.run(upload_files(local_glob, args.remote_subdir, args.delete, db))
