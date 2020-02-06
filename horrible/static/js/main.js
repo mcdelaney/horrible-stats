@@ -18,13 +18,6 @@ function load_chart(path, pctile) {
   var chart_nm = path + "_chart";
   jQuery.getJSON("/" + path + "?pctile=" + pctile,
     function( data ) {
-    // Create the chart.js data structure using 'labels' and 'data'
-      // var stamps = []
-      // data.labels.forEach(function(elem) {
-      //   console.log(elem);
-      // //   var tmp = moment(elem, "YYYY-MM-DD HH:mm:ss");
-      // //   stamps.push(tmp);
-      // });
 
       var ctx = document.getElementById(chart_nm).getContext('2d');
       var chart = new Chart(ctx, {

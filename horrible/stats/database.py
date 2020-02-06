@@ -1,27 +1,36 @@
 import datetime
+import logging
 from pathlib import Path
 import re
+from typing import cast, Optional
 
 import databases
 from starlette.config import Config
 import sqlalchemy
 
 metadata = sqlalchemy.MetaData()
+logging.basicConfig(level=logging.INFO)
+LOG = logging.getLogger(__name__)
+LOG.setLevel(level=logging.INFO)
 
 
-def parse_mission_stat_ts(path: str) -> datetime.datetime:
-    file = Path(path).name
-    m = re.search("([A-z]{3} [0-9]{1,2}, [0-9]{4} at [0-9]{2} [0-9]{2} [0-9]{2})",
-                  file)
-    parsed = m.group().replace("at ", "")
-    return datetime.datetime.strptime(parsed, "%b %d, %Y %H %M %S")
+def parse_mission_stat_ts(path: str) -> Optional[datetime.datetime]:
+    file_ = Path(path).name
+    mat = re.search("([A-z]{3} [0-9]{1,2}, [0-9]{4} at [0-9]{2} [0-9]{2} [0-9]{2})",
+                    file_)
+    if mat:
+        parsed = mat.group().replace("at ", "")
+        return datetime.datetime.strptime(parsed, "%b %d, %Y %H %M %S")
+    else:
+        LOG.warning(f"Could not find timestamp in file path for {file_}!")
+        return None
 
 
 def parse_frametime_ts(path: str) -> datetime.datetime:
-    file = Path(path).name
-    file = file.replace("fps_tracklog", "")
-    file = round(float(file.replace(".log", "")), 2)
-    return datetime.datetime.fromtimestamp(file).replace(microsecond=0)
+    file_ = Path(path).name
+    file_ = file_.replace("fps_tracklog", "")
+    file_ts = round(float(file_.replace(".log", "")), 2)
+    return datetime.datetime.fromtimestamp(file_ts).replace(microsecond=0)
 
 
 file_format_ref = {

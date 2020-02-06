@@ -4,34 +4,33 @@ import logging
 from pathlib import Path
 
 import requests
-from gcs_config import get_gcs_bucket
+from gcs import get_gcs_bucket
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
 
 
-def upload_files(local_path_glob: Path, remote_subdir: str, delete_files: bool):
+def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
     """Upload files to GCP bucket."""
     bucket = get_gcs_bucket()
-    remote_subdir = Path(remote_subdir)
-    for file in local_path_glob:
+    for file_ in local_path_glob:
         try:
-            log.info(f"Uploading {file.absolute()} to {remote_subdir}")
-            gs_filename = f"{remote_subdir}/{file.name}"
+            log.info(f"Uploading {file_.absolute()} to {remote_subdir}")
+            gs_filename = f"{remote_subdir}/{file_.name}"
             blob = bucket.blob(gs_filename)
             meta = bucket.get_blob(gs_filename)
-            if blob.exists() and file.stat().st_mtime <= meta.updated.timestamp():
-                log.debug(f"Skipping file {file.name}...already uploaded")
+            if blob.exists() and file_.stat().st_mtime <= meta.updated.timestamp():
+                log.debug(f"Skipping file {file_.name}...already uploaded")
             else:
                 if blob.exists():
                     log.info("Updating file...has changed since last update...")
                 log.info("Uploading file...")
 
-                with file.open('rb') as fp_:
+                with file_.open('rb') as fp_:
                     content = fp_.read()
 
-                if '.zip' not in file.name:
+                if '.zip' not in file_.name:
                     log.info("File not compressed...zipping...")
                     content = gzip.compress(content)
                 blob.content_type = "text/plain"
@@ -40,7 +39,7 @@ def upload_files(local_path_glob: Path, remote_subdir: str, delete_files: bool):
 
                 if delete_files:
                     log.info("File uploaded...deleting...")
-                    file.unlink()
+                    file_.unlink()
         except Exception as e:
             log.error(e)
             log.info("File is open...skipping...")

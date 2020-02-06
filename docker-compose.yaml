@@ -1,10 +1,8 @@
-version: '3'
-
+version: "3"
 services:
   db:
     build:
       context: database/
-    # image: postgres:11.5
     volumes:
       - ./database/postgresql_:/var/lib/postgresql/data
     ports:

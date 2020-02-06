@@ -8,3 +8,4 @@ horrible/cache/**
 **/mission-stats/**/**
 *.DS_Store
 **/frametimes/**
+**/.mypy_cache/**
