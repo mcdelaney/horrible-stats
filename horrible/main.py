@@ -8,7 +8,8 @@ from starlette.requests import Request
 import pandas as pd
 import sqlalchemy as sa
 
-from stats import db, weapon_types, stat_files, read_stats, frametime_files
+from stats.database import db, weapon_types, stat_files, frametime_files
+from stats import read_stats
 
 
 logging.basicConfig(level=logging.INFO)
@@ -72,7 +73,7 @@ async def get_stat_logs(request: Request):
                      "processed_at", "errors"]]
         data = data.to_dict('split')
     except Exception as e:
-        log.error(e.message)
+        log.error(e)
         return JSONResponse(content={})
     return JSONResponse(content=data)
 

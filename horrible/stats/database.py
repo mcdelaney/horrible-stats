@@ -33,12 +33,6 @@ def parse_frametime_ts(path: str) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(file_ts).replace(microsecond=0)
 
 
-file_format_ref = {
-    'mission-stats/': parse_mission_stat_ts,
-    'frametime/': parse_frametime_ts
-}
-
-
 weapon_types = sqlalchemy.Table(
     "weapon_types",
     metadata,
@@ -95,3 +89,4 @@ DATABASE_URL = config(
     'DATABASE_URL',
     default="postgresql://localhost:5432/dcs?user=prod&password=pwd")
 db = databases.Database(DATABASE_URL)
+

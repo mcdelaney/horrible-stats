@@ -1,10 +1,10 @@
-version: "3"
+version: "2"
 services:
   db:
     build:
-      context: database/
-    volumes:
-      - ./database/postgresql_:/var/lib/postgresql/data
+      context: ./database/
+    # volumes:
+    #   - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     environment:
@@ -17,7 +17,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile_local
-    command: ["bash", "/var/dev/wait-for-it.sh", "db:5432", "--", "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+    command: [
+      "bash", "/var/dev/wait-for-it.sh", "db:5432", "--", 
+      "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
     depends_on:
@@ -32,6 +34,10 @@ services:
       - ./dcs-storage-gcs.json:/etc/dcs-storage-gcs.json:rw
     restart: always
 
-volumes:
-  esdata01:
-    driver: local
+# volumes:
+#   pgdata:
+#     external: true
+
+# volumes:
+#   pgdata:
+#     driver: local

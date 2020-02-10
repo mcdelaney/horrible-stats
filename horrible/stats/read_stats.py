@@ -12,8 +12,9 @@ import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 
-from . import (db, weapon_types, stat_files, mission_stats, get_gcs_bucket,
-               sync_gs_files_with_db, frametime_files)
+from stats.database import (db, weapon_types, stat_files, mission_stats, 
+                            frametime_files)
+from stats.gcs import get_gcs_bucket, sync_gs_files_with_db
 
 
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +22,7 @@ log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
 
 
-async def update_all_logs_and_stats(db) -> NoReturn:
+async def update_all_logs_and_stats(db) -> None:
     """Sync weapon db, gs stats files, and process any new records."""
     log.info("Syncing log files and updating stats...")
     await sync_weapons()

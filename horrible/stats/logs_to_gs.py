@@ -5,8 +5,8 @@ import logging
 from pathlib import Path
 
 import requests
-from database import stat_files, db
-from gcs import get_gcs_bucket, sync_gs_files_with_db
+from stats.database import stat_files, db
+from stats.gcs import get_gcs_bucket, sync_gs_files_with_db
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)

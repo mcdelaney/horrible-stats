@@ -5,7 +5,14 @@ import asyncpg
 from google.cloud import storage
 import sqlalchemy as sa
 
-from database import db, file_format_ref
+from stats import database
+# from stats.database import file_format_ref
+
+file_format_ref = {
+    'mission-stats/': database.parse_mission_stat_ts,
+    'frametime/': database.parse_frametime_ts
+}
+
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -18,9 +25,9 @@ def get_gcs_bucket(bucket="horrible-server"):
     return client.get_bucket(bucket)
 
 
-async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table, db) -> NoReturn:
+async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table, db) -> None:
     """Ensure all gs files are in database."""
-    await db.connect()
+    # await db.connect()
     log.info(f"Syncing gs files at {bucket_prefix} to table {table.name}...")
     bucket = get_gcs_bucket()
     stats_list = bucket.client.list_blobs(bucket, prefix=bucket_prefix)

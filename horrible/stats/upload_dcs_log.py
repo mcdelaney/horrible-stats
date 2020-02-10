@@ -3,7 +3,7 @@ from pathlib import Path
 import logging
 import gzip
 
-from gcs import get_gcs_bucket
+from stats.gcs import get_gcs_bucket
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
