@@ -8,18 +8,16 @@ from starlette.requests import Request
 import pandas as pd
 import sqlalchemy as sa
 
-from stats.database import db, weapon_types, stat_files, frametime_files
-from stats import read_stats
-
+from horrible.database import db, weapon_types, stat_files, frametime_files
+from horrible import read_stats
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
 
-
-templates = Jinja2Templates(directory='templates')
-app = FastAPI("Stat-Server")
-app.mount("/main", StaticFiles(directory="static", html=True), name="static")
+templates = Jinja2Templates(directory='horrible/templates')
+app = FastAPI(title="Stat-Server")
+app.mount("/main", StaticFiles(directory="horrible/static", html=True), name="static")
 
 
 @app.on_event("startup")
@@ -33,8 +31,8 @@ async def database_connect():
 
 
 @app.on_event("shutdown")
-def database_disconnect():
-    db.close()
+async def database_disconnect():
+    await db.disconnect()
 
 
 @app.get("/healthz")
@@ -43,15 +41,20 @@ def healthz():
     return "ok"
 
 
+@app.get("/check_db_files")
+async def check_db_files(request: Request):
+    """Trigger db update."""
+    await read_stats.update_all_logs_and_stats(db)
+    return "ok"
+
+
 @app.get("/resync_stat_file")
 async def resync_stat_file(request: Request, file_name: str):
     """Delete a previously processed file from the database, triggering a re-sync."""
     async with db.transaction():
-        await db.execute(
-            f"""DELETE FROM mission_stats
+        await db.execute(f"""DELETE FROM mission_stats
             WHERE file_name = '{file_name}'""")
-        await db.execute(
-            f"""DELETE FROM mission_stat_files
+        await db.execute(f"""DELETE FROM mission_stat_files
             WHERE file_name = '{file_name}'""")
     return RedirectResponse("/stats_logs")
 
@@ -65,17 +68,19 @@ async def get_stat_logs(request: Request):
         data = await db.fetch_all(query=stat_files.select())
         data = pd.DataFrame.from_records(data, index=None)
         # Convert datetimes into strings because json cant serialize them otherwise.
-        data['processed_at'] = data['processed_at'].apply(str)
-        data['session_start_time'] = data['session_start_time'].apply(str)
+        data[['processed_at', 'session_start_time'
+              ]] = data[['processed_at',
+                         'session_start_time']].astype(str)  # type: ignore
         # Make sure columns are correctly ordered.
         # This table will render incorrectly if we dont... I don't know why.
-        data = data[["file_name", "session_start_time", "processed",
-                     "processed_at", "errors"]]
-        data = data.to_dict('split')
+        data = data[[
+            "file_name", "session_start_time", "processed", "processed_at",
+            "errors"
+        ]]
+        return JSONResponse(content=data.to_dict('split'))  # type: ignore
     except Exception as e:
         log.error(e)
         return JSONResponse(content={})
-    return JSONResponse(content=data)
 
 
 @app.get("/frametime_logs")
@@ -84,14 +89,16 @@ async def get_frametime_logs(request: Request):
     data = await db.fetch_all(frametime_files.select())
     data = pd.DataFrame.from_records(data, index=None)
     # Convert datetimes into strings because json cant serialize them otherwise.
-    data['processed_at'] = data['processed_at'].apply(str)
-    data['session_start_time'] = data['session_start_time'].apply(str)
+    data[['processed_at',
+          'session_start_time']] = data[['processed_at', 'session_start_time'
+                                         ]].astype(str)  # type: ignore
     # Make sure columns are correctly ordered.
     # This table will render incorrectly if we dont... I don't know why.
-    data = data[["file_name", "session_start_time", "processed",
-                 "processed_at", "errors"]]
-    data = data.to_dict('split')
-    return JSONResponse(content=data)
+    data = data[[
+        "file_name", "session_start_time", "processed", "processed_at",
+        "errors"
+    ]]
+    return JSONResponse(content=data.to_dict('split'))  # type: ignore
 
 
 @app.get("/frametime_charts")
@@ -112,7 +119,6 @@ async def get_weapon_db_logs(request: Request):
     content = {"data": [], "columns": list(data[0].keys())}
     for row in data:
         content['data'].append(list(row.values()))
-    # log.info(content)
     return JSONResponse(content=content)
 
 
@@ -135,7 +141,7 @@ async def get_detail_stats(request: Request):
 @app.get("/")
 async def serve_homepage(request: Request):
     """Serve the index.html template."""
-    with open("static/index.html", mode='r') as fp_:
+    with open("horrible/static/index.html", mode='r') as fp_:
         page = fp_.read()
     return HTMLResponse(page)
 

@@ -18,7 +18,7 @@ services:
       context: .
       dockerfile: Dockerfile_local
     command: [
-      "bash", "/var/dev/wait-for-it.sh", "db:5432", "--", 
+      "bash", "/var/dev/wait-for-it.sh", "db:5432", "--",
       "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
@@ -30,7 +30,8 @@ services:
     - GOOGLE_APPLICATION_CREDENTIALS=/etc/dcs-storage-gcs.json
     - DATABASE_URL=postgresql://db:5432/dcs?user=prod&password=pwd
     volumes:
-      - ./horrible:/app/:rw
+      - ./horrible/:/app/horrible/:rw
+      - ./main.py:/app/main.py:rw
       - ./dcs-storage-gcs.json:/etc/dcs-storage-gcs.json:rw
     restart: always
 

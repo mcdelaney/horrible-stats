@@ -2,7 +2,7 @@ import datetime
 import logging
 from pathlib import Path
 import re
-from typing import cast, Optional
+from typing import Optional
 
 import databases
 from starlette.config import Config
@@ -82,6 +82,12 @@ frametimes = sqlalchemy.Table(
     sqlalchemy.Column("frame_ts", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("ts_fps", sqlalchemy.FLOAT())
 )
+
+
+file_format_ref = {
+    'mission-stats/': parse_mission_stat_ts,
+    'frametime/': parse_frametime_ts
+}
 
 
 config = Config('.env')
