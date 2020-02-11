@@ -1,24 +1,27 @@
 import collections
-import logging
 import json
+import logging
 from pathlib import Path
 import threading
 import traceback
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional, Any
 
 import asyncpg
-from lupa import LuaRuntime  # pyright: noqa
 import numpy as np
+from lupa import LuaRuntime
 import pandas as pd
 import sqlalchemy as sa
 
-from horrible.database import (db, weapon_types, stat_files, mission_stats,
-                               frametime_files)
+from horrible.database import (
+    db, frametime_files, mission_stats, stat_files, weapon_types)
 from horrible.gcs import get_gcs_bucket, sync_gs_files_with_db
+
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
+consoleHandler = logging.StreamHandler()
+log.addHandler(consoleHandler)
 
 
 async def update_all_logs_and_stats(db) -> None:
@@ -39,54 +42,54 @@ def pctile(n):
     return percentile_
 
 
-def read_frametime(filename: str, pctile: int = 50) -> Dict:
-    """Given a google-storage blob, return a dataframe with frametime stats."""
-    Path("frametimes").mkdir(parents=True, exist_ok=True)
-    local_file = Path('frametimes').joinpath(Path(filename).name)
-    if not local_file.exists():
-        bucket = get_gcs_bucket()
-        log.info(f"Downloading file: {filename} to location: {local_file}...")
-        log.info(f"{str(filename)==str(local_file)}")
-        blob = bucket.get_blob(str(filename))
-        with local_file.open('wb') as fp_:
-            blob.download_to_file(fp_)
-        log.info("File downloaded successfully...")
-    else:
-        log.info("File exists in local cache...")
+# def read_frametime(filename: str, pctile: int = 50) -> Dict:
+#     """Given a google-storage blob, return a dataframe with frametime stats."""
+#     Path("frametimes").mkdir(parents=True, exist_ok=True)
+#     local_file = Path('frametimes').joinpath(Path(filename).name)
+#     if not local_file.exists():
+#         bucket = get_gcs_bucket()
+#         log.info(f"Downloading file: {filename} to location: {local_file}...")
+#         log.info(f"{str(filename)==str(local_file)}")
+#         blob = bucket.get_blob(str(filename))
+#         with local_file.open('wb') as fp_:
+#             blob.download_to_file(fp_)
+#         log.info("File downloaded successfully...")
+#     else:
+#         log.info("File exists in local cache...")
 
-    with local_file.open('rb') as fp_:
-        raw_text = fp_.read().decode().split()
-    rec = np.array(raw_text, dtype=np.float)
-    fps = float(1) / (rec[1:, ] - rec[:-1])
-    fps = fps.astype(pd.Int64Dtype)
+#     with local_file.open('rb') as fp_:
+#         raw_text = fp_.read().decode().split()
+#     rec = np.array(raw_text, dtype=np.float)
+#     fps = float(1) / (rec[1:, ] - rec[:-1])
+#     fps = fps.astype(pd.Int64Dtype)
 
-    tstamp_fps = np.stack([fps, rec[1:, ]], axis=1)
-    df = pd.DataFrame(tstamp_fps, columns=['fps', 'tstamp'])
+#     tstamp_fps = np.stack([fps, rec[1:, ]], axis=1)
+#     df = pd.DataFrame(tstamp_fps, columns=['fps', 'tstamp'])
 
-    df['tstamp'] = pd.to_datetime(df['tstamp'], unit='s')
-    dfgroup = df.groupby(pd.Grouper(key='tstamp', freq='1s'))
+#     df['tstamp'] = pd.to_datetime(df['tstamp'], unit='s')
+#     dfgroup = df.groupby(pd.Grouper(key='tstamp', freq='1s'))
 
-    max = 5000
-    # nrows = len(dfgroup.groups)
-    nrows = max
-    out = {
-        'labels': [None] * nrows,
-        'data': [None] * nrows,
-        'points': [None] * nrows,
-        'name': f"FPS: {pctile} Percentile"
-    }
-    i = 0
-    max = 50
-    for group, data in dfgroup:
-        ptile = int(np.percentile(data.fps, pctile))
-        tstamp = group.strftime("%Y-%M-%d %H:%m:%S")
-        out['labels'][i] = tstamp
-        out['data'][i] = {'x': i, 'y': ptile}
-        out['points'][i] = ptile
-        i += 1
-        if i >= max:
-            break
-    return out
+#     max = 5000
+#     # nrows = len(dfgroup.groups)
+#     nrows = max
+#     out = {
+#         'labels': [None] * nrows,
+#         'data': [None] * nrows,
+#         'points': [None] * nrows,
+#         'name': f"FPS: {pctile} Percentile"
+#     }
+#     i = 0
+#     max_it = 50
+#     for group, data in dfgroup:
+#         ptile = int(np.percentile(data.fps, pctile))
+#         tstamp = group.strftime("%Y-%M-%d %H:%m:%S")
+#         out['labels'][i] = tstamp
+#         out['data'][i] = {'x': i, 'y': ptile}
+#         out['points'][i] = ptile
+#         i += 1
+#         if i >= max_it:
+#             break
+#     return out
 
 
 async def sync_weapons() -> None:
@@ -109,7 +112,7 @@ async def sync_weapons() -> None:
             log.error(f"Weapon {record['name']} already exists!")
 
 
-def lua_tbl_to_py(lua_tbl) -> Dict:
+def lua_tbl_to_py(lua_tbl: Dict) -> Dict:
     """Coerce lua table to python object."""
     flatten_these = ['names', 'friendlyKills', 'friendlyHits']
     out = {}
@@ -125,10 +128,11 @@ def lua_tbl_to_py(lua_tbl) -> Dict:
                 except Exception:
                     pass
                 continue
+
             if v and isinstance(v, (int, bytes, float, str)):
-                out[k.decode()] = v
+                out[k.decode()] = v # type:ignore
             else:
-                out[k.decode()] = lua_tbl_to_py(v)
+                out[k.decode()] = lua_tbl_to_py(v) # type:ignore
 
         # rename names to pilot.
         if "names" in out.keys():
@@ -139,10 +143,10 @@ def lua_tbl_to_py(lua_tbl) -> Dict:
     return out
 
 
-def result_to_flat_dict(record: dict,
+def result_to_flat_dict(record: collections.MutableMapping,
                         parent: str = '',
-                        sep: str = '__') -> dict:
-    items = []
+                        sep: str = '__') -> Dict:
+    items: List = []
     for k, v in record.items():
         if not parent or k.startswith('weapon'):
             new_key = k
@@ -161,7 +165,7 @@ def read_lua_table(stat: Path) -> Optional[List]:
     with stat.open('r') as fp_:
         file_contents = " ".join([f for f in fp_.readlines()])
     if file_contents == "placeholder":
-        return
+        return None
 
     lua_code = f"\n function() \r\n local {file_contents} return misStats end"
 
@@ -170,7 +174,7 @@ def read_lua_table(stat: Path) -> Optional[List]:
         LuaRuntime(encoding=None).eval(lua_code) for _ in range(thread_count)
     ]
 
-    results = [None]
+    results: List[Dict]= [{}]
 
     def read_tab_func(i, lua_func):
         results[i] = lua_func()
@@ -185,15 +189,16 @@ def read_lua_table(stat: Path) -> Optional[List]:
         thread.join()
 
     result = lua_tbl_to_py(results[0])
-    results = []
+    results_out = []
     for res in result.values():
         tmp = result_to_flat_dict(res)
-        results.append({
+        entry = {
             'file_name': str(stat),
             'pilot': tmp['pilot'],
             'record': tmp
-        })
-    return results
+        }
+        results_out.append(entry)
+    return results_out
 
 
 async def process_lua_records() -> None:
@@ -246,6 +251,26 @@ async def process_lua_records() -> None:
                                 """)
 
 
+def format_cols(df: pd.DataFrame) -> pd.DataFrame:
+    """Format a dataframe for display in HTML."""
+    not_ints = ['kills__A/A Kill Ratio']
+    for c in df.columns:
+        if "times__" in c:
+            df[c] = df[c].apply(lambda x: int(round(x / 60)))
+
+    to_int_cols = []
+    for c in df.columns:
+        if (any([x in c for x in ['weapons__', 'kills__', 'losses__']])
+                and c not in not_ints):
+            to_int_cols.append(c)
+    if to_int_cols:
+        df[to_int_cols] = df[to_int_cols].applymap(int)
+
+    cleaned_cols = [c.replace("__", "_").replace("_", " ") for c in df.columns]
+    df.columns = cleaned_cols
+    return df
+
+
 async def collect_stat_recs() -> pd.DataFrame:
     data = []
     async for rec in db.iterate("""SELECT record, files.session_start_time
@@ -256,15 +281,15 @@ async def collect_stat_recs() -> pd.DataFrame:
         tmp = json.loads(rec['record'])
         tmp['session_stat_time'] = rec['session_start_time']
         data.append(tmp)
-    data = pd.DataFrame.from_records(data, index=None)
-    return data
+    df = pd.DataFrame.from_records(data, index=None)
+    return df
 
 
 async def collect_recs_kv() -> pd.DataFrame:
     """Collect records and convert to kv."""
-    data = []
-    weapons = await db.fetch_all(weapon_types.select())
-    weapons = pd.DataFrame.from_records(weapons, index=None)
+    rec_list: List = []
+    weapon_recs = await db.fetch_all(weapon_types.select())
+    weapons = pd.DataFrame.from_records(weapon_recs, index=None)
     weapons.rename({'name': 'stat_type'}, axis=1, inplace=True)
 
     query = """SELECT pilot, record,
@@ -286,27 +311,32 @@ async def collect_recs_kv() -> pd.DataFrame:
             index=None)
         tmp['pilot'] = rec['pilot']
         tmp['session_start_time'] = rec['session_start_time']
-        data.append(tmp)
+        rec_list.append(tmp)
 
-    data = pd.concat(data)
-    data = data[data.value != ""]
+    data = pd.concat(rec_list)
+    data = data.query("value != ''")
     try:
-        data['value'] = data.value.astype(int)
+        data['value'] = data["value"].astype(int)
     except TypeError as err:
         for i, elem in data.iterrows():
             if isinstance(elem['value'], dict):
                 log.info(elem['value'])
                 log.info(elem['session_start_time'])
         raise err
+    data['key_orig'] = data['key']
+    data['key'] = data.key.str.replace("times__(.*)__actions__", "")
+    data.reset_index(inplace=True, drop=True)
     data["stat_group"] = data.key.apply(lambda x: x.split("__")[0])
     data["stat_type"] = data.key.apply(
         lambda x: "__".join(x.split("__")[1:-1]))
     data["metric"] = data.key.apply(lambda x: "__".join(x.split("__")[-1:]))
 
     data["key"] = data.key.apply(lambda x: "__".join(x.split("__")[1:]))
+
+
     data = data[[
         "session_start_time", "pilot", "stat_group", "stat_type", "metric",
-        "key", "value"
+        "key", "value", 'key_orig'
     ]]
     data = data[data.metric != "hit"]
     data = data.merge(weapons, how='left', on='stat_type')
@@ -317,7 +347,23 @@ async def collect_recs_kv() -> pd.DataFrame:
                                            if x == "kills" else x)
     data['category'] = data.category.apply(lambda x: "Time"
                                            if x == "times" else x)
+    data.drop_duplicates(inplace=True)
+    data['session_date'] = data['session_start_time'].dt.date
     return data
+
+
+def parse_airframe(data: pd.DataFrame) -> pd.DataFrame:
+    """Determine if a key has an airframe in it."""
+    data['airframe'] = "N/A"
+    for i, row in data.iterrows():
+        split_key = row.key.split("__")
+        if split_key[0] == 'times' and len(split_key) == 4:
+            data.loc[i, "airframe"] = split_key[0]
+            data.loc[i, "stat_group"] = split_key[1]
+            data.loc[i, "stat_type"] = split_key[2]
+            data.loc[i, "metric"] = split_key[3]
+    return data
+
 
 
 async def all_category_grouped() -> pd.DataFrame:
@@ -328,26 +374,27 @@ async def all_category_grouped() -> pd.DataFrame:
     return data
 
 
-async def calculate_overall_stats() -> pd.DataFrame:
+async def calculate_overall_stats(grouping_cols: List) -> pd.DataFrame:
     """Calculate per-user/category/sub-type metrics."""
     df = await collect_recs_kv()
-    df = df.groupby(["pilot", "category", "metric"], as_index=False).sum()
-
+    df = df.groupby(grouping_cols + ["category", "metric"],
+                    as_index=False).sum()
     df = df[~df['metric'].isin(['hit', 'crash'])]
     df = df[df['category'].isin(
         ['Air-to-Air', 'Air-to-Surface', 'Bomb', 'Gun', 'losses'])]
 
     df['col'] = df[['category', 'metric']].apply(lambda x: ' '.join(x), axis=1)
     df.drop(labels=['category', 'metric'], axis=1, inplace=True)
-    df = df.pivot(index="pilot", columns="col", values="value")
-    df.fillna(0, inplace=True)
-    df.reset_index(level=0, inplace=True)
 
+    df = df.pivot_table(index=grouping_cols,
+                        columns="col", values="value")
+    df.fillna(0, inplace=True)
+    df.reset_index(level=grouping_cols, inplace=True)
     df["Total Losses"] = df['losses pilotDeath'] + df['losses eject']
-    tmp = ((df['Air-to-Air kills']
-            #  + df['Gun kills']
-            ) /
-           df['Total Losses']).round(2)
+    tmp = ((
+        df['Air-to-Air kills']
+        #  + df['Gun kills']
+    ) / df['Total Losses']).round(2)
     df.insert(1, "A/A Kill Ratio", tmp)
 
     df["A/A P(Kill)"] = ((df['Air-to-Air kills'] / df['Air-to-Air shot']) *
@@ -365,34 +412,41 @@ async def calculate_overall_stats() -> pd.DataFrame:
     df["Gun P(Hit)"] = ((df['Gun numHits'] / df['Gun shot']) * 100).round(1)
     df["Gun P(Kill)"] = ((df['Gun kills'] / df['Gun shot']) * 100).round(1)
 
+    drop_cols = [
+        "losses pilotDeath",
+        "losses eject",
+        "Air-to-Air numHits",
+        "Gun numHits",
+        "Bomb numHits",
+        "Air-to-Surface shot",
+        "Air-to-Surface numHits",
+        "Air-to-Surface kills",
+        "Bomb shot",
+        "Gun gun",
+        # "Bomb kills", "Air-to-Air kills", "A/G Kills", "Gun kills",
+    ]
     df.drop(
-        [
-            "losses pilotDeath",
-            "losses eject",
-            "Air-to-Air numHits",
-            "Gun numHits",
-            "Bomb numHits",
-            "Air-to-Surface shot",
-            "Air-to-Surface numHits",
-            "Air-to-Surface kills",
-            "Bomb shot",
-            "Gun gun",
-            # "Bomb kills", "Air-to-Air kills", "A/G Kills", "Gun kills",
-        ],
+        [d for d in drop_cols if d in df.columns],
         axis=1,
         inplace=True)
 
     df.fillna(0, inplace=True)
     df = df.replace([np.inf, -np.inf], 0)
-    df.columns = [c.replace('numHits', 'Hits') for c in df.columns]
+    df.columns = [c.replace('numHits', 'Hits') for c in df.columns.values]
     df.columns = [c.replace('Air-to-Air', 'A/A') for c in df.columns]
     df.columns = [c.replace(' shot', ' Shot') for c in df.columns]
     df.columns = [c.replace(' kills', ' Kills') for c in df.columns]
-    cols_out = [c for c in df.columns if c != "pilot"]
-    cols_out.sort()
-    cols_out = ['pilot'] + cols_out
 
-    df = df[cols_out]
+    try:
+        df['session_date'] = df['session_date'].apply(str)
+    except KeyError:
+        pass
+
+    reorder_vars = grouping_cols
+    cols_out = [c for c in df.columns if c not in reorder_vars]
+    cols_out.sort()
+    reorder_vars.extend(cols_out)
+    df = df[reorder_vars]
 
     return df
 
@@ -429,35 +483,16 @@ def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
             for c in data.columns:
                 log.error(f"\t{c}")
 
+
     data.fillna(0, inplace=True)
     data = data.sort_values(by="kills__A/A Kill Ratio", ascending=False)
     return data
 
 
-def format_cols(df: pd.DataFrame) -> pd.DataFrame:
-    """Format a dataframe for display in HTML."""
-    not_ints = ['kills__A/A Kill Ratio']
-    for c in df.columns:
-        if "times__" in c:
-            df[c] = df[c].apply(lambda x: int(round(x / 60)))
-
-    to_int_cols = []
-    for c in df.columns:
-        if (any([x in c for x in ['weapons__', 'kills__', 'losses__']])
-                and c not in not_ints):
-            to_int_cols.append(c)
-    if to_int_cols:
-        df[to_int_cols] = df[to_int_cols].applymap(int)
-
-    cleaned_cols = [c.replace("__", "_").replace("_", " ") for c in df.columns]
-    df.columns = cleaned_cols
-    return df
-
-
 def get_subset(df: pd.DataFrame, subset_name: List) -> pd.DataFrame:
     """Summarise by user, returning weapons columns only."""
     drop_cols = []
-    for col in list(df.columns):
+    for col in df.columns:
         if col != "pilot" and not any([f"{s}__" in col for s in subset_name]):
             drop_cols.append(col)
     df.drop(labels=drop_cols, axis=1, inplace=True)
@@ -469,20 +504,20 @@ def get_subset(df: pd.DataFrame, subset_name: List) -> pd.DataFrame:
 
 
 async def get_dataframe(subset: Optional[List] = None,
-                        user_name: Optional[str] = None):
+                        user_name: Optional[str] = None) -> pd.DataFrame:
     """Get stats in dataframe format suitable for HTML display."""
-    df = await collect_stat_recs()
-    if df.empty:
+    stat_data = await collect_stat_recs()
+    if stat_data.empty:
         return pd.DataFrame()
 
     try:
-        df = compute_metrics(df)
+        df = compute_metrics(stat_data)
     except Exception as e:
         log.error(f"Error computing metric!\n\r{e}\n\t{df}")
         raise e
 
     if user_name:
-        df = df[df['pilot'] == user_name]
+        df = df.query(f"pilot = {user_name}")
 
     df.drop(labels=["id"], axis=1, inplace=True)
     df = df[df.sum(axis=1) != 0.0]

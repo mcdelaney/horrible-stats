@@ -101,15 +101,15 @@ async def get_frametime_logs(request: Request):
     return JSONResponse(content=data.to_dict('split'))  # type: ignore
 
 
-@app.get("/frametime_charts")
-async def get_frametime_charts(request: Request, pctile: int = 50):
-    """Get a dataframe of frametime records."""
-    files = await db.fetch_one(frametime_files.select().order_by(
-        sa.desc(sa.text("session_start_time"))))
-    log.info("Looking up most recent log file...")
-    data = read_stats.read_frametime(filename=files['file_name'],
-                                     pctile=pctile)
-    return JSONResponse(content=data)
+# @app.get("/frametime_charts")
+# async def get_frametime_charts(request: Request, pctile: int = 50):
+#     """Get a dataframe of frametime records."""
+#     files = await db.fetch_one(frametime_files.select().order_by(
+#         sa.desc(sa.text("session_start_time"))))
+#     log.info("Looking up most recent log file...")
+#     data = read_stats.read_frametime(filename=files['file_name'],
+#                                      pctile=pctile)
+#     return JSONResponse(content=data)
 
 
 @app.get("/weapon_db")
@@ -125,7 +125,17 @@ async def get_weapon_db_logs(request: Request):
 @app.get("/overall")
 async def get_overall_stats(request: Request):
     """Get a json dictionary of grouped statistics as key-value pairs."""
-    data = await read_stats.calculate_overall_stats()
+    data = await read_stats.calculate_overall_stats(
+        grouping_cols=['pilot'])
+    data = data.to_dict('split')
+    return JSONResponse(content=data)
+
+
+@app.get("/session_performance")
+async def get_session_perf_stats(request: Request):
+    """Get a json dictionary of grouped statistics as key-value pairs."""
+    data = await read_stats.calculate_overall_stats(
+        grouping_cols=['session_date', 'pilot'])
     data = data.to_dict('split')
     return JSONResponse(content=data)
 

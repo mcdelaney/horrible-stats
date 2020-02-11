@@ -84,11 +84,18 @@ function load_dt(path) {
     for (var n = 0; n < col_nm.length; n++) {
       col_nm[n] = col_nm[n].charAt(0).toUpperCase() + col_nm[n].slice(1);
     }
-    cols.push({"title": col_nm.join(" ")});
+    var col_nm = {"title": col_nm.join(" ")}
+    if (col_nm['title'] === 'Session Date') {
+        col_nm["render"] = function(data, type) {
+            return type === 'sort' ? data : moment(data).format('L');
+        }
+    }
+    cols.push(col_nm);
   }
 
   var sortKeys = {
     "overall":  [[ 1, "desc" ]],
+    "session_performance":  [[ 0, "desc" ]],
     "stat_logs":  [[ 1, "desc" ]],
     "weapon_db": [],
     "detail": [[data.columns.length-1, "desc"]],
@@ -167,9 +174,6 @@ for (var i = 0; i < btns.length; i++) {
       console.log("Prepending table...")
       tbl_container.prepend(active_tbl);
     }
-
-
-
   });
 }
 
