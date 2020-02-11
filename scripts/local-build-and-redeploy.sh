@@ -4,6 +4,8 @@ IMAGE_NAME="horrible_stats"
 GCP_PROJECT_ID="dcs-analytics-257714"
 TAG=$(git log --pretty=format:'%h' -n 1)
 
+echo "Building base image..."
+docker build -t horrible_base -f Dockerfile_base .
 echo "Building and deploying $IMAGE_NAME at hash $TAG..."
 
 echo "Building new image..."
