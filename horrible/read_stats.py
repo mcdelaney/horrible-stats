@@ -344,7 +344,9 @@ async def calculate_overall_stats() -> pd.DataFrame:
     df.reset_index(level=0, inplace=True)
 
     df["Total Losses"] = df['losses pilotDeath'] + df['losses eject']
-    tmp = ((df['Air-to-Air kills'] + df['Gun kills']) /
+    tmp = ((df['Air-to-Air kills']
+            #  + df['Gun kills']
+            ) /
            df['Total Losses']).round(2)
     df.insert(1, "A/A Kill Ratio", tmp)
 
@@ -374,6 +376,7 @@ async def calculate_overall_stats() -> pd.DataFrame:
             "Air-to-Surface numHits",
             "Air-to-Surface kills",
             "Bomb shot",
+            "Gun gun",
             # "Bomb kills", "Air-to-Air kills", "A/G Kills", "Gun kills",
         ],
         axis=1,
