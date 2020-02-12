@@ -36,9 +36,18 @@ async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool, 
                 if '.zip' not in file_.name:
                     log.info("File not compressed...zipping...")
                     content = gzip.compress(content)
+                log.info("Compression complete...uploading...")
                 blob.content_type = "text/plain"
                 blob.content_encoding = "gzip"
-                blob.upload_from_string(content)
+                tries = 0
+                while tries <= 2:
+                    try:
+                        blob.upload_from_string(content)
+                        break
+                    except Exception as err:
+                        log.error(err)
+                        tries += 1
+
 
                 if delete_files:
                     log.info("File uploaded...deleting...")
