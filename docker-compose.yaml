@@ -3,8 +3,8 @@ services:
   db:
     build:
       context: ./database/
-    # volumes:
-    #   - pgdata:/var/lib/postgresql/data
+    volumes:
+      - ./database/pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     environment:
@@ -39,6 +39,6 @@ services:
 #   pgdata:
 #     external: true
 
-# volumes:
-#   pgdata:
-#     driver: local
+volumes:
+  pgdata:
+    driver: local

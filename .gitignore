@@ -9,3 +9,4 @@ horrible/cache/**
 *.DS_Store
 **/frametimes/**
 **/.mypy_cache/**
+database/pgdata/**
