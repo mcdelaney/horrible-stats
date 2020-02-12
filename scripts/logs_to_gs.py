@@ -3,6 +3,7 @@ import argparse
 import gzip
 import logging
 from pathlib import Path
+import urllib.parse
 
 from google.cloud import storage
 import requests
@@ -43,6 +44,9 @@ async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
                 while tries <= 2:
                     try:
                         blob.upload_from_string(content)
+                        enc_name = urllib.parse.quote(file_.name)
+                        log.info(f"Sending update check request to frontend: {enc_name}...")
+                        requests.get("http://ahorribleserver.com/resync_file/?file_name={enc_name}")
                         break
                     except Exception as err:
                         log.error(err)
@@ -54,8 +58,8 @@ async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
         except Exception as e:
             log.error(e)
             log.info("File is open...skipping...")
-    log.info("Sending update check request to frontend...")
-    requests.get("http://ahorribleserver.com/check_db_files")
+
+
 
 
 
