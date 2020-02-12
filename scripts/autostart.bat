@@ -16,7 +16,7 @@ GOTO CheckDCS
 
 :StartDCS
 echo "DCS Not running, starting it up."
-python "C:\\Users\mcdel\horrible-stats\horrible\stats\upload_dcs_log.py"
+python "C:\\Users\mcdel\horrible-stats\scripts\upload_dcs_log.py"
 xcopy C:\Users\mcdel\Dropbox\Missions "C:\Users\mcdel\Saved Games\DCS.openbeta_server\Missions" /Y
 start "" "C:\Program Files\Eagle Dynamics\DCS World OpenBeta Server\bin\DCS_updater.exe"
 timeout /t 15 /nobreak

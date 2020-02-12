@@ -4,7 +4,7 @@ services:
     build:
       context: ./database/
     volumes:
-      - ./database/pgdata:/var/lib/postgresql/data
+      - ./database/pgdata:/var/lib/postgresql/data:delegated
     ports:
       - "5432:5432"
     environment:
@@ -34,10 +34,6 @@ services:
       - ./main.py:/app/main.py:rw
       - ./dcs-storage-gcs.json:/etc/dcs-storage-gcs.json:rw
     restart: always
-
-# volumes:
-#   pgdata:
-#     external: true
 
 volumes:
   pgdata:

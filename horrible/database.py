@@ -49,7 +49,8 @@ stat_files = sqlalchemy.Table(
     sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
     sqlalchemy.Column("processed_at", sqlalchemy.TIMESTAMP()),
-    sqlalchemy.Column("errors", sqlalchemy.Integer)
+    sqlalchemy.Column("errors", sqlalchemy.Integer),
+    sqlalchemy.Column("error_msg", sqlalchemy.String()),
 )
 
 
@@ -59,6 +60,7 @@ mission_stats = sqlalchemy.Table(
     sqlalchemy.Column("file_name", sqlalchemy.String(),
                       sqlalchemy.ForeignKey('mission_stat_files.file_name')),
     sqlalchemy.Column("pilot", sqlalchemy.String()),
+    sqlalchemy.Column("pilot_id", sqlalchemy.Integer),
     sqlalchemy.Column("record", sqlalchemy.JSON())
 )
 

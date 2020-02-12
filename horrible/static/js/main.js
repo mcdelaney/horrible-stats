@@ -1,4 +1,4 @@
-
+/*jshint esversion: 6 */
 function clear_table(table_id) {
   console.log("Destroying table " + table_id);
   table = $("#" + table_id + "_tbl").dataTable();
@@ -69,58 +69,53 @@ function load_chart(path, pctile) {
         }
       });
 
-  })
-};
+  });
+}
 
 function load_dt(path) {
-  console.log("Loading table: " + path);
-  // jQuery node accessor for table.  Matches html tag.
-  var tbl_nm = "#" +  path + "_tbl";
+  var tbl_nm = "#overall_tbl";
+
+  console.log("Checking that table exists...");
+  if ($.fn.dataTable.isDataTable(tbl_nm)) {
+    $(tbl_nm).DataTable().destroy();
+    $(tbl_nm).empty();
+  }
+
   jQuery.getJSON("/" + path, function( data ) {
 
-  var cols = []
+  var cols = [];
   for (i = 0; i < data.columns.length; i++) {
     var col_nm = data.columns[i].split("_");
     for (var n = 0; n < col_nm.length; n++) {
       col_nm[n] = col_nm[n].charAt(0).toUpperCase() + col_nm[n].slice(1);
     }
-    var col_nm = {"title": col_nm.join(" ")}
-    if (col_nm['title'] === 'Session Date') {
-        col_nm["render"] = function(data, type) {
+    var col_nm = {"title": col_nm.join(" ")};
+    if (col_nm.title === 'Session Date') {
+        col_nm.render = function(data, type) {
             return type === 'sort' ? data : moment(data).format('L');
-        }
+        };
     }
     cols.push(col_nm);
   }
 
   var sortKeys = {
     "overall":  [[ 1, "desc" ]],
-    "session_performance":  [[ 0, "desc" ]],
+    "session_performance": [],
     "stat_logs":  [[ 1, "desc" ]],
     "weapon_db": [],
-    "detail": [[data.columns.length-1, "desc"]],
     "tacview": [],
-    "weapons": [],
-    "survivability": [[1, "desc"]],
+    "weapons": [3, 'desc'],
+    "losses": [[1, "desc"]],
+    "kills": [[3, "desc"]],
     "frametime_logs": [[1, "desc"]]
-  }
+  };
 
+  console.log("Loading table: " + path);
   $(tbl_nm).DataTable({
+    destroy: true,
     data: data.data,
     columns: cols,
     order: sortKeys[path],
-    // processing: true,
-    // language: {
-    //   processing: '<section class="wrapper"><div class="spinner"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></section>'
-    // },
-
-    // rowGroup: {
-    //     dataSrc: [ 1, 0, 2,3 ]
-    // },
-    // columnDefs: [ {
-    //     targets: [ 0, 1, 2, 3 ],
-    //     visible: false
-    // } ],
     paging: false,
     pageLength: 50,
     rowId: "index",
@@ -133,7 +128,7 @@ function load_dt(path) {
     sScrollX: "100%",
   });
 });
-};
+}
 
 
 var btnContainer = document.getElementById("nav_set");
@@ -146,38 +141,30 @@ for (var i = 0; i < btns.length; i++) {
     // If there's no active class
     if (current.length > 0) {
         try {
-          if ( $.fn.dataTable.isDataTable("#" + current[0].id + "_tbl" ) &
-                current[0].href.slice(-1) === "#"){
-                // current[0].href === "#") {
-                  // Only call desctructor if object is already a datatable AND
-                  // the href on current tab is for single-page-app (aka #).
-            clear_table(current[0].id)
-          }else{
-            console.log("No table initialized for tag #" + current[0].id+ "_tbl")
-            console.log(current[0].href.slice(-1))
-          }
+        //   if ( $.fn.dataTable.isDataTable("#" + current[0].id + "_tbl" ) &
+        //         current[0].href.slice(-1) === "#"){
+        //           // Only call desctructor if object is already a datatable AND
+        //           // the href on current tab is for single-page-app (aka #).
+        //     // clear_table(current[0].id);
+        //   }else{
+        //     console.log("No table initialized for tag #" + current[0].id+ "_tbl");
+        //     console.log(current[0].href.slice(-1));
+        //   }
           current[0].className = current[0].className.replace(" active", "");
         }catch(e){
           console.log(e.stack);
-        };
+        }
     }
     // Add the active class to the current/clicked button
     this.className += " active";
-    var tbl_container = document.getElementById("table_container");
-    var active_tbl = document.getElementById(this.id + "_tbl");
     if (this.id === "frametime_charts") {
       load_chart(this.id, 50);
-      console.log("Prepending table...")
-      tbl_container.prepend(active_tbl);
     }else{
-      load_dt(this.id);
-      console.log("Prepending table...")
-      tbl_container.prepend(active_tbl);
+        console.log("Table init...");
+        load_dt(this.id);
     }
   });
 }
-
-
 
 
 $(document).ready(function() {

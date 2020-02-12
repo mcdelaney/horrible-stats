@@ -3,20 +3,22 @@ import argparse
 import gzip
 import logging
 from pathlib import Path
+import urllib.parse
 
-import requests
+from google.cloud import storage
 
-from horrible.database import db
-from horrible.gcs import get_gcs_bucket
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
+consoleHandler = logging.StreamHandler()
+log.addHandler(consoleHandler)
 
 
-async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool, db):
+async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
     """Upload files to GCP bucket."""
-    bucket = get_gcs_bucket()
+    client = storage.Client()
+    bucket = client.get_bucket('horrible-server')
     for file_ in local_path_glob:
         try:
             log.debug(f"Processing {file_.absolute()}...")
@@ -24,7 +26,7 @@ async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool, 
             blob = bucket.blob(gs_filename)
             meta = bucket.get_blob(gs_filename)
             if blob.exists() and file_.stat().st_mtime <= meta.updated.timestamp():
-                log.debug(f"Skipping file {file_.name}...already uploaded")
+                log.info(f"Skipping file {file_.name}...already uploaded")
             else:
                 if blob.exists():
                     log.info("Updating file...has changed since last update...")
@@ -36,9 +38,17 @@ async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool, 
                 if '.zip' not in file_.name:
                     log.info("File not compressed...zipping...")
                     content = gzip.compress(content)
+                log.info("Compression complete...uploading...")
                 blob.content_type = "text/plain"
                 blob.content_encoding = "gzip"
-                blob.upload_from_string(content)
+                tries = 0
+                while tries <= 2:
+                    try:
+                        blob.upload_from_string(content)
+                        break
+                    except Exception as err:
+                        log.error(err)
+                        tries += 1
 
                 if delete_files:
                     log.info("File uploaded...deleting...")
@@ -46,8 +56,9 @@ async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool, 
         except Exception as e:
             log.error(e)
             log.info("File is open...skipping...")
-    requests.get("http://ahorribleserver.com/check_db_files")
-    # await sync_gs_files_with_db("mission-stats", stat_files, db)
+
+
+
 
 
 if __name__ == "__main__":
@@ -67,6 +78,6 @@ if __name__ == "__main__":
     if args.env != 'prod':
         args.remote_subdir = args.env + "/" + args.remote_subdir
         args.delete = False
-
+    log.info(f"Local path: {args.local_path}...")
     local_glob = args.local_path.glob(args.local_suffix)
-    asyncio.run(upload_files(local_glob, args.remote_subdir, args.delete, db))
+    asyncio.run(upload_files(local_glob, args.remote_subdir, args.delete))

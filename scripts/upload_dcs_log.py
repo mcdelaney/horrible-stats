@@ -3,7 +3,7 @@ from pathlib import Path
 import logging
 import gzip
 
-from horrible.gcs import get_gcs_bucket
+from google.cloud import storage
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -14,7 +14,8 @@ if __name__ == '__main__':
     log.info("Uploading dcs.log to gcs...")
     file = Path("C://Users/mcdel/Saved Games/DCS.openbeta_server/Logs/dcs.log")
     gs_filename = f"dcs-log-files/dcs-{datetime.datetime.now()}.log"
-    bucket = get_gcs_bucket()
+    client = storage.Client()
+    bucket = client.get_bucket('horrible-server')
     blob = bucket.blob(gs_filename)
     meta = bucket.get_blob(gs_filename)
     log.info("Uploading DCS log file...")

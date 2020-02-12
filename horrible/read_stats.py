@@ -2,6 +2,7 @@ import collections
 import json
 import logging
 from pathlib import Path
+import re
 import threading
 import traceback
 from typing import Dict, List, Optional, Any
@@ -12,10 +13,9 @@ from lupa import LuaRuntime
 import pandas as pd
 import sqlalchemy as sa
 
-from horrible.database import (
-    db, frametime_files, mission_stats, stat_files, weapon_types)
+from horrible.database import (db, frametime_files, mission_stats, stat_files,
+                               weapon_types)
 from horrible.gcs import get_gcs_bucket, sync_gs_files_with_db
-
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -100,16 +100,11 @@ async def sync_weapons() -> None:
     current_weapons = [weapon['name'] for weapon in current_weapons]
 
     for record in weapons:
-        try:
-            if record['name'] not in current_weapons:
-                query = weapon_types.insert()
-                await db.execute(query, values=record)
-                log.info(f"New weapon added to database: {record['name']}...")
-            else:
-                log.debug(
-                    f"weapon {record['name']} already exists...skipping...")
-        except asyncpg.exceptions.UniqueViolationError:
-            log.error(f"Weapon {record['name']} already exists!")
+        if record['name'] in current_weapons:
+            continue
+        query = weapon_types.insert()
+        await db.execute(query, values=record)
+        log.info(f"New weapon added to database: {record['name']}...")
 
 
 def lua_tbl_to_py(lua_tbl: Dict) -> Dict:
@@ -130,9 +125,9 @@ def lua_tbl_to_py(lua_tbl: Dict) -> Dict:
                 continue
 
             if v and isinstance(v, (int, bytes, float, str)):
-                out[k.decode()] = v # type:ignore
+                out[k.decode()] = v  # type:ignore
             else:
-                out[k.decode()] = lua_tbl_to_py(v) # type:ignore
+                out[k.decode()] = lua_tbl_to_py(v)  # type:ignore
 
         # rename names to pilot.
         if "names" in out.keys():
@@ -174,7 +169,7 @@ def read_lua_table(stat: Path) -> Optional[List]:
         LuaRuntime(encoding=None).eval(lua_code) for _ in range(thread_count)
     ]
 
-    results: List[Dict]= [{}]
+    results: List[Dict] = [{}]
 
     def read_tab_func(i, lua_func):
         results[i] = lua_func()
@@ -194,7 +189,8 @@ def read_lua_table(stat: Path) -> Optional[List]:
         tmp = result_to_flat_dict(res)
         entry = {
             'file_name': str(stat),
-            'pilot': tmp['pilot'],
+            'pilot': tmp.pop('pilot'),
+            'pilot_id': tmp.pop('id'),
             'record': tmp
         }
         results_out.append(entry)
@@ -222,6 +218,7 @@ async def process_lua_records() -> None:
                     blob.download_to_filename(local_path)
                 except Exception as e:
                     log.error(f"Error downloading file! {e}")
+                    raise ValueError("File could not be downloaded")
 
             stat_parsed = read_lua_table(local_path)
             log.info("Dumping record to database...")
@@ -246,7 +243,8 @@ async def process_lua_records() -> None:
                                 FROM mission_stat_files
                                 WHERE file_name = '{stat['file_name']}'
                              ),
-                             processed_at = CURRENT_TIMESTAMP
+                             processed_at = CURRENT_TIMESTAMP,
+                             error_msg = '{str(err)}'
                              WHERE file_name = '{stat['file_name']}'
                                 """)
 
@@ -273,97 +271,180 @@ def format_cols(df: pd.DataFrame) -> pd.DataFrame:
 
 async def collect_stat_recs() -> pd.DataFrame:
     data = []
-    async for rec in db.iterate("""SELECT record, files.session_start_time
+    async for rec in db.iterate(
+            """SELECT record, pilot, files.session_start_time
                                     FROM mission_stats
                                     LEFT JOIN mission_stat_files files
                                     USING (file_name)
                                 """):
         tmp = json.loads(rec['record'])
         tmp['session_stat_time'] = rec['session_start_time']
+        tmp['pilot'] = rec['pilot']
         data.append(tmp)
     df = pd.DataFrame.from_records(data, index=None)
     return df
 
 
+def parse_rec_keys(field_key: str) -> Optional[Dict]:
+    """Extract fields from concatenated dict key."""
+    cats: Dict[str, Optional[str]]
+    matches = re.match("^(times)__(\w.*)__(kills)__(\w.*)__([A-z].*)$",
+                       field_key)
+    if matches:
+        # eg: times__JF-17__kills__Planes__total
+        # times/actions per airframe
+        cats = {
+            'category': matches.groups()[3],  # eg planes
+            'metric': matches.groups()[4],  # eg: total
+            'stat_group': matches.groups()[2],  # eg kills
+            'equipment': matches.groups()[1],  # eg F/A-18C
+        }
+        return cats
+
+    matches = re.match("^(times)__(\w.*)__(actions)__(\w.*)__([A-z].*)$",
+                       field_key)
+    if matches:
+        # eg: times__JF-17__actions__losses__pilotDeath
+        # times/actions per airframe
+        cats = {
+            'category': matches.groups()[4],  # eg losses
+            'metric': 'total',  # eg: eject
+            'stat_group': matches.groups()[3],  # eg actions
+            'equipment': matches.groups()[1],  # eg F/A-18C
+        }
+        return cats
+
+    matches = re.match("^(times)__(\w.*)__(losses)__(\w.*)__([A-z].*)$",
+                       field_key)
+    if matches:
+        # eg: times__JF-17__actions__losses__pilotDeath
+        # times/actions per airframe
+        cats = {
+            'category': matches.groups()[4],  # eg losses
+            'metric': 'total',  # eg: eject
+            'stat_group': matches.groups()[2],  # eg actions
+            'equipment': matches.groups()[1],  # eg F/A-18C
+        }
+        return cats
+
+    matches = re.match("^(weapons)__(\w.*)__([A-z].*)$", field_key)
+    if matches:
+        # eg: weapons__Mk-20 Rockeye__kills
+        # weapons
+        cats = {
+            'category': None,
+            'metric': matches.groups()[2],  # eg: shot, numHits
+            'stat_group': matches.groups()[0],  # eg: weapons
+            'equipment': matches.groups()[1],  #eg: AIM-120C
+        }
+        if cats['metric'] == 'gun' or cats['metric'] == 'hit':
+            # These are always wrong.
+            return None
+        return cats
+
+    matches = re.match("^(losses)__(\w.*)__([A-z].*)$", field_key)
+    if matches:
+        # losses
+        cats = {
+            'category': matches.groups()[1],
+            'metric': matches.groups()[2],  # eg: shot, numHits
+            'stat_group': matches.groups()[0],  # eg: weapons
+            'equipment': "N/A",  #eg: AIM-120C
+        }
+        return cats
+
+    matches = re.match("^(kills)__(\w.*)__([A-z].*)$", field_key)
+    if matches:
+        # losses
+        cats = {
+            'category': matches.groups()[1],
+            'metric': matches.groups()[2],  # eg: shot, numHits
+            'stat_group': matches.groups()[0],  # eg: weapons
+            'equipment': "N/A",  #eg: AIM-120C
+        }
+        return cats
+
+    matches = re.match("^(times)__(\w.*)__([A-z].*)$", field_key)
+    if matches:
+        #eg: times__AV8BNA__total
+        # times air/total
+        cats = {
+            'category': matches.groups()[0],
+            'metric': matches.groups()[2],  # eg: shot, total/inair
+            'stat_group': 'usage',
+            'equipment': matches.groups()[1],  #eg: AIM-120C
+        }
+        return cats
+
+    matches = re.match("^(PvP)__(\w.*)$", field_key)
+    if matches:
+        # old format losses only
+        cats = {
+            'category': matches.groups()[0],  #
+            'metric': matches.groups()[1],  # eg: shot, numHits
+            'stat_group': matches.groups()[0],  # eg: weapons
+            'equipment': 'N/A',
+        }
+        return cats
+
+    matches = re.match("^([A-z]*)__(\w.*)$", field_key)
+    if matches:
+        # old format losses only
+        cats = {
+            'category': matches.groups()[1],  # eg: pilotdeath
+            'metric': "total",
+            'stat_group': matches.groups()[0],  # eg: losses
+            'equipment': 'N/A',
+        }
+
+        return cats
+
+    if field_key in ['lastJoin', 'friendlyHits', 'friendlyKills']:
+        return None
+
+    raise ValueError(f"Could not parse: {field_key}")
+    # return {'category': None, 'metric': None,
+    #         'stat_group': None, 'equipment': None}
+
+
 async def collect_recs_kv() -> pd.DataFrame:
     """Collect records and convert to kv."""
-    rec_list: List = []
     weapon_recs = await db.fetch_all(weapon_types.select())
     weapons = pd.DataFrame.from_records(weapon_recs, index=None)
-    weapons.rename({'name': 'stat_type'}, axis=1, inplace=True)
+    weapons.rename({
+        'name': 'equipment',
+        'category': 'weapon_cat'
+    },
+                   axis=1,
+                   inplace=True)
 
-    query = """SELECT pilot, record,
-                files.session_start_time
-            FROM mission_stats
-            LEFT JOIN mission_stat_files files
-            USING (file_name)
+    query = """SELECT pilot, record, files.session_start_time
+                FROM mission_stats
+                LEFT JOIN mission_stat_files files
+                USING (file_name)
             """
+
+    data_row_dicts: List[Dict] = []
     async for rec in db.iterate(query=query):
-        recs = json.loads(rec['record'])
-        recs.pop('pilot')
-        recs.pop('id')
-        tmp = pd.DataFrame(
-            {
-                "key": list(recs.keys()),
-                "value": list(recs.values())
-            },
-            columns=["key", "value"],
-            index=None)
-        tmp['pilot'] = rec['pilot']
-        tmp['session_start_time'] = rec['session_start_time']
-        rec_list.append(tmp)
+        rec_elements = json.loads(rec['record'])
+        for key, value in rec_elements.items():
+            parsed_rec = parse_rec_keys(key)
+            if parsed_rec and value != "" and parsed_rec['category'] != "crash":
+                parsed_rec['value'] = int(value)
+                parsed_rec['key_orig'] = key
+                parsed_rec['pilot'] = rec['pilot']
+                parsed_rec['session_start_time'] = rec['session_start_time']
+                data_row_dicts.append(parsed_rec)
 
-    data = pd.concat(rec_list)
-    data = data.query("value != ''")
-    try:
-        data['value'] = data["value"].astype(int)
-    except TypeError as err:
-        for i, elem in data.iterrows():
-            if isinstance(elem['value'], dict):
-                log.info(elem['value'])
-                log.info(elem['session_start_time'])
-        raise err
-    data['key_orig'] = data['key']
-    data['key'] = data.key.str.replace("times__(.*)__actions__", "")
-    data.reset_index(inplace=True, drop=True)
-    data["stat_group"] = data.key.apply(lambda x: x.split("__")[0])
-    data["stat_type"] = data.key.apply(
-        lambda x: "__".join(x.split("__")[1:-1]))
-    data["metric"] = data.key.apply(lambda x: "__".join(x.split("__")[-1:]))
-
-    data["key"] = data.key.apply(lambda x: "__".join(x.split("__")[1:]))
-
-
-    data = data[[
-        "session_start_time", "pilot", "stat_group", "stat_type", "metric",
-        "key", "value", 'key_orig'
-    ]]
-    data = data[data.metric != "hit"]
-    data = data.merge(weapons, how='left', on='stat_type')
-    data["category"] = data.category.combine_first(data.stat_group)
-    data['stat_type'] = data.stat_type.apply(lambda x: "Total"
-                                             if x == "" else x)
-    data['category'] = data.category.apply(lambda x: "Kills"
-                                           if x == "kills" else x)
-    data['category'] = data.category.apply(lambda x: "Time"
-                                           if x == "times" else x)
-    data.drop_duplicates(inplace=True)
+    data = pd.DataFrame.from_records(data_row_dicts, index=None)
     data['session_date'] = data['session_start_time'].dt.date
+    data = data.merge(weapons, how='left', on='equipment')
+    data["category"] = data.category.combine_first(data.weapon_cat)
+    data.value = data.apply(
+        lambda x: 0
+        if x['category'] == 'Gun' and x['metric'] == 'kills' else x['value'],
+        axis=1)
     return data
-
-
-def parse_airframe(data: pd.DataFrame) -> pd.DataFrame:
-    """Determine if a key has an airframe in it."""
-    data['airframe'] = "N/A"
-    for i, row in data.iterrows():
-        split_key = row.key.split("__")
-        if split_key[0] == 'times' and len(split_key) == 4:
-            data.loc[i, "airframe"] = split_key[0]
-            data.loc[i, "stat_group"] = split_key[1]
-            data.loc[i, "stat_type"] = split_key[2]
-            data.loc[i, "metric"] = split_key[3]
-    return data
-
 
 
 async def all_category_grouped() -> pd.DataFrame:
@@ -377,20 +458,19 @@ async def all_category_grouped() -> pd.DataFrame:
 async def calculate_overall_stats(grouping_cols: List) -> pd.DataFrame:
     """Calculate per-user/category/sub-type metrics."""
     df = await collect_recs_kv()
+    # df = df[~df['metric'].isin(['hit', 'crash', 'inAir'])]
+    df = df[~df['metric'].isin(['hit', 'crash'])]
+
     df = df.groupby(grouping_cols + ["category", "metric"],
                     as_index=False).sum()
-    df = df[~df['metric'].isin(['hit', 'crash'])]
-    df = df[df['category'].isin(
-        ['Air-to-Air', 'Air-to-Surface', 'Bomb', 'Gun', 'losses'])]
 
     df['col'] = df[['category', 'metric']].apply(lambda x: ' '.join(x), axis=1)
     df.drop(labels=['category', 'metric'], axis=1, inplace=True)
 
-    df = df.pivot_table(index=grouping_cols,
-                        columns="col", values="value")
+    df = df.pivot_table(index=grouping_cols, columns="col", values="value")
     df.fillna(0, inplace=True)
     df.reset_index(level=grouping_cols, inplace=True)
-    df["Total Losses"] = df['losses pilotDeath'] + df['losses eject']
+    df["Total Losses"] = df['pilotDeath total'] + df['eject total']
     tmp = ((
         df['Air-to-Air kills']
         #  + df['Gun kills']
@@ -410,11 +490,12 @@ async def calculate_overall_stats(grouping_cols: List) -> pd.DataFrame:
     df["A/G P(Kill)"] = ((df['A/G Kills'] / df['A/G Dropped']) * 100).round(1)
 
     df["Gun P(Hit)"] = ((df['Gun numHits'] / df['Gun shot']) * 100).round(1)
-    df["Gun P(Kill)"] = ((df['Gun kills'] / df['Gun shot']) * 100).round(1)
+    # df["Gun P(Kill)"] = ((df['Gun kills'] / df['Gun shot']) * 100).round(1)
 
     drop_cols = [
-        "losses pilotDeath",
-        "losses eject",
+        "pilotDeath total",
+        "crash total",
+        "eject total",
         "Air-to-Air numHits",
         "Gun numHits",
         "Bomb numHits",
@@ -425,10 +506,7 @@ async def calculate_overall_stats(grouping_cols: List) -> pd.DataFrame:
         "Gun gun",
         # "Bomb kills", "Air-to-Air kills", "A/G Kills", "Gun kills",
     ]
-    df.drop(
-        [d for d in drop_cols if d in df.columns],
-        axis=1,
-        inplace=True)
+    df.drop([d for d in drop_cols if d in df.columns], axis=1, inplace=True)
 
     df.fillna(0, inplace=True)
     df = df.replace([np.inf, -np.inf], 0)
@@ -451,80 +529,42 @@ async def calculate_overall_stats(grouping_cols: List) -> pd.DataFrame:
     return df
 
 
-def compute_metrics(results: pd.DataFrame) -> pd.DataFrame:
-    """Compute additional metrics, reorder columns, and sort."""
-    grouper = results.groupby(["pilot"])
-    data = grouper.sum().reset_index()
-
-    data['losses__total_deaths'] = data['losses__eject'] + data[
-        "losses__pilotDeath"]
-    data["kills__A/A Kill Ratio"] = (data["kills__Planes__total"] /
-                                     data["losses__total_deaths"])
-    data["kills__A/A Kill Ratio"] = data["kills__A/A Kill Ratio"].round(1)
-    data["kills__A/A Kills Total"] = data["kills__Planes__total"]
-    data.drop(labels=["kills__Planes__total"], axis=1, inplace=True)
-
-    data = data.replace([np.inf, -np.inf, np.nan], 0.0)
-
-    prio_cols = [
-        "pilot", "kills__A/A Kill Ratio", "kills__A/A Kills Total",
-        "losses__total_deaths", "kills__Ground Units__total",
-        "losses__pilotDeath", "losses__eject", "losses__crash",
-        "kills__Ships__total", "kills__Buildings__total"
-    ]
-
-    for i, col in enumerate(prio_cols):
-        try:
-            tmp = data[col]
-            data.drop(labels=[col], axis=1, inplace=True)
-            data.insert(i, col, tmp)
-        except KeyError:
-            log.error(f"Key {col} not in cols:")
-            for c in data.columns:
-                log.error(f"\t{c}")
-
-
-    data.fillna(0, inplace=True)
-    data = data.sort_values(by="kills__A/A Kill Ratio", ascending=False)
-    return data
-
-
-def get_subset(df: pd.DataFrame, subset_name: List) -> pd.DataFrame:
-    """Summarise by user, returning weapons columns only."""
-    drop_cols = []
-    for col in df.columns:
-        if col != "pilot" and not any([f"{s}__" in col for s in subset_name]):
-            drop_cols.append(col)
-    df.drop(labels=drop_cols, axis=1, inplace=True)
-
-    for sub in subset_name:
-        df.columns = [c.replace(f"{sub}__", "") for c in df.columns]
-
-    return df
-
-
 async def get_dataframe(subset: Optional[List] = None,
                         user_name: Optional[str] = None) -> pd.DataFrame:
     """Get stats in dataframe format suitable for HTML display."""
-    stat_data = await collect_stat_recs()
+    stat_data = await collect_recs_kv()
     if stat_data.empty:
         return pd.DataFrame()
 
     try:
-        df = compute_metrics(stat_data)
+        if user_name:
+            log.info(f"Filtering data for user = {user_name}")
+            stat_data = stat_data.query(f"pilot == '{user_name}'")
+
+        if subset:
+            stat_data = stat_data[stat_data.stat_group.isin(subset)]
+
+        if not subset or subset[0] == 'weapons':
+            idx_key = ['pilot', 'category', 'equipment']
+            col_key = ['metric']
+        elif subset[0] == 'losses':
+            idx_key = ['pilot', 'equipment']
+            col_key = ['category', 'metric', 'stat_group']
+        else:
+            idx_key = ['pilot', 'equipment']
+            col_key = ['category', 'metric', 'stat_group']
+
+        stat_data['key'] = stat_data[col_key].apply(
+            lambda x: '__'.join(x.map(str)), axis=1)
+
+        stat_data = stat_data.pivot_table(index=idx_key,
+                                          fill_value=0,
+                                          aggfunc=sum,
+                                          columns='key',
+                                          values="value")
+        stat_data.reset_index(level=idx_key, inplace=True)
+        stat_data = stat_data.loc[:, (stat_data != 0).any(axis=0)]
+        return stat_data
     except Exception as e:
-        log.error(f"Error computing metric!\n\r{e}\n\t{df}")
+        log.error(f"Error computing metric!\n\r{e}\n\t{stat_data}")
         raise e
-
-    if user_name:
-        df = df.query(f"pilot = {user_name}")
-
-    df.drop(labels=["id"], axis=1, inplace=True)
-    df = df[df.sum(axis=1) != 0.0]
-
-    if subset:
-        df = get_subset(df, subset)
-
-    df = format_cols(df)
-    df = df.loc[:, (df != 0).any(axis=0)]
-    return df

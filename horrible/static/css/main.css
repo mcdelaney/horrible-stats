@@ -15,6 +15,11 @@
 
  }
 
+ .body {
+    font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+    /* font-weight: 300; */
+ }
+
  .chartWrapper > canvas {
      position: absolute;
      left: 0;
@@ -37,6 +42,7 @@ html {
   color: #222;
   font-size: 1em;
   line-height: 1.4;
+  font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
 }
 
 /*
@@ -116,32 +122,41 @@ textarea {
   padding: 0.2em 0;
 }
 
-/* ==========================================================================
-   Author's custom styles
-   ========================================================================== */
 
-/* ==========================================================================
-   Helper classes
-   ========================================================================== */
+ .navbar {
+    font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+    border-bottom: 0.5px solid #D3D3D3;
+    color: white;
+    border-color: white;
+}
+.nav-link {
+    font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+    font-size: 17px;
+    color: white;
+    /* font-weight: bold; */
+}
 
-/*
- * Hide visually and from screen readers
- */
- .navbar
-        {
-            border-bottom:5px solid #000;
-        }
-/* navbar {
-  /* border-bottom: 5px; */
-  border-color: white;
-} */
 .dataTables_wrapper .dataTables_length {
    float: left;
+   font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+
  }
+
+.dataTables_filter {
+    color: white;
+    font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+
+}
 
 table.dataTable {
   background-color: transparent;
+  font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
 }
+
+.dataTable {
+    background-color: transparent;
+    font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+  }
 
 .hidden {
   display: none !important;
@@ -277,12 +292,10 @@ table.dataTable {
     border: 1px solid #999;
     page-break-inside: avoid;
   }
-  /*
-     * Printing Tables:
-     * https://web.archive.org/web/20180815150934/http://css-discuss.incutio.com/wiki/Printing_Tables
-     */
+
   thead {
     display: table-header-group;
+    font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
   }
   tr,
   img {
@@ -298,4 +311,7 @@ table.dataTable {
   h3 {
     page-break-after: avoid;
   }
+}
+tr {
+    font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
 }
