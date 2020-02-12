@@ -12,6 +12,8 @@ import requests
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
+consoleHandler = logging.StreamHandler()
+log.addHandler(consoleHandler)
 
 
 async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
@@ -25,7 +27,7 @@ async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
             blob = bucket.blob(gs_filename)
             meta = bucket.get_blob(gs_filename)
             if blob.exists() and file_.stat().st_mtime <= meta.updated.timestamp():
-                log.debug(f"Skipping file {file_.name}...already uploaded")
+                log.info(f"Skipping file {file_.name}...already uploaded")
             else:
                 if blob.exists():
                     log.info("Updating file...has changed since last update...")
@@ -46,7 +48,7 @@ async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
                         blob.upload_from_string(content)
                         enc_name = urllib.parse.quote(file_.name)
                         log.info(f"Sending update check request to frontend: {enc_name}...")
-                        requests.get("http://ahorribleserver.com/resync_file/?file_name={enc_name}")
+                        # requests.get("http://ahorribleserver.com/resync_file/?file_name={enc_name}")
                         break
                     except Exception as err:
                         log.error(err)
@@ -80,6 +82,6 @@ if __name__ == "__main__":
     if args.env != 'prod':
         args.remote_subdir = args.env + "/" + args.remote_subdir
         args.delete = False
-
+    log.info(f"Local path: {args.local_path}...")
     local_glob = args.local_path.glob(args.local_suffix)
     asyncio.run(upload_files(local_glob, args.remote_subdir, args.delete))
