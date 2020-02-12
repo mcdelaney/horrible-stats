@@ -4,19 +4,19 @@ import gzip
 import logging
 from pathlib import Path
 
+from google.cloud import storage
 import requests
 
-from horrible.database import db
-from horrible.gcs import get_gcs_bucket
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
 
 
-async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool, db):
+async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
     """Upload files to GCP bucket."""
-    bucket = get_gcs_bucket()
+    client = storage.Client()
+    bucket = client.get_bucket('horrible-server')
     for file_ in local_path_glob:
         try:
             log.debug(f"Processing {file_.absolute()}...")
@@ -56,7 +56,7 @@ async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool, 
             log.error(e)
             log.info("File is open...skipping...")
     requests.get("http://ahorribleserver.com/check_db_files")
-    # await sync_gs_files_with_db("mission-stats", stat_files, db)
+
 
 
 if __name__ == "__main__":
@@ -78,4 +78,4 @@ if __name__ == "__main__":
         args.delete = False
 
     local_glob = args.local_path.glob(args.local_suffix)
-    asyncio.run(upload_files(local_glob, args.remote_subdir, args.delete, db))
+    asyncio.run(upload_files(local_glob, args.remote_subdir, args.delete))
