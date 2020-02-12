@@ -48,7 +48,6 @@ async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
                         log.error(err)
                         tries += 1
 
-
                 if delete_files:
                     log.info("File uploaded...deleting...")
                     file_.unlink()
