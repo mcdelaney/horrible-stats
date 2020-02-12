@@ -55,6 +55,7 @@ async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
         except Exception as e:
             log.error(e)
             log.info("File is open...skipping...")
+    log.info("Sending update check request to frontend...")
     requests.get("http://ahorribleserver.com/check_db_files")
 
 
