@@ -7,6 +7,8 @@ from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
 import pandas as pd
 import sqlalchemy as sa
+import urllib.parse
+
 
 from horrible.database import db, weapon_types, stat_files, frametime_files
 from horrible import read_stats
@@ -14,6 +16,9 @@ from horrible import read_stats
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.INFO)
+consoleHandler = logging.StreamHandler()
+log.addHandler(consoleHandler)
+
 
 templates = Jinja2Templates(directory='horrible/templates')
 app = FastAPI(title="Stat-Server")
@@ -48,15 +53,19 @@ async def check_db_files(request: Request):
     return "ok"
 
 
-@app.get("/resync_stat_file")
-async def resync_stat_file(request: Request, file_name: str):
+@app.get("/resync_file/")
+async def resync_file(request: Request, file_name: str):
     """Delete a previously processed file from the database, triggering a re-sync."""
+    file_name = urllib.parse.unquote(file_name)
+    log.info(f"Resyncing file: {file_name}")
     async with db.transaction():
         await db.execute(f"""DELETE FROM mission_stats
             WHERE file_name = '{file_name}'""")
         await db.execute(f"""DELETE FROM mission_stat_files
             WHERE file_name = '{file_name}'""")
-    return RedirectResponse("/stats_logs")
+    tasks = BackgroundTasks()
+    tasks.add_task(read_stats.update_all_logs_and_stats)
+    return "ok"
 
 
 @app.get("/stat_logs")
@@ -65,8 +74,8 @@ async def get_stat_logs(request: Request):
     tasks = BackgroundTasks()
     tasks.add_task(read_stats.update_all_logs_and_stats)
     try:
-        data = await db.fetch_all(query=stat_files.select())
-        data = pd.DataFrame.from_records(data, index=None)
+        data_recs = await db.fetch_all(query=stat_files.select())
+        data = pd.DataFrame.from_records(data_recs, index=None)
         # Convert datetimes into strings because json cant serialize them otherwise.
         data[['processed_at', 'session_start_time'
               ]] = data[['processed_at',
@@ -86,8 +95,8 @@ async def get_stat_logs(request: Request):
 @app.get("/frametime_logs")
 async def get_frametime_logs(request: Request):
     """Get a json dictionary of mission-stat file status data."""
-    data = await db.fetch_all(frametime_files.select())
-    data = pd.DataFrame.from_records(data, index=None)
+    data_recs = await db.fetch_all(frametime_files.select())
+    data = pd.DataFrame.from_records(data_recs, index=None)
     # Convert datetimes into strings because json cant serialize them otherwise.
     data[['processed_at',
           'session_start_time']] = data[['processed_at', 'session_start_time'
