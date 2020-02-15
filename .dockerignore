@@ -4,3 +4,5 @@ __pycache__/**/*
 horrible/cache/**
 postgresql_/*
 database/postgresql_/*
+database/pgdata/**
+horrible/mission-stats/**

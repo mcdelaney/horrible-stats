@@ -6,9 +6,10 @@ from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
 import pandas as pd
+from pathlib import Path
 import sqlalchemy as sa
 import urllib.parse
-
+from typing import Optional
 
 from horrible.database import db, weapon_types, stat_files, frametime_files
 from horrible import read_stats
@@ -19,10 +20,11 @@ log.setLevel(level=logging.INFO)
 consoleHandler = logging.StreamHandler()
 log.addHandler(consoleHandler)
 
-
 templates = Jinja2Templates(directory='horrible/templates')
 app = FastAPI(title="Stat-Server")
-app.mount("/main", StaticFiles(directory="horrible/static", html=True), name="static")
+app.mount("/main",
+          StaticFiles(directory="horrible/static", html=True),
+          name="static")
 
 
 @app.on_event("startup")
@@ -57,14 +59,14 @@ async def check_db_files(request: Request):
 async def resync_file(request: Request, file_name: str):
     """Delete a previously processed file from the database, triggering a re-sync."""
     file_name = urllib.parse.unquote(file_name)
-    log.info(f"Resyncing file: {file_name}")
-    async with db.transaction():
-        await db.execute(f"""DELETE FROM mission_stats
-            WHERE file_name = '{file_name}'""")
-        await db.execute(f"""DELETE FROM mission_stat_files
-            WHERE file_name = '{file_name}'""")
-    tasks = BackgroundTasks()
-    tasks.add_task(read_stats.update_all_logs_and_stats)
+    if 'mission-stats' in file_name:
+        log.info(f"Resyncing file: {file_name}")
+        async with db.transaction():
+            await db.execute(f"""DELETE FROM mission_stats
+                WHERE file_name = '{Path(file_name).name}'""")
+            await db.execute(f"""DELETE FROM mission_stat_files
+                WHERE file_name = '{Path(file_name).name}'""")
+        await read_stats.update_all_logs_and_stats(db)
     return "ok"
 
 
@@ -134,8 +136,7 @@ async def get_weapon_db_logs(request: Request):
 @app.get("/overall")
 async def get_overall_stats(request: Request):
     """Get a json dictionary of grouped statistics as key-value pairs."""
-    data = await read_stats.calculate_overall_stats(
-        grouping_cols=['pilot'])
+    data = await read_stats.calculate_overall_stats(grouping_cols=['pilot'])
     data = data.to_dict('split')
     return JSONResponse(content=data)
 
@@ -172,8 +173,31 @@ async def weapon_stats(request: Request):
     return JSONResponse(content=data.to_dict('split'))
 
 
-@app.get("/survivability")
-async def suvival_stats(request: Request):
+@app.get("/kills")
+async def kill_detail(request: Request):
     """Return a rendered template showing kill/loss statistics."""
-    data = await read_stats.get_dataframe(subset=["kills", "losses"])
+    data = await read_stats.get_dataframe(subset=["kills"])
     return JSONResponse(content=data.to_dict("split"))
+
+
+@app.get("/losses")
+async def loss_detail(request: Request):
+    """Return a rendered template showing kill/loss statistics."""
+    data = await read_stats.get_dataframe(subset=["losses"])
+    return JSONResponse(content=data.to_dict("split"))
+
+
+@app.get("/raw_cats/")
+async def raw_cats(request: Request, pilot: str = None):
+    """Return a rendered template showing kill/loss statistics."""
+    data = await read_stats.collect_recs_kv()
+
+    if pilot:
+        data = data.query(f"pilot == '{urllib.parse.unquote(pilot)}'")
+        data.reset_index(drop=True, inplace=True)
+
+    data = data.groupby(
+        ['session_date', 'equipment', 'stat_group', 'key_orig', 'category', 'metric'],
+        as_index=False).sum()
+    data.sort_values(by=['session_date'], ascending=False, inplace=True)
+    return HTMLResponse(content=data.to_html())

@@ -21,6 +21,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
   CREATE TABLE IF NOT EXISTS mission_stats (
       file_name VARCHAR(500) REFERENCES mission_stat_files(file_name),
       pilot varchar(500),
+      pilot_id INTEGER,
       record json
   );
 

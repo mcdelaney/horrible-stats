@@ -100,8 +100,9 @@ function load_dt(path) {
     "weapon_db": [],
     "detail": [[data.columns.length-1, "desc"]],
     "tacview": [],
-    "weapons": [],
-    "survivability": [[1, "desc"]],
+    "weapons": [3, 'desc'],
+    "losses": [[1, "desc"]],
+    "kills": [[3, "desc"]],
     "frametime_logs": [[1, "desc"]]
   }
 
