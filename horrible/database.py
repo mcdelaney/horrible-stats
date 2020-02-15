@@ -59,6 +59,7 @@ mission_stats = sqlalchemy.Table(
     sqlalchemy.Column("file_name", sqlalchemy.String(),
                       sqlalchemy.ForeignKey('mission_stat_files.file_name')),
     sqlalchemy.Column("pilot", sqlalchemy.String()),
+    sqlalchemy.Column("pilot_id", sqlalchemy.Integer),
     sqlalchemy.Column("record", sqlalchemy.JSON())
 )
 

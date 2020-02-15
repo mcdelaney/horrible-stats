@@ -48,7 +48,6 @@ async def upload_files(local_path_glob, remote_subdir: str, delete_files: bool):
                         blob.upload_from_string(content)
                         enc_name = urllib.parse.quote(file_.name)
                         log.info(f"Sending update check request to frontend: {enc_name}...")
-                        # requests.get("http://ahorribleserver.com/resync_file/?file_name={enc_name}")
                         break
                     except Exception as err:
                         log.error(err)
