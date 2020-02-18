@@ -10,3 +10,4 @@ horrible/cache/**
 **/frametimes/**
 **/.mypy_cache/**
 database/pgdata/**
+.vscode/settings.json
