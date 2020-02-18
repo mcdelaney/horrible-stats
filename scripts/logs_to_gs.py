@@ -6,7 +6,6 @@ from pathlib import Path
 import urllib.parse
 
 from google.cloud import storage
-import requests
 
 
 logging.basicConfig(level=logging.INFO)
