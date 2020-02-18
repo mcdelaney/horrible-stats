@@ -95,10 +95,9 @@ function load_dt(path) {
 
   var sortKeys = {
     "overall":  [[ 1, "desc" ]],
-    "session_performance":  [[ 0, "desc" ]],
+    "session_performance": [],
     "stat_logs":  [[ 1, "desc" ]],
     "weapon_db": [],
-    "detail": [[data.columns.length-1, "desc"]],
     "tacview": [],
     "weapons": [3, 'desc'],
     "losses": [[1, "desc"]],
@@ -110,18 +109,6 @@ function load_dt(path) {
     data: data.data,
     columns: cols,
     order: sortKeys[path],
-    // processing: true,
-    // language: {
-    //   processing: '<section class="wrapper"><div class="spinner"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></section>'
-    // },
-
-    // rowGroup: {
-    //     dataSrc: [ 1, 0, 2,3 ]
-    // },
-    // columnDefs: [ {
-    //     targets: [ 0, 1, 2, 3 ],
-    //     visible: false
-    // } ],
     paging: false,
     pageLength: 50,
     rowId: "index",

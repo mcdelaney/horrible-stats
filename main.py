@@ -154,14 +154,7 @@ async def get_session_perf_stats(request: Request):
     """Get a json dictionary of grouped statistics as key-value pairs."""
     data = await read_stats.calculate_overall_stats(
         grouping_cols=['session_date', 'pilot'])
-    data = data.to_dict('split')
-    return JSONResponse(content=data)
-
-
-@app.get("/detail")
-async def get_detail_stats(request: Request):
-    """Get a json dictionary of grouped statistics as key-value pairs."""
-    data = await read_stats.all_category_grouped()
+    data.sort_values(by=['session_date', 'A/A Kills'], ascending=False, inplace=True)
     data = data.to_dict('split')
     return JSONResponse(content=data)
 
