@@ -58,14 +58,22 @@ async def check_db_files(request: Request):
 @app.get("/resync_file/")
 async def resync_file(request: Request, file_name: str):
     """Delete a previously processed file from the database, triggering a re-sync."""
-    file_name = urllib.parse.unquote(file_name)
+    stat_file_name = Path(urllib.parse.unquote(file_name))
     if 'mission-stats' in file_name:
-        log.info(f"Resyncing file: {file_name}")
+        log.info(f"Attempting to resync stats-file: {stat_file_name}...")
+        log.info(f"Deleting filename: {stat_file_name} from database...")
         async with db.transaction():
             await db.execute(f"""DELETE FROM mission_stats
-                WHERE file_name = '{Path(file_name).name}'""")
+                WHERE file_name = '{stat_file_name}'""")
             await db.execute(f"""DELETE FROM mission_stat_files
-                WHERE file_name = '{Path(file_name).name}'""")
+                WHERE file_name = '{stat_file_name}'""")
+
+            # local_cache = Path("horrible/data/" + file_name)
+            if stat_file_name.exists():
+                stat_file_name.unlink()
+            else:
+                log.warning("Local cached copy of file not found!")
+
         await read_stats.update_all_logs_and_stats(db)
     return "ok"
 

@@ -242,7 +242,8 @@ async def process_lua_records() -> None:
                                 FROM mission_stat_files
                                 WHERE file_name = '{stat['file_name']}'
                              ),
-                             processed_at = CURRENT_TIMESTAMP
+                             processed_at = CURRENT_TIMESTAMP,
+                             error_msg = '{str(err)}'
                              WHERE file_name = '{stat['file_name']}'
                                 """)
 

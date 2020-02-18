@@ -49,7 +49,8 @@ stat_files = sqlalchemy.Table(
     sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
     sqlalchemy.Column("processed_at", sqlalchemy.TIMESTAMP()),
-    sqlalchemy.Column("errors", sqlalchemy.Integer)
+    sqlalchemy.Column("errors", sqlalchemy.Integer),
+    sqlalchemy.Column("error_msg", sqlalchemy.String()),
 )
 
 
