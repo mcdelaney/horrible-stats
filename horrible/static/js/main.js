@@ -89,7 +89,7 @@ function load_dt(path) {
     for (var n = 0; n < col_nm.length; n++) {
       col_nm[n] = col_nm[n].charAt(0).toUpperCase() + col_nm[n].slice(1);
     }
-    var col_nm = {"title": col_nm.join(" ")};
+    col_nm = {"title": col_nm.join(" ")};
     if (col_nm.title === 'Session Date') {
         col_nm.render = function(data, type) {
             return type === 'sort' ? data : moment(data).format('L');

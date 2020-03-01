@@ -6,7 +6,7 @@ import sqlite3
 
 from fastapi import FastAPI, BackgroundTasks
 import pandas as pd
-from starlette.responses import JSONResponse, RedirectResponse, HTMLResponse
+from starlette.responses import JSONResponse, HTMLResponse
 from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
@@ -265,8 +265,8 @@ async def get_kill_coords(request: Request, pilot: str, sec_offset: int):
         """, conn)
     points = cast(pd.DataFrame, points)
     # points = pd.DataFrame(points)
-    times = pd.DataFrame({'time_offset': [points['time_offset'].min(),
-                                          points['time_offset'].max()]})
+    times = pd.DataFrame({'time_offset': [points.time_offset.min(),
+                                          points.time_offset.max()]})
 
     data = {
             'weapon_id': weapon_id,
