@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import threading
 import traceback
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, cast
 
 import asyncpg
 import numpy as np
@@ -542,7 +542,9 @@ async def get_dataframe(subset: Optional[List] = None,
             stat_data = stat_data.query(f"pilot == '{user_name}'")
 
         if subset:
-            stat_data = stat_data[stat_data.stat_group.isin(subset)]
+            stat_data =  stat_data[stat_data.stat_group.isin(subset)]
+
+        stat_data = cast(pd.DataFrame, stat_data)
 
         if not subset or subset[0] == 'weapons':
             idx_key = ['pilot', 'category', 'equipment']
