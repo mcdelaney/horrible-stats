@@ -614,7 +614,7 @@ async def read_events() -> pd.DataFrame:
     events = await db.fetch_all(query=mission_events.select())
     events = [e['record'] for e in events if e['record']['type'] in return_types]
     events = pd.DataFrame(events, index=None)
-    events = events.fillna(0)
+    events = events.fillna('None')
     log.info(f"Returning data with {events.shape[0]} rows and {events.shape[1]} cols...")
     return events
 
