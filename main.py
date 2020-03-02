@@ -11,7 +11,7 @@ from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
 
-from horrible.database import db, weapon_types, stat_files, frametime_files
+from horrible.database import db, weapon_types, stat_files, frametime_files, event_files
 from horrible import read_stats
 
 
@@ -87,6 +87,30 @@ async def get_stat_logs(request: Request):
     tasks.add_task(read_stats.update_all_logs_and_stats)
     try:
         data_recs = await db.fetch_all(query=stat_files.select())
+        data = pd.DataFrame.from_records(data_recs, index=None)
+        # Convert datetimes into strings because json cant serialize them otherwise.
+        data[['processed_at', 'session_start_time'
+              ]] = data[['processed_at',
+                         'session_start_time']].astype(str)  # type: ignore
+        # Make sure columns are correctly ordered.
+        # This table will render incorrectly if we dont... I don't know why.
+        data = data[[
+            "file_name", "session_start_time", "processed", "processed_at",
+            "errors"
+        ]]
+        return JSONResponse(content=data.to_dict('split'))  # type: ignore
+    except Exception as e:
+        log.error(e)
+        return JSONResponse(content={})
+
+
+@app.get("/event_logs")
+async def get_event_logs(request: Request):
+    """Get a json dictionary of mission-event file status data."""
+    tasks = BackgroundTasks()
+    tasks.add_task(read_stats.update_all_logs_and_stats)
+    try:
+        data_recs = await db.fetch_all(query=event_files.select())
         data = pd.DataFrame.from_records(data_recs, index=None)
         # Convert datetimes into strings because json cant serialize them otherwise.
         data[['processed_at', 'session_start_time'
@@ -200,7 +224,7 @@ async def tacview_detail(request: Request):
 @app.get("/events")
 async def event_detail(request: Request):
     """Return SlMod event records."""
-    data = await read_stats.get_dataframe(subset=["event"])
+    data = await read_stats.read_events()
     return JSONResponse(content=data.to_dict("split"))
 
 

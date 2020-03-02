@@ -7,14 +7,13 @@ import threading
 import traceback
 from typing import Dict, List, Optional, cast
 
-import asyncpg
 import numpy as np
 from lupa import LuaRuntime
 import pandas as pd
 import sqlalchemy as sa
 
 from horrible.database import (db, frametime_files, mission_stats, stat_files,
-                               weapon_types)
+                               weapon_types, event_files, mission_events)
 from horrible.gcs import get_gcs_bucket, sync_gs_files_with_db
 
 logging.basicConfig(level=logging.INFO)
@@ -29,8 +28,10 @@ async def update_all_logs_and_stats(db) -> None:
     log.info("Syncing log files and updating stats...")
     await sync_weapons()
     await sync_gs_files_with_db('mission-stats/', stat_files, db)
+    await sync_gs_files_with_db('mission-events/', event_files, db)
     await sync_gs_files_with_db('frametime/', frametime_files, db)
-    await process_lua_records()
+    await process_lua_records('mission-stats')
+    await process_lua_records('mission-events')
     log.info("All log and stats files updated...")
 
 
@@ -155,9 +156,28 @@ def result_to_flat_dict(record: collections.MutableMapping,
     return dict(items)
 
 
-def read_lua_table(stat: Path) -> Optional[List]:
-    """Read a single json file, returning a dict."""
-    with stat.open('r') as fp_:
+def read_event_table(file_name: Path) -> Optional[List]:
+    """Read a single event file."""
+    results = []
+    with file_name.open('r') as fp_:
+        for line in fp_.readlines():
+            if line == 'slmod.events = {}':
+                continue
+            try:
+                line = re.sub("slmod.events\\[[0-9]{1,}\\] = ", "", line)
+                rec = eval(line.replace('[', "").replace('] =', ':'))
+                results.append({
+                    'file_name': str(file_name),
+                    'record': rec
+                })
+            except Exception:
+                log.error(line)
+    return results
+
+
+def read_lua_table(file_name: Path) -> Optional[List]:
+    """Read a single lua stat file, returning a dict."""
+    with file_name.open('r') as fp_:
         file_contents = " ".join([f for f in fp_.readlines()])
     if file_contents == "placeholder":
         return None
@@ -188,7 +208,7 @@ def read_lua_table(stat: Path) -> Optional[List]:
     for res in result.values():
         tmp = result_to_flat_dict(res)
         entry = {
-            'file_name': str(stat),
+            'file_name': str(file_name),
             'pilot': tmp.pop('pilot'),
             'pilot_id': tmp.pop('id'),
             'record': tmp
@@ -197,13 +217,26 @@ def read_lua_table(stat: Path) -> Optional[List]:
     return results_out
 
 
-async def process_lua_records() -> None:
+async def process_lua_records(file_type) -> None:
     """Parse a directory of Sl-Mod stats files, returning a pandas dataframe."""
-    Path("mission-stats").mkdir(parents=True, exist_ok=True)
+    Path(file_type).mkdir(parents=True, exist_ok=True)
     bucket = get_gcs_bucket()
-    stats_files = await db.fetch_all(
-        stat_files.select(sa.text("processed=FALSE")))
-    for stat in stats_files:
+    if file_type == "mission-stats":
+        proc_files = await db.fetch_all(
+            stat_files.select(sa.text("processed=FALSE")))
+        rec_table = mission_stats
+        file_table = 'mission_stat_files'
+        proc_fun = read_lua_table
+    elif file_type == "mission-events":
+        proc_files = await db.fetch_all(
+            event_files.select(sa.text("processed=FALSE")))
+        rec_table = mission_events
+        file_table = 'mission_event_files'
+        proc_fun = read_event_table
+    else:
+        raise NotImplementedError
+
+    for stat in proc_files:
         try:
             log.info(f"Handing {stat['file_name']}")
             if stat['file_name'] == "mission-stats/":
@@ -220,16 +253,19 @@ async def process_lua_records() -> None:
                     log.error(f"Error downloading file! {e}")
                     raise ValueError("File could not be downloaded")
 
-            stat_parsed = read_lua_table(local_path)
+            stat_parsed = proc_fun(local_path)
             log.info("Dumping record to database...")
             if stat_parsed:
-                insert = mission_stats.insert()
+                log.info(stat_parsed)
+                insert = rec_table.insert()
                 await db.execute_many(insert, stat_parsed)
 
             log.info("Marking record as processed...")
-            await db.execute(f"""UPDATE mission_stat_files
-                             SET processed = TRUE,
-                             processed_at = date_trunc('second', CURRENT_TIMESTAMP)
+            await db.execute(f"""UPDATE {file_table}
+                             SET
+                                processed = TRUE,
+                                errors = 0,
+                                processed_at = date_trunc('second', CURRENT_TIMESTAMP)
                                 WHERE file_name = '{stat['file_name']}'
                                 """)
             log.info("Record processing complete...")
@@ -237,16 +273,16 @@ async def process_lua_records() -> None:
         except Exception as err:
             log.error(f"Error handling file: \n\t{stat['file_name']}\n\t{err}")
             traceback.print_tb(err.__traceback__)
-            await db.execute(f"""UPDATE mission_stat_files
+            await db.execute(f"""UPDATE {file_table}
                              SET errors = (
                                 SELECT errors+1 as err
-                                FROM mission_stat_files
+                                FROM {file_table}
                                 WHERE file_name = '{stat['file_name']}'
                              ),
                              processed_at = CURRENT_TIMESTAMP,
-                             error_msg = '{str(err)}'
+                             error_msg = :err
                              WHERE file_name = '{stat['file_name']}'
-                                """)
+                                """, values={'err': str(err)})
 
 
 def format_cols(df: pd.DataFrame) -> pd.DataFrame:
@@ -533,6 +569,7 @@ async def get_dataframe(subset: Optional[List] = None,
                         user_name: Optional[str] = None) -> pd.DataFrame:
     """Get stats in dataframe format suitable for HTML display."""
     stat_data = await collect_recs_kv()
+    stat_data = cast(pd.DataFrame, stat_data)
     if stat_data.empty:
         return pd.DataFrame()
 
@@ -570,3 +607,16 @@ async def get_dataframe(subset: Optional[List] = None,
     except Exception as e:
         log.error(f"Error computing metric!\n\r{e}\n\t{stat_data}")
         raise e
+
+
+async def read_events() -> pd.DataFrame:
+    """Return a dataframe of event log data."""
+    return_types = ['kill', 'hit']
+    events = await db.fetch_all(query=mission_events.select())
+    events = [e['record'] for e in events if e['record']['type'] in return_types]
+    events = pd.DataFrame(events, index=None)
+    events = events.fillna(0)
+    log.info(f"Returning data with {events.shape[0]} rows and {events.shape[1]} cols...")
+    return events
+
+

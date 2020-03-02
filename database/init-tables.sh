@@ -26,6 +26,21 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
       record json
   );
 
+  CREATE TABLE IF NOT EXISTS mission_event_files (
+      file_name VARCHAR(500) PRIMARY KEY,
+      session_start_time TIMESTAMP,
+      processed boolean DEFAULT FALSE,
+      processed_at timestamp DEFAULT NULL,
+      uploaded_at timestamp DEFAULT date_trunc('second', CURRENT_TIMESTAMP),
+      errors INTEGER DEFAULT 0,
+      error_msg VARCHAR(500) DEFAULT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS mission_events (
+      file_name VARCHAR(500) REFERENCES mission_event_files(file_name),
+      record json
+  );
+
   CREATE TABLE IF NOT EXISTS frametime_files (
       file_name VARCHAR(500) PRIMARY KEY,
       session_start_time TIMESTAMP,

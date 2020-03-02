@@ -64,6 +64,26 @@ mission_stats = sqlalchemy.Table(
     sqlalchemy.Column("record", sqlalchemy.JSON())
 )
 
+event_files = sqlalchemy.Table(
+    "mission_event_files",
+    metadata,
+    sqlalchemy.Column("file_name", sqlalchemy.String(), primary_key=True),
+    sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("processed", sqlalchemy.Boolean()),
+    sqlalchemy.Column("processed_at", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("errors", sqlalchemy.Integer),
+    sqlalchemy.Column("error_msg", sqlalchemy.String()),
+)
+
+
+mission_events = sqlalchemy.Table(
+    "mission_events",
+    metadata,
+    sqlalchemy.Column("file_name", sqlalchemy.String(),
+                      sqlalchemy.ForeignKey('mission_event_files.file_name')),
+    sqlalchemy.Column("record", sqlalchemy.JSON())
+)
+
 
 frametime_files = sqlalchemy.Table(
     "frametime_files",
@@ -88,7 +108,8 @@ frametimes = sqlalchemy.Table(
 
 file_format_ref = {
     'mission-stats/': parse_mission_stat_ts,
-    'frametime/': parse_frametime_ts
+    'frametime/': parse_frametime_ts,
+    'mission-events/': parse_mission_stat_ts
 }
 
 
