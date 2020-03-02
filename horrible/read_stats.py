@@ -256,7 +256,6 @@ async def process_lua_records(file_type) -> None:
             stat_parsed = proc_fun(local_path)
             log.info("Dumping record to database...")
             if stat_parsed:
-                log.info(stat_parsed)
                 insert = rec_table.insert()
                 await db.execute_many(insert, stat_parsed)
 

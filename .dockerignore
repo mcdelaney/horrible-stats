@@ -4,8 +4,9 @@ __pycache__/**/*
 horrible/cache/**
 postgresql_/*
 database/postgresql_/*
-database/pgdata/**
+database/pgdata/**/**
 horrible/mission-stats/**
 horrible/mission-events/**
 horrible/framtimes/**
 **/**/.mypy_cache/**/**
+horrible/data/dcs.db*
