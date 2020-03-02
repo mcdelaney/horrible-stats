@@ -190,6 +190,20 @@ async def loss_detail(request: Request):
     return JSONResponse(content=data.to_dict("split"))
 
 
+@app.get("/tacview")
+async def tacview_detail(request: Request):
+    """Return tacview download links."""
+    data = pd.DataFrame()
+    return JSONResponse(content=data.to_dict("split"))
+
+
+@app.get("/events")
+async def event_detail(request: Request):
+    """Return SlMod event records."""
+    data = await read_stats.get_dataframe(subset=["event"])
+    return JSONResponse(content=data.to_dict("split"))
+
+
 @app.get("/raw_cats/")
 async def raw_cats(request: Request, pilot: str = None):
     """Return a rendered template showing kill/loss statistics."""
@@ -211,14 +225,6 @@ async def raw_cats(request: Request, pilot: str = None):
 async def serve_killcam(request: Request):
     """Serve the index.html template."""
     with open("horrible/static/killcam.html", mode='r') as fp_:
-        page = fp_.read()
-    return HTMLResponse(page)
-
-
-@app.get("/test")
-async def serve_test(request: Request):
-    """Serve the index.html template."""
-    with open("horrible/static/test.html", mode='r') as fp_:
         page = fp_.read()
     return HTMLResponse(page)
 
@@ -264,7 +270,7 @@ async def get_kill_coords(request: Request, pilot: str, sec_offset: int):
         FROM lagged
         """, conn)
     points = cast(pd.DataFrame, points)
-    # points = pd.DataFrame(points)
+
     times = pd.DataFrame({'time_offset': [points.time_offset.min(),
                                           points.time_offset.max()]})
 
