@@ -103,7 +103,7 @@ function load_dt(path) {
             ],
             "weapon_db": [],
             "tacview": [],
-            "events": [],
+            "events": [[1, "desc"]],
             "weapons": [3, 'desc'],
             "losses": [
                 [1, "desc"]
