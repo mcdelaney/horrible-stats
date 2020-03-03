@@ -628,7 +628,7 @@ async def read_events() -> pd.DataFrame:
     events['initiator'] = events.initiatorPilotName.combine_first(events.initiator)
     events['target'] = events.targetPilotName.combine_first(events.target)
     events['StartTime'] = events['t']
-    events = events[['file_name', 'session_start_time', 'type', 'initiator',
+    events = events[['file_name', 'session_date', 'type', 'initiator',
                      'target', 'weapon', 'numtimes', 'target_objtype',
                      'initiator_objtype', 'StartTime', 'stoptime']]
 
