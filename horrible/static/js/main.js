@@ -95,7 +95,7 @@ function load_dt(path) {
 
         var sortKeys = {
             "overall": [
-                [1, "desc"]
+                [2, "desc"]
             ],
             "session_performance": [],
             "stat_logs": [

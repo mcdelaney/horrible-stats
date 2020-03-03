@@ -13,7 +13,8 @@ import pandas as pd
 import sqlalchemy as sa
 
 from horrible.database import (db, frametime_files, mission_stats, stat_files,
-                               weapon_types, event_files, mission_events)
+                               weapon_types, event_files, mission_events,
+                               event_files)
 from horrible.gcs import get_gcs_bucket, sync_gs_files_with_db
 
 logging.basicConfig(level=logging.INFO)
@@ -611,15 +612,25 @@ async def get_dataframe(subset: Optional[List] = None,
 async def read_events() -> pd.DataFrame:
     """Return a dataframe of event log data."""
     return_types = ['kill', 'hit']
-    recs = await db.fetch_all(mission_events.select())
-    recs = [e['record'] for e in recs if e['record']['type'] in return_types]
+
+    evt = await db.fetch_all(event_files.select())
+    evt_files = {r['file_name']: r['session_start_time'] for r in evt}
+    resp = await db.fetch_all(mission_events.select())
+    recs = []
+    for item in resp:
+        if item['record']['type'] in return_types:
+            tmp = item['record']
+            tmp['file_name'] = item['file_name']
+            tmp['session_start_time'] = str(evt_files[item['file_name']])
+            recs.append(tmp)
     events = pd.DataFrame(recs, index=None)
-    log.info(events.columns)
+
     events['initiator'] = events.initiatorPilotName.combine_first(events.initiator)
     events['target'] = events.targetPilotName.combine_first(events.target)
-
-    events = events[['type', 'initiator', 'target', 'weapon', 'numtimes', 'target_objtype',
-                     'initiator_objtype', 't', 'stoptime']]
+    events['StartTime'] = events['t']
+    events = events[['file_name', 'session_start_time', 'type', 'initiator',
+                     'target', 'weapon', 'numtimes', 'target_objtype',
+                     'initiator_objtype', 'StartTime', 'stoptime']]
 
     events = events.fillna('None')
     log.info(f"Returning data with {events.shape[0]} rows and {events.shape[1]} cols...")
