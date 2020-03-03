@@ -611,9 +611,16 @@ async def get_dataframe(subset: Optional[List] = None,
 async def read_events() -> pd.DataFrame:
     """Return a dataframe of event log data."""
     return_types = ['kill', 'hit']
-    events = await db.fetch_all(query=mission_events.select())
-    events = [e['record'] for e in events if e['record']['type'] in return_types]
-    events = pd.DataFrame(events, index=None)
+    recs = await db.fetch_all(mission_events.select())
+    recs = [e['record'] for e in recs if e['record']['type'] in return_types]
+    events = pd.DataFrame(recs, index=None)
+    log.info(events.columns)
+    events['initiator'] = events.initiatorPilotName.combine_first(events.initiator)
+    events['target'] = events.targetPilotName.combine_first(events.target)
+
+    events = events[['type', 'initiator', 'target', 'weapon', 'numtimes', 'target_objtype',
+                     'initiator_objtype', 't', 'stoptime']]
+
     events = events.fillna('None')
     log.info(f"Returning data with {events.shape[0]} rows and {events.shape[1]} cols...")
     return events
