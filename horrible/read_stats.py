@@ -621,7 +621,7 @@ async def read_events() -> pd.DataFrame:
         if item['record']['type'] in return_types:
             tmp = item['record']
             tmp['file_name'] = item['file_name']
-            tmp['session_start_time'] = str(evt_files[item['file_name']])
+            tmp['session_time'] = str(evt_files[item['file_name']])
             recs.append(tmp)
     events = pd.DataFrame(recs, index=None)
 
