@@ -6,4 +6,5 @@ RUN apt-get update && \
   apt-get install gcc curl -y && \
   pip install --no-cache-dir -r /tmp/requirements.txt && \
   mkdir -p /app/log/ && \
-  mkdir -p /app/cache/mission-stats
+  mkdir -p /app/cache/mission-stats && \
+  mkdir -p /app/cache/mission-events
