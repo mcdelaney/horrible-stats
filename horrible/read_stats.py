@@ -162,7 +162,7 @@ def read_event_table(file_name: Path) -> Optional[List]:
     results = []
     with file_name.open('r') as fp_:
         for line in fp_.readlines():
-            if line == 'slmod.events = {}':
+            if line .strip() == 'slmod.events = {}':
                 continue
             try:
                 line = re.sub("slmod.events\\[[0-9]{1,}\\] = ", "", line)
@@ -171,8 +171,10 @@ def read_event_table(file_name: Path) -> Optional[List]:
                     'file_name': str(file_name),
                     'record': rec
                 })
-            except Exception:
-                log.error(line)
+            except Exception as err:
+                log.error(err)
+                raise err
+
     return results
 
 
@@ -617,6 +619,9 @@ async def read_events() -> pd.DataFrame:
     evt_files = {r['file_name']: r['session_start_time'] for r in evt}
     resp = await db.fetch_all(mission_events.select())
     recs = []
+    if not resp:
+        log.info("Empty response! No events!")
+        return pd.DataFrame()
     for item in resp:
         if item['record']['type'] in return_types:
             tmp = item['record']

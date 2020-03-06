@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="/main/css/stars.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.css"/>
 
+    <script src="/main/js/three.min.js"></script>
+    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js"></script>
@@ -46,6 +48,9 @@
                 <a  id="events" class="nav-link" href="#">Events</a>
               </li>
               <li class="nav-item">
+                <a  id="killcam" class="nav-link" href="#">KillCam</a>
+              </li>
+              <li class="nav-item">
                 <a  id="event_logs" class="nav-link" href="#">Event-Db-Status</a>
               </li>
               <li class="nav-item">
@@ -57,9 +62,9 @@
               <li class="nav-item">
                 <a id="tacview" class="nav-link" href="#">Tacview</a>
               </li>
-              <li class="nav-item">
+              <!-- <li class="nav-item">
                 <a id="frametime_logs" class="nav-link" href="#">Frametime Logs</a>
-              </li>
+              </li> -->
               <!-- <li class="nav-item">
                 <a id="frametime_charts" class="nav-link" href="#">Frametime Charts</a>
               </li> -->
@@ -67,6 +72,9 @@
           </nav>
 
           <div id="table_container" style="padding-top:15px">
+            <div id="killcam_div"></div>
+            <div id="load_spin" class="spinner-border text-primary" style="margin-top:25px;position:relative;left:50%;"></div>
+
             <div id="overall_container">
               <table id="overall_tbl" class="table table-dark table-bordered table-hover" style="width: 100%"></table>
             </div>
@@ -77,4 +85,5 @@
   </body>
   <!-- <script type="text/javascript" src="/main/js/stars.js"></script> -->
   <script type="text/javascript" src="/main/js/main.js"></script>
+  <script type="text/javascript" src="/main/js/killcam.js"></script>
 </html>

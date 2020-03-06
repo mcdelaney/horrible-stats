@@ -11,8 +11,20 @@ var killer_obj;
 var drawCount;
 var tubes = [];
 var camera;
-var windowHalfY = window.innerHeight / 2;
-var windowHalfX = window.innerWidth / 2;
+
+var elem = document.getElementById('killcam_div');
+var dim = get_window_size();
+
+
+
+function get_window_size() {
+    var rect = elem.getBoundingClientRect();
+    var width = rect.width;
+    var height= width*(9/16) * 0.9;
+    var dim = {'height': height,
+               'width': width};
+    return dim;
+}
 
 
 function make_cone(position) {
@@ -36,7 +48,6 @@ function make_cone(position) {
     cone.position.x = p1.x;
     cone.position.y = p1.y;
     cone.position.z = p1.z;
-    // cone.lookAt(p2);
 
     return cone;
 }
@@ -65,11 +76,13 @@ function tube_prep(data, color, init_step, name, max_pt) {
     var curve = new THREE.CatmullRomCurve3(points);
     var line_points = curve.getPoints(max_pt);
 
-    var sphere = new THREE.Mesh(new THREE.SphereBufferGeometry(15, 10, 10, 0, Math.PI * 2, 0, Math.PI * 2),
+    var sphere = new THREE.Mesh(
+        new THREE.SphereBufferGeometry(15, 10, 10, 0, Math.PI * 2, 0, Math.PI * 2),
         new THREE.MeshNormalMaterial());
     sphere.updateMatrix();
 
-    var geometry = new THREE.TubeBufferGeometry(curve, params.extrusionSegments, 7, 5, params.closed).setFromPoints(line_points);
+    var geometry = new THREE.TubeBufferGeometry(curve, params.extrusionSegments, 7, 5,
+        params.closed).setFromPoints(line_points);
 
     var drawCount = 1;
     geometry.setDrawRange(0, drawCount);
@@ -82,6 +95,7 @@ function tube_prep(data, color, init_step, name, max_pt) {
         wireframe: true,
         transparent: true
     });
+
     var wireframe = new THREE.Mesh(geometry, wire_material);
     tube_mesh.add(wireframe);
 
@@ -106,47 +120,17 @@ function tube_prep(data, color, init_step, name, max_pt) {
 }
 
 
-function zoomCameraToSelection(camera, controls, selection, fitRatio = 1.2) {
-
-    const box = new THREE.Box3();
-
-    for (const object of selection) box.expandByObject(object);
-
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-
-    const maxSize = Math.max(size.x, size.y, size.z);
-    const fitHeightDistance = maxSize / (2 * Math.atan(Math.PI * camera.fov / 360));
-    const fitWidthDistance = fitHeightDistance / camera.aspect;
-    const distance = fitRatio * Math.max(fitHeightDistance, fitWidthDistance);
-
-    const direction = controls.target.clone()
-        .sub(camera.position)
-        .normalize()
-        .multiplyScalar(distance);
-
-    controls.maxDistance = distance * 10;
-    controls.target.copy(center);
-
-    camera.near = distance / 100;
-    camera.far = distance * 100;
-    camera.updateProjectionMatrix();
-
-    camera.position.copy(controls.target).sub(direction);
-
-    controls.update();
-
-}
-
-
 function makeCameraAndControls(min_bound, max_bound, look_at_pt) {
 
-    camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000000);
+    var dim = get_window_size();
+    camera = new THREE.PerspectiveCamera(45, dim.width / dim.height, 0.01, 1000000);
+    // camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000000);
+
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.07;
-    controls.rotateSpeed = 0.02;
-    controls.zoomSpeed = 0.01;
+    controls.rotateSpeed = 0.025;
+    controls.zoomSpeed = 0.025;
     controls.maxPolarAngle = Math.PI / 2;
     scene.controls = controls;
     scene.camera = camera;
@@ -166,19 +150,21 @@ function makeCameraAndControls(min_bound, max_bound, look_at_pt) {
 }
 
 
-function load_page(pilot, offset) {
+function load_kill(pilot, offset) {
+
+    document.getElementById('load_spin').hidden = false;
+    // document.getElementById('killcam_div').hidden = true;
+    document.getElementById('overall_container').hidden = true;
+
     jQuery.getJSON("/kill_coords?pilot=" + pilot + "&sec_offset=" + offset.toString(),
         function (data) {
 
             function onWindowResize() {
-
-                windowHalfX = window.innerWidth / 2;
-                windowHalfY = window.innerHeight / 2;
-
-                camera.aspect = window.innerWidth / window.innerHeight;
+                var dim = get_window_size();
+                console.log("Window now is width: " + dim.width + ", height: " + dim.height);
+                camera.aspect = dim.width / dim.height;
                 camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-
+                renderer.setSize(dim.width, dim.height);
             }
 
             function animate() {
@@ -221,30 +207,29 @@ function load_page(pilot, offset) {
                     clock = new THREE.Clock();
                     delta = min_ts;
                     restart = 0;
-
                 }
 
                 render();
             }
 
             function render() {
-
                 renderer.render(scene, camera);
-
             }
 
-            renderer = new THREE.WebGLRenderer({
-                antialias: true
-            });
+            renderer = new THREE.WebGLRenderer({antialias: true, alpha: true });
             renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
+            renderer.setSize(dim.width, dim.height);
+            var page = document.getElementById('killcam_div');
+            var canv = document.createElement('div');
+            page.appendChild(canv);
+            canv.appendChild(renderer.domElement);
+
             var info = document.createElement('div');
             info.style.position = 'absolute';
-            info.style.top = '30px';
+            info.style.top = '100px';
             info.style.width = '100%';
             info.style.textAlign = 'center';
-            info.style.color = 'black';
+            info.style.color = 'white';
             info.style.fontWeight = 'bold';
             info.style.backgroundColor = 'transparent';
             info.style.zIndex = '1';
@@ -256,16 +241,16 @@ function load_page(pilot, offset) {
                 ", weapon-name: " + data.weapon_name +
                 ", initiator-id: " + data.killer_id.toString() +
                 ", initiator-name: " + data.pilot_name;
-            document.body.appendChild(info);
+            page.appendChild(info);
 
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xf0f0f0);
+            // scene.background = new THREE.Color(0xf0f0f0);
 
             var light = new THREE.DirectionalLight(0xffffff);
             // light.position.set( target.line_points[target.line_points.length-1].x*1.2,
             //                     target.line_points[target.line_points.length-1].x*1.2,
             //                     target.line_points[target.line_points.length-1].z * 1.2 );
-            // scene.add( light );
+            scene.add( light );
 
             window.addEventListener('resize', onWindowResize, false);
 
@@ -310,6 +295,8 @@ function load_page(pilot, offset) {
 
             animate();
         });
+        document.getElementById('load_spin').hidden = true;
+        document.getElementById('killcam_div').hidden = false;
 }
 
 function stat() {
@@ -326,7 +313,7 @@ function stat() {
     document.head.appendChild(script);
 }
 
-$(document).ready(function () {
-    stat();
-    load_page(pilot, offset);
-});
+// $(document).ready(function () {
+//     stat();
+//     load_kill(pilot, offset);
+// });

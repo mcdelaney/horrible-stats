@@ -6,7 +6,7 @@ import sqlite3
 
 from fastapi import FastAPI, BackgroundTasks
 import pandas as pd
-from starlette.responses import JSONResponse, HTMLResponse
+from starlette.responses import JSONResponse, HTMLResponse, RedirectResponse
 from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
@@ -55,7 +55,7 @@ def healthz():
 async def check_db_files(request: Request):
     """Trigger db update."""
     await read_stats.update_all_logs_and_stats(db)
-    return "ok"
+    return RedirectResponse('/')
 
 
 @app.get("/resync_file/")

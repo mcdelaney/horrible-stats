@@ -65,13 +65,16 @@ function load_dt(path) {
     var tbl_nm = "#overall_tbl";
 
     console.log("Checking that table exists...");
-    if ($.fn.dataTable.isDataTable(tbl_nm)) {
-        try {
+    document.getElementById('killcam_div').hidden = true;
+    document.getElementById('load_spin').hidden = false;
+
+    try {
+        if ($.fn.dataTable.isDataTable(tbl_nm)) {
             $(tbl_nm).DataTable().destroy();
             $(tbl_nm).empty();
-        } catch (e) {
-            console.log(e.stack);
         }
+    } catch (e) {
+            console.log(e.stack);
     }
 
     jQuery.getJSON("/" + path, function (data) {
@@ -132,6 +135,8 @@ function load_dt(path) {
             scrollX: true,
             sScrollX: "100%",
         });
+        document.getElementById('load_spin').hidden = true;
+        document.getElementById('overall_container').hidden = false;
     });
 }
 
@@ -149,8 +154,16 @@ for (var i = 0; i < btns.length; i++) {
         }
         // Add the active class to the current/clicked button
         this.className += " active";
-        if (this.id === "frametime_charts") {
-            load_chart(this.id, 50);
+        if (this.id === "killcam") {
+
+            // document.getElementById('killcam_div').hidden = true;
+            document.getElementById('overall_container').hidden = true;
+            document.getElementById('load_spin').hidden = false;
+
+            var offset = 20;
+            var pilot = "someone_somewhere";
+            load_kill(pilot, offset);
+            // load_chart(this.id, 50);
         } else {
             console.log("Table init...");
             load_dt(this.id);

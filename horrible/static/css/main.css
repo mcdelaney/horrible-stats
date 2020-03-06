@@ -111,6 +111,32 @@ textarea {
   resize: vertical;
 }
 
+.spinner {
+    display:none;
+    margin: auto;
+    width: 20px;
+    height: 20px;
+    position: fixed;
+    left:50%;
+}
+
+#load_spin {
+    display:none;
+    margin: auto;
+    width: 20px;
+    height: 20px;
+    position: fixed;
+    left:50%;
+    /* border: solid black;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    align-self: center; */
+}
+body.busy .spinner { display:block !important; }
+
 /* ==========================================================================
    Browser Upgrade Prompt
    ========================================================================== */
