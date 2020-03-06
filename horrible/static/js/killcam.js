@@ -13,12 +13,12 @@ var tubes = [];
 var camera;
 
 var elem = document.getElementById('killcam_div');
-var dim = get_window_size();
 
 
 
 function get_window_size() {
     var rect = elem.getBoundingClientRect();
+    console.log(rect.width + " " + rect.height);
     var width = rect.width;
     var height= width*(9/16) * 0.9;
     var dim = {'height': height,
@@ -150,22 +150,28 @@ function makeCameraAndControls(min_bound, max_bound, look_at_pt) {
 }
 
 
+function onWindowResize() {
+    var dim = get_window_size();
+    console.log("Window now is width: " + dim.width + ", height: " + dim.height);
+    if (camera != null) {
+        camera.aspect = dim.width / dim.height;
+
+        renderer.setSize(dim.width, dim.height);
+        camera.updateProjectionMatrix();
+        controls.update();
+    }
+}
+
+
 function load_kill(pilot, offset) {
 
     document.getElementById('load_spin').hidden = false;
     // document.getElementById('killcam_div').hidden = true;
     document.getElementById('overall_container').hidden = true;
-
+    document.getElementById('killcam_div').hidden = false;
     jQuery.getJSON("/kill_coords?pilot=" + pilot + "&sec_offset=" + offset.toString(),
         function (data) {
 
-            function onWindowResize() {
-                var dim = get_window_size();
-                console.log("Window now is width: " + dim.width + ", height: " + dim.height);
-                camera.aspect = dim.width / dim.height;
-                camera.updateProjectionMatrix();
-                renderer.setSize(dim.width, dim.height);
-            }
 
             function animate() {
 
@@ -217,6 +223,8 @@ function load_kill(pilot, offset) {
             }
 
             renderer = new THREE.WebGLRenderer({antialias: true, alpha: true });
+            var dim = get_window_size();
+
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(dim.width, dim.height);
             var page = document.getElementById('killcam_div');
@@ -292,11 +300,12 @@ function load_kill(pilot, offset) {
             min_ts = data.min_ts;
             delta = data.min_ts;
             restart = 0;
-
+            render();
             animate();
         });
         document.getElementById('load_spin').hidden = true;
-        document.getElementById('killcam_div').hidden = false;
+
+        onWindowResize();
 }
 
 function stat() {
