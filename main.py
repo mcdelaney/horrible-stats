@@ -269,7 +269,7 @@ async def get_kill_coords(request: Request, pilot: str, sec_offset: int):
             INNER JOIN (SELECT id AS weapon, name AS weapon_name FROM object) weap
             USING (weapon)
             WHERE killer IS NOT NULL and target IS NOT NULL
-                AND killer == 73219 and target == 399106
+                --AND killer == 73219 and target == 399106
             ORDER BY RANDOM()
             LIMIT 1""")
 
