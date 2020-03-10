@@ -9,6 +9,7 @@
 
     <script src="/main/js/three.min.js"></script>
     <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+    <script src="//cdn.rawgit.com/mrdoob/three.js/master/examples/js/loaders/ColladaLoader.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js"></script>
@@ -21,8 +22,8 @@
     <div id="particles-foreground" class="vertical-centered-box"></div> -->
 
     <div class="container-fluid" style="width:90%">
-        <div class="row">
-          <div class="col">
+        <!-- <div class="row"> -->
+          <!-- <div class="col"> -->
           <nav class="navbar navbar-expand-lg navbar-light">
             <a class="navbar-brand">
               <!-- <img src="/main/images/full_brand_white.png" alt=""> -->
@@ -30,7 +31,7 @@
             </a>
             <ul id="nav_set" class="nav nav-pills">
               <li class="nav-item">
-                <a id="overall" name="overall" class="nav-link active" href="#" role="button">Overall</a>
+                <a id="overall" class="nav-link active" href="#" role="button">Overall</a>
               </li>
               <li class="nav-item">
                 <a  id="session_performance" class="nav-link" href="#">Session Performance</a>
@@ -54,10 +55,10 @@
                 <a  id="event_logs" class="nav-link" href="#">Event-Db-Status</a>
               </li>
               <li class="nav-item">
-                <a id="stat_logs" name="stat_logs" class="nav-link" href="#">Log-DB-Status</a>
+                <a id="stat_logs"class="nav-link" href="#">Log-DB-Status</a>
               </li>
               <li class="nav-item">
-                <a id="weapon_db" name="weapon_db" class="nav-link" href="#">Weapon-DB</a>
+                <a id="weapon_db" class="nav-link" href="#">Weapon-DB</a>
               </li>
               <!-- <li class="nav-item">
                 <a id="tacview" class="nav-link" href="#">Tacview</a>
@@ -72,15 +73,22 @@
           </nav>
 
           <div id="table_container" style="padding-top:15px">
-            <div id="killcam_div" hidden></div>
+
+            <div id="killcam_div" hidden>
+                <section id="loading-screen">
+                    <div id="loader"></div>
+                </section>
+            </div>
+
             <div id="load_spin" class="spinner-border text-primary" style="margin-top:25px;position:relative;left:50%;" hidden></div>
 
             <div id="overall_container" hidden>
               <table id="overall_tbl" class="table table-dark table-bordered table-hover" style="width: 100%"></table>
             </div>
+
           </div>
-        </div>
-      </div>
+        <!-- </div> -->
+      <!-- </div> -->
     </div>
   </body>
   <!-- <script type="text/javascript" src="/main/js/stars.js"></script> -->

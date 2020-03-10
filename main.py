@@ -259,22 +259,40 @@ async def get_kill_coords(request: Request, pilot: str, sec_offset: int):
     pilot = urllib.parse.unquote(pilot)
 
     query = conn.execute(
-        f"""SELECT killer, target, weapon, time_offset, kill.pilot,
-                tar.target_name, weap.weapon_name
-            FROM impact
-            INNER JOIN (SELECT id AS killer, COALESCE(pilot, name, type) AS pilot FROM object) kill
-            USING (killer)
-            INNER JOIN (SELECT id AS target, COALESCE(pilot, name) AS target_name FROM object) tar
-            USING(target)
-            INNER JOIN (SELECT id AS weapon, name AS weapon_name FROM object) weap
-            USING (weapon)
-            WHERE killer IS NOT NULL and target IS NOT NULL
+        f"""WITH TMP AS (
+                SELECT killer, target, weapon, kill.pilot,
+                    tar.target_name, weap.weapon_name, time_offset as impact_ts
+                FROM impact
+                INNER JOIN (SELECT id AS killer, COALESCE(pilot, name, type) AS pilot FROM object) kill
+                USING (killer)
+                INNER JOIN (SELECT id AS target, COALESCE(pilot, name) AS target_name FROM object) tar
+                USING(target)
+                INNER JOIN (SELECT id AS weapon, name AS weapon_name FROM object) weap
+                USING (weapon)
+                WHERE killer IS NOT NULL and target IS NOT NULL
+                --AND target == 1158658
+                --AND TARGET == 190978
                 --AND killer == 73219 and target == 399106
-            ORDER BY RANDOM()
-            LIMIT 1""")
+                ORDER BY RANDOM()
+            )
 
-    killer_id, target_id, weapon_id, time_offset, pilot, target_name, weapon_name = query.fetchone()
-    log.info(f"Returing killcam for pilot: {pilot}, weapon: {weapon_name}, target: {target_name}")
+            SELECT killer, target, weapon, weap_time.weap_fire_time, pilot,
+                target_name, weapon_name, impact_ts, weap_end_time
+            FROM tmp t
+            INNER JOIN (SELECT id as weapon,
+                        MIN(time_offset) as weap_fire_time,
+                        MAX(time_offset) AS weap_end_time
+                    FROM event
+                    WHERE id IN (SELECT weapon FROM tmp LIMIT 1)
+                    ) weap_time
+            USING (weapon)""")
+
+    killer_id, target_id, weapon_id, weap_fire_time, pilot, target_name, weapon_name, impact_ts, weap_end_time= query.fetchone()
+    # val = query.fetchone()
+    # log.info(val)
+
+    log.info(f"Returing killcam for pilot: {pilot}, weapon: {weapon_name}, target: {target_name}"
+             f" Weapon first ts {weap_fire_time}, Impact TS: {impact_ts}")
     # TODO Make sure that the entire lifespan of the weapon is captured.
     # Otherwise it will look like the weapon appears some distance from the killer.
     points = pd.read_sql(
@@ -284,8 +302,8 @@ async def get_kill_coords(request: Request, pilot: str, sec_offset: int):
                 velocity_kts/0.514444 AS velocity_ms, id
             FROM obj_events
             WHERE id in ({weapon_id}, {target_id}, {killer_id})
-                AND  time_offset >= {time_offset-sec_offset} AND
-                time_offset <= {time_offset}
+                AND  time_offset >= {weap_fire_time} AND
+                time_offset <= {weap_end_time+1}
                 AND alive = 1
             ORDER BY updates
         )
@@ -293,6 +311,8 @@ async def get_kill_coords(request: Request, pilot: str, sec_offset: int):
             v_coord, alt, u_coord, time_offset, id
         FROM lagged
         """, conn)
+
+    log.info(f'Total points returned: {points.shape[0]}...')
     points = cast(pd.DataFrame, points)
 
     times = pd.DataFrame({'time_offset': [points.time_offset.min(),

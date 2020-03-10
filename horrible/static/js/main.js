@@ -1,5 +1,33 @@
 /*jshint esversion: 6 */
 
+var sortKeys = {
+    "overall": [
+        [2, "desc"]
+    ],
+    "session_performance": [],
+    "stat_logs": [
+        [1, "desc"]
+    ],
+    "event_logs": [
+        [1, "desc"]
+    ],
+    "weapon_db": [],
+    "tacview": [],
+    "events": [
+        [1, "desc"]
+    ],
+    "weapons": [3, 'desc'],
+    "losses": [
+        [1, "desc"]
+    ],
+    "kills": [
+        [3, "desc"]
+    ],
+    "frametime_logs": [
+        [1, "desc"]
+    ]
+};
+
 
 function load_chart(path, pctile) {
     console.log("Loading chart for: " + path);
@@ -74,7 +102,7 @@ function load_dt(path) {
             $(tbl_nm).empty();
         }
     } catch (e) {
-            console.log(e.stack);
+        console.log(e.stack);
     }
 
     jQuery.getJSON("/" + path, function (data) {
@@ -96,29 +124,6 @@ function load_dt(path) {
             cols.push(col_nm);
         }
 
-        var sortKeys = {
-            "overall": [
-                [2, "desc"]
-            ],
-            "session_performance": [],
-            "stat_logs": [
-                [1, "desc"]
-            ],
-            "weapon_db": [],
-            "tacview": [],
-            "events": [[1, "desc"]],
-            "weapons": [3, 'desc'],
-            "losses": [
-                [1, "desc"]
-            ],
-            "kills": [
-                [3, "desc"]
-            ],
-            "frametime_logs": [
-                [1, "desc"]
-            ]
-        };
-
         console.log("Loading table: " + path);
         $(tbl_nm).DataTable({
             data: data.data,
@@ -135,43 +140,66 @@ function load_dt(path) {
             scrollX: true,
             sScrollX: "100%",
         });
+
         document.getElementById('load_spin').hidden = true;
         document.getElementById('overall_container').hidden = false;
     });
 }
 
 
-var btnContainer = document.getElementById("nav_set");
-// Get all buttons with class="btn" inside the container
-var btns = btnContainer.getElementsByClassName("nav-link");
-// Loop through the buttons and add the active class to the current/clicked button
-for (var i = 0; i < btns.length; i++) {
-    btns[i].addEventListener("click", function () {
-        var current = document.getElementsByClassName("active");
-        // If there's no active class
-        if (current.length > 0) {
-            current[0].className = current[0].className.replace(" active", "");
-        }
-        // Add the active class to the current/clicked button
-        this.className += " active";
-        if (this.id === "killcam") {
+function set_onclick() {
+    var current = document.getElementsByClassName("active");
+    // If there's no active class
+    if (current.length > 0) {
+        current[0].className = current[0].className.replace(" active", "");
+    }
+    // Add the active class to the current/clicked button
+    this.className += " active";
+    if (this.id === "killcam") {
+        // document.getElementById('killcam_div').hidden = true;
 
-            // document.getElementById('killcam_div').hidden = true;
-            document.getElementById('overall_container').hidden = true;
-            document.getElementById('load_spin').hidden = false;
+        var offset = 20;
+        var pilot = "someone_somewhere";
+        document.getElementById('load_spin').hidden = true;
+        document.getElementById('overall_container').hidden = true;
+        document.getElementById('killcam_div').hidden = false;
 
-            var offset = 20;
-            var pilot = "someone_somewhere";
-            load_kill(pilot, offset);
-            // load_chart(this.id, 50);
-        } else {
-            console.log("Table init...");
-            load_dt(this.id);
+        if (scene != null){
+            console.log('Clearing scene...');
+            while(scene.children.length > 0){
+                scene.remove(scene.children[0]);
+            }
+            var killcam_canv = document.getElementById('killcam_canv');
+            killcam_canv.parentNode.removeChild(killcam_canv);
+
         }
-    });
+
+        var prev_info = document.getElementById('killcam_info');
+        if (prev_info != null){
+            prev_info.parentNode.removeChild(prev_info);
+        }
+
+        load_kill(pilot, offset);
+    } else {
+        console.log("Table init...");
+        load_dt(this.id);
+    }
+}
+
+function set_tab_active() {
+    var btnContainer = document.getElementById("nav_set");
+    // Get all buttons with class="btn" inside the container
+    var btns = btnContainer.getElementsByClassName("nav-link");
+    // Loop through the buttons and add the active class to the current/clicked button
+    for (var i = 0; i < btns.length; i++) {
+        btns[i].addEventListener("click", set_onclick);
+    }
 }
 
 
 $(document).ready(function () {
+    set_tab_active();
     load_dt("overall");
+
+
 });
