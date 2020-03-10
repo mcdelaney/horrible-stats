@@ -303,7 +303,7 @@ async def get_kill_coords(request: Request, pilot: str, sec_offset: int):
             FROM obj_events
             WHERE id in ({weapon_id}, {target_id}, {killer_id})
                 AND  time_offset >= {weap_fire_time} AND
-                time_offset <= {weap_end_time+1}
+                time_offset <= {weap_end_time}
                 AND alive = 1
             ORDER BY updates
         )
