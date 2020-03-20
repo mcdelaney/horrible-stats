@@ -21,7 +21,7 @@ spec:
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: "/etc/keys/dcs-storage-gcs.json"
           - name: DATABASE_URL
-            value: postgresql://10.1.4.227:5432/dcs?user=prod&password=pwd
+            value: postgresql://db:5432/dcs?user=prod&password=pwd
         ports:
         - containerPort: 80
         volumeMounts:

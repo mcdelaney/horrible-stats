@@ -5,8 +5,8 @@ from typing import cast
 import sqlite3
 
 from fastapi import FastAPI, BackgroundTasks
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 import pandas as pd
-from starlette.responses import JSONResponse, HTMLResponse, RedirectResponse
 from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
@@ -287,12 +287,14 @@ async def get_kill_coords(request: Request, pilot: str, sec_offset: int):
                     ) weap_time
             USING (weapon)""")
 
-    killer_id, target_id, weapon_id, weap_fire_time, pilot, target_name, weapon_name, impact_ts, weap_end_time= query.fetchone()
+    killer_id, target_id, weapon_id, weap_fire_time, pilot, target_name, weapon_name, \
+     impact_ts, weap_end_time = query.fetchone()
     # val = query.fetchone()
     # log.info(val)
 
-    log.info(f"Returing killcam for pilot: {pilot}, weapon: {weapon_name}, target: {target_name}"
-             f" Weapon first ts {weap_fire_time}, Impact TS: {impact_ts}")
+    log.info(f"Returing killcam for pilot: {pilot}, weapon: {weapon_name}, "
+             f"target: {target_name} Weapon first ts {weap_fire_time}, "
+             f"Impact TS: {impact_ts}")
     # TODO Make sure that the entire lifespan of the weapon is captured.
     # Otherwise it will look like the weapon appears some distance from the killer.
     points = pd.read_sql(
