@@ -1,24 +1,21 @@
 /*jshint esversion: 6 */
-
-var offset = 20;
-var pilot = "someone_somewhere";
+var  kill_id  = 11
 var MAX_POINTS;
-
-var renderer, scene, camera, controls, line, drawCount, killer_obj, coords, something, prog, look_at_pt;
+var renderer, scene, camera, controls, line, drawCount, killer_obj, coords, something, prog, look_at_pt, render, animate;
 var tubes = [];
-
-
+var pause = false;
 var elem = document.getElementById('killcam_div');
 
 // elem.appendChild(prog);
-
-
 
 function get_window_size() {
     var rect = elem.getBoundingClientRect();
     // console.log(rect.width + " " + rect.height);
     var width = rect.width;
     var height = width * (9 / 16) * 0.9;
+
+    var width = window.innerWidth * 0.9;
+    var height = window.innerHeight * 0.9;
     var dim = {
         'height': height,
         'width': width
@@ -55,14 +52,14 @@ function make_cone(position) {
 
 
 var params = {
-    scale: 14,
+    scale: 25,
     extrusionSegments: 100,
-    radiusSegments: 3,
+    radiusSegments: 50,
     closed: false,
     animationView: false,
     lookAhead: false,
     cameraHelper: false,
-    'radius': 13,
+    'radius': 500,
 };
 
 
@@ -81,17 +78,14 @@ function tube_prep(data, color, init_step, name, max_pt) {
 
     var sphere = new THREE.Mesh(
         new THREE.SphereBufferGeometry(15, 10, 10, 0, Math.PI * 2, 0, Math.PI * 2),
-        new THREE.MeshLambertMaterial({emissive: color}));
-        // new THREE.MeshNormalMaterial());
+        new THREE.MeshLambertMaterial({color: color, emissive: 'black'}));
     sphere.updateMatrix();
 
-    var geometry = new THREE.TubeBufferGeometry(curve, params.extrusionSegments, params.radius, 10,
-        params.closed).setFromPoints(line_points);
-
-    geometry.scale = params.scale;
-    // var drawCount = 1;
-    geometry.setDrawRange(0, init_step);
+    var geometry = new THREE.TubeBufferGeometry(curve, params.extrusionSegments, params.radius,
+        params.radiusSegments, params.closed).setFromPoints(line_points);
     geometry.normalizeNormals();
+    geometry.setDrawRange(0, init_step);
+
 
     var tube_mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({emissive: color}));
 
@@ -106,6 +100,7 @@ function tube_prep(data, color, init_step, name, max_pt) {
     tube_mesh.add(wireframe);
 
     var obj_3d = new THREE.Object3D();
+    obj_3d.updateMatrix();
     obj_3d.add(tube_mesh);
 
     val = {
@@ -181,37 +176,43 @@ function getCenterPoint(obj) {
     return center;
 }
 
-function load_kill(pilot, offset) {
+function load_kill(kill_id) {
 
     const loader = new THREE.FileLoader(loadingManager);
 
-    loader.load("/kill_coords?pilot=" + pilot + "&sec_offset=" + offset.toString(), function (resp) {
+    loader.load("/kill_coords?kill_id=" + kill_id, function (resp) {
         var data = JSON.parse(resp);
 
         function animate() {
-
+            if (pause) {
+                return;
+            }
             requestAnimationFrame(animate);
             delta = delta + clock.getDelta();
 
             for (var n = 0, t = tubes.length; n < t; n++) {
                 tube = tubes[n];
 
-                tube.drawCount = Math.min(tube.drawCount + 5, tube.line_points.length*5);
+                tube.drawCount = Math.min(tube.drawCount + 3, tube.line_points.length*5);
                 tube.pos_idx = tube.pos_idx + 1;
 
                 if (tube.drawCount >= tube.line_points.length*5) {
-                    tube.drawCount = 2;
-                    tube.pos_idx = 5;
+                    tube.drawCount = 1;
+                    tube.pos_idx = 1;
                 }
 
                 tube.geometry.setDrawRange(0, tube.drawCount);
+                tube.geometry.computeVertexNormals();
+
                 tube.sphere.position.set(
                     tube.geometry.attributes.position.getX(tube.pos_idx),
                     tube.geometry.attributes.position.getY(tube.pos_idx),
                     tube.geometry.attributes.position.getZ(tube.pos_idx)
                 );
-            }
 
+            }
+            controls.update();
+            camera.updateProjectionMatrix();
             render();
         }
 
@@ -225,33 +226,35 @@ function load_kill(pilot, offset) {
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(dim.width, dim.height);
         var page = document.getElementById('killcam_div');
-        var canv = document.createElement('div');
-        canv.setAttribute('id', 'killcam_canv');
-        page.appendChild(canv);
-        canv.appendChild(renderer.domElement);
+        page.appendChild(renderer.domElement);
 
         var info = document.createElement('div');
         info.setAttribute("id", "killcam_info");
         info.style.position = 'absolute';
         info.style.top = '100px';
         info.style.width = '100%';
-        info.style.textAlign = 'center';
+        info.style.textAlign = 'left';
         info.style.color = 'white';
         info.style.fontWeight = 'bold';
         info.style.backgroundColor = '#2c2d44';
         info.style.zIndex = '1';
         info.style.fontFamily = 'Monospace';
         info.innerHTML =
-            "target-id: " + data.target_id +
-            ", target-name: " + data.target_name +
-            ", weapon-id: " + data.weapon_id.toString() +
-            ", weapon-name: " + data.weapon_name +
-            ", initiator-id: " + data.killer_id.toString() +
-            ", initiator-name: " + data.pilot_name;
+            "Kill-ID: " + data.impact_id +
+            " Pilot: " + data.pilot_name +
+            " Weapon: " + data.weapon_name +
+            " Target: " + data.target_name;
         page.appendChild(info);
 
         scene = new THREE.Scene();
-        // scene.background = new THREE.Color(0xffffff);
+        scene.background = new THREE.Color('white');
+        // scene.background = new THREE.MeshLambertMaterial({
+            // emissive: 'white'
+        // });
+
+        var max_fog = 100000 - 5000;
+        scene.fog = new THREE.Fog('white', 0.0, max_fog);
+
         var ambientlight = new THREE.AmbientLight(0xffffff, 1000);
         scene.add(ambientlight);
 
@@ -259,25 +262,25 @@ function load_kill(pilot, offset) {
         scene.add(light);
 
         max_pt = Math.max(data.killer.data.length, data.target.data.length, data.weapon.data.length) * 3;
-        var killer = tube_prep(data.killer.data, 0x0000ff, 2, 'killer', max_pt);
+        var killer = tube_prep(data.killer.data, 0x0000ff, 1, 'killer', max_pt);
         tubes.push(killer);
         scene.add(killer.obj_3d);
         scene.add(killer.sphere);
 
-        var weapon = tube_prep(data.weapon.data, '#2c6e27', 2, 'weapon', max_pt);
+        var weapon = tube_prep(data.weapon.data, 0x2c6e27, 1, 'weapon', max_pt);
         tubes.push(weapon);
         scene.add(weapon.obj_3d);
         scene.add(weapon.sphere);
 
-        var target = tube_prep(data.target.data, 0xff0000, 2, 'target', max_pt);
+        var target = tube_prep(data.target.data, 0xff0000, 1, 'target', max_pt);
         tubes.push(target);
         scene.add(target.obj_3d);
         scene.add(target.sphere);
 
         var plane_geo = new THREE.CircleBufferGeometry( 100000, 10 );
-        var plane_mat = new THREE.MeshBasicMaterial( {color: 0xffffff, side: THREE.DoubleSide, transparent:true, opacity: 0.25} );
+        var plane_mat = new THREE.MeshBasicMaterial( {color: 'black', side: THREE.DoubleSide, transparent:true, opacity: 0.25} );
         var plane_1 = new THREE.Mesh( plane_geo, plane_mat );
-        var plane_wire = new THREE.MeshBasicMaterial( {color: 0xffffff, wireframe: true, transparent:true, opacity:0.25 } );
+        var plane_wire = new THREE.MeshBasicMaterial( {color: 'black', wireframe: true, transparent:true, opacity:0.25 } );
         var plane_2 = new THREE.Mesh( plane_geo, plane_wire );
         var plane = new THREE.Object3D();
         plane.add(plane_1);

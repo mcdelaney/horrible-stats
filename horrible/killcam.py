@@ -35,10 +35,10 @@ conn = sqlite3.connect("horrible/data/dcs.db")
 
 
 
-async def get_kill(pilot: str, db):
+async def get_kill(kill_id: int, db):
 
     query = await db.fetch_all(f"""WITH TMP AS (
-                SELECT killer, target, weapon, kill.pilot,
+                SELECT id as impact_id, killer, target, weapon, kill.pilot,
                     tar.target_name, weap.weapon_name, time_offset as impact_ts
                 FROM impact
                 INNER JOIN (SELECT id AS killer, COALESCE(pilot, name, type) AS pilot FROM object) kill
@@ -51,10 +51,11 @@ async def get_kill(pilot: str, db):
                 WHERE killer IS NOT NULL AND
                     target IS NOT NULL AND weapon IS NOT NULL
                     AND weap_type like ('%Missile%')
+                    AND impact_dist < 50
             )
 
             SELECT killer, target, weapon, weap_time.weap_fire_time, pilot,
-                target_name, weapon_name, impact_ts, weap_end_time
+                target_name, weapon_name, impact_ts, weap_end_time, impact_id
             FROM tmp t
             INNER JOIN (SELECT id as weapon,
                         first_seen as weap_fire_time,
@@ -66,11 +67,7 @@ async def get_kill(pilot: str, db):
             """)
 
     killer_id, target_id, weapon_id, weap_fire_time, pilot, target_name, weapon_name, \
-    impact_ts, weap_end_time = list(query[0].values())
-
-    # .fetchone()
-    # val = query.fetchone()
-    # log.info(val)
+    impact_ts, weap_end_time, impact_id = list(query[0].values())
 
     log.info(f"Returing killcam for pilot: {pilot}, weapon: {weapon_name}, "
             f"target: {target_name} Weapon first ts {weap_fire_time}, "
@@ -96,7 +93,6 @@ async def get_kill(pilot: str, db):
     points = [dict(p) for p in points]
     points = pd.DataFrame.from_records(points, index=None)
     log.info(f'Total points returned: {points.shape[0]}...') # type: ignore
-    log.info(points)
 
     times = pd.DataFrame({'time_offset': [points.time_offset.min(), # type: ignore
                                         points.time_offset.max()]}) # type: ignore
@@ -109,6 +105,7 @@ async def get_kill(pilot: str, db):
             'target_name': target_name,
             'weapon_name': weapon_name,
             'pilot_name': pilot,
+            'impact_id': impact_id
     }
 
     for id_val, name in zip([target_id, weapon_id, killer_id],
@@ -123,9 +120,9 @@ async def get_kill(pilot: str, db):
             return
 
         subset.reset_index(inplace=True)
-        for var in ['v_coord', 'u_coord', 'alt']:
-            subset[var] = subset[var].interpolate( # type: ignore
-                method='linear', limit=50, limit_direction='both') # type: ignore
+        # for var in ['v_coord', 'u_coord', 'alt']:
+        #     subset[var] = subset[var].interpolate( # type: ignore
+        #         method='linear', limit=50, limit_direction='both') # type: ignore
 
         subset = subset[['v_coord', 'alt', 'u_coord', 'time_offset']]
         subset = cast(pd.DataFrame, subset)
@@ -133,7 +130,8 @@ async def get_kill(pilot: str, db):
         data[name] = subset.to_dict('split')
 
     log.info(f"Killer: {killer_id} -- Target: {target_id} -- "
-            f"Weapon: {weapon_id} -- Min ts: {data['min_ts']}")
+            f"Weapon: {weapon_id} -- Min ts: {data['min_ts']}"
+            f" Impact id: {impact_id}")
     log.info([len(data['killer']['data']), len(data['target']['data']),
             len(data['weapon']['data'])])
     return data

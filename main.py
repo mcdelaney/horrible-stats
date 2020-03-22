@@ -286,10 +286,10 @@ async def serve_killcam(request: Request):
 
 
 @app.get("/kill_coords")
-async def get_kill_coords(request: Request, pilot: str, sec_offset: int):
+async def get_kill_coords(request: Request, kill_id: int):
     """Get Points Preceeding kill."""
-    pilot = urllib.parse.unquote(pilot)
-    data = await killcam.get_kill(pilot, db)
+    # pilot = urllib.parse.unquote(kill_id)
+    data = await killcam.get_kill(kill_id, db)
     if not data:
         return JSONResponse(status_code=500)
     return JSONResponse(content=data)

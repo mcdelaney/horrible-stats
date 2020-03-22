@@ -1,4 +1,5 @@
 /*jshint esversion: 6 */
+var window
 
 var sortKeys = {
     "overall": [
@@ -92,9 +93,11 @@ function load_chart(path, pctile) {
 }
 
 function load_dt(path) {
+    // console.log(path.toString());
+    // window.location.href = "/#"+ path;
+    console.log("Loading table: " + path);
     var tbl_nm = "#overall_tbl";
 
-    console.log("Checking that table exists...");
     document.getElementById('killcam_div').hidden = true;
     document.getElementById('load_spin').hidden = false;
 
@@ -126,7 +129,6 @@ function load_dt(path) {
             cols.push(col_nm);
         }
 
-        console.log("Loading table: " + path);
         $(tbl_nm).DataTable({
             data: data.data,
             columns: cols,
@@ -149,19 +151,12 @@ function load_dt(path) {
 }
 
 
-function set_onclick() {
-    var current = document.getElementsByClassName("active");
-    // If there's no active class
-    if (current.length > 0) {
-        current[0].className = current[0].className.replace(" active", "");
-    }
-    // Add the active class to the current/clicked button
-    this.className += " active";
-    if (this.id === "killcam") {
-        // document.getElementById('killcam_div').hidden = true;
+function set_onclick(elem) {
+    set_tab_active(elem.id);
 
-        var offset = 20;
-        var pilot = "someone_somewhere";
+    if (elem.id === "killcam") {
+        console.log('Killcam render starting...');
+        var kill_id;
         document.getElementById('load_spin').hidden = true;
         document.getElementById('overall_container').hidden = true;
         document.getElementById('killcam_div').hidden = false;
@@ -181,30 +176,41 @@ function set_onclick() {
             prev_info.parentNode.removeChild(prev_info);
         }
 
-        load_kill(pilot, offset);
+        load_kill(11);
     } else {
-        console.log("Table init...");
-        load_dt(this.id);
+        load_dt(elem.id);
     }
 }
 
-function set_tab_active() {
+function set_tab_active(elem_id) {
+    window.location.href = "#" + elem_id;
     var btnContainer = document.getElementById("nav_set");
     // Get all buttons with class="btn" inside the container
     var btns = btnContainer.getElementsByClassName("nav-link");
     // Loop through the buttons and add the active class to the current/clicked button
     for (var i = 0; i < btns.length; i++) {
-        btns[i].addEventListener("click", set_onclick);
+        // console.log('Checking btn: ' + btns[i].id + " with path: " + path);
+        if (elem_id === btns[i].id) {
+            btns[i].className = "nav-link active";
+        }else{
+            btns[i].className = "nav-link";
+        }
     }
 }
 
 
 $(document).ready(function () {
-    set_tab_active();
-    load_dt("overall");
+    var param = window.location.href.split("#");
+    if (param.length === 1) {
+        let elem = document.getElementById("overall");
+        set_onclick(elem);
+    }else{
+        let elem = document.getElementById(param[1]);
+        set_onclick(elem);
+    }
 });
 
-var selected_row;
+// var selected_row;
 
 $('#overall_tbl').on('click', 'tbody tr', function () {
     // For table clicks...
