@@ -47,6 +47,8 @@ stat_files = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("file_name", sqlalchemy.String(), primary_key=True),
     sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("session_last_update", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("file_size_kb", sqlalchemy.Float()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
     sqlalchemy.Column("processed_at", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("errors", sqlalchemy.Integer),
@@ -69,6 +71,8 @@ event_files = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("file_name", sqlalchemy.String(), primary_key=True),
     sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("session_last_update", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("file_size_kb", sqlalchemy.Float()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
     sqlalchemy.Column("processed_at", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("errors", sqlalchemy.Integer),
@@ -86,14 +90,14 @@ mission_events = sqlalchemy.Table(
 
 
 frametime_files = sqlalchemy.Table(
-    "frametime_files",
-    metadata,
+    "frametime_files", metadata,
     sqlalchemy.Column("file_name", sqlalchemy.String(), primary_key=True),
     sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("session_last_update", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("file_size_kb", sqlalchemy.Float()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
     sqlalchemy.Column("processed_at", sqlalchemy.TIMESTAMP()),
-    sqlalchemy.Column("errors", sqlalchemy.Integer)
-)
+    sqlalchemy.Column("errors", sqlalchemy.Integer))
 
 
 frametimes = sqlalchemy.Table(
@@ -118,4 +122,3 @@ DATABASE_URL = config(
     'DATABASE_URL',
     default="postgresql://localhost:5432/dcs?user=prod&password=pwd")
 db = databases.Database(DATABASE_URL)
-

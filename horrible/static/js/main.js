@@ -12,13 +12,15 @@ var sortKeys = {
         [1, "desc"]
     ],
     "weapon_db": [],
-    "tacview": [],
-    "events": [
+    "tacview": [
         [1, "desc"]
+    ],
+    "events": [
+        [0, "desc"]
     ],
     "weapons": [3, 'desc'],
     "losses": [
-        [1, "desc"]
+        [2, "desc"]
     ],
     "kills": [
         [3, "desc"]
@@ -164,9 +166,9 @@ function set_onclick() {
         document.getElementById('overall_container').hidden = true;
         document.getElementById('killcam_div').hidden = false;
 
-        if (scene != null){
+        if (scene != null) {
             console.log('Clearing scene...');
-            while(scene.children.length > 0){
+            while (scene.children.length > 0) {
                 scene.remove(scene.children[0]);
             }
             var killcam_canv = document.getElementById('killcam_canv');
@@ -175,7 +177,7 @@ function set_onclick() {
         }
 
         var prev_info = document.getElementById('killcam_info');
-        if (prev_info != null){
+        if (prev_info != null) {
             prev_info.parentNode.removeChild(prev_info);
         }
 
@@ -200,6 +202,35 @@ function set_tab_active() {
 $(document).ready(function () {
     set_tab_active();
     load_dt("overall");
+});
 
+var selected_row;
+
+$('#overall_tbl').on('click', 'tbody tr', function () {
+    // For table clicks...
+    var current = document.getElementsByClassName("active");
+    if (current[0].id != 'tacview') {
+        return;
+    }
+    var table = $('#overall_tbl').DataTable();
+    selected_row = table.row(this).data();
+
+    //now use AJAX with data, which is on the form [ { col1 : value, col2: value ..}]
+    $.ajax({
+        // data: data[0],
+        url: "/process_tacview?filename=" + selected_row[0],
+        beforeSend: function(){
+            console.log('Sending request to process file: ' + selected_row[0]);
+        },
+        success: function (response) {
+            console.log(response);
+        },
+        error: function(response){
+            console.log(response);
+            // var table = $('#overall_tbl').DataTable();
+            // table.cell({row: 1, column: 2}).data("Error");
+            // table.draw();
+        }
+    });
 
 });

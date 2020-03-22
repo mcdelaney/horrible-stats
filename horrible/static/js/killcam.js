@@ -53,14 +53,16 @@ function make_cone(position) {
 }
 
 
+
 var params = {
-    scale: 4,
+    scale: 14,
     extrusionSegments: 100,
     radiusSegments: 3,
     closed: false,
     animationView: false,
     lookAhead: false,
     cameraHelper: false,
+    'radius': 13,
 };
 
 
@@ -79,20 +81,23 @@ function tube_prep(data, color, init_step, name, max_pt) {
 
     var sphere = new THREE.Mesh(
         new THREE.SphereBufferGeometry(15, 10, 10, 0, Math.PI * 2, 0, Math.PI * 2),
-        new THREE.MeshNormalMaterial());
+        new THREE.MeshLambertMaterial({emissive: color}));
+        // new THREE.MeshNormalMaterial());
     sphere.updateMatrix();
 
-    var geometry = new THREE.TubeBufferGeometry(curve, params.extrusionSegments, 7, 5,
+    var geometry = new THREE.TubeBufferGeometry(curve, params.extrusionSegments, params.radius, 10,
         params.closed).setFromPoints(line_points);
 
+    geometry.scale = params.scale;
     // var drawCount = 1;
     geometry.setDrawRange(0, init_step);
+    geometry.normalizeNormals();
 
     var tube_mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({emissive: color}));
 
     var wire_material = new THREE.MeshBasicMaterial({
         color: color,
-        opacity: 0.2,
+        opacity: 0.9,
         wireframe: true,
         transparent: true
     });
@@ -127,9 +132,9 @@ function makeCameraAndControls(min_bound, max_bound, look_at_pt) {
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.07;
-    controls.rotateSpeed = 0.025;
-    controls.zoomSpeed = 0.035;
-    controls.maxPolarAngle = Math.PI / 2 - 0.01;
+    controls.rotateSpeed = 0.05;
+    controls.zoomSpeed = 0.1;
+    // controls.maxPolarAngle = Math.PI / 2 - 0.009;
     controls.target = look_at_pt;
     scene.controls = controls;
     scene.camera = camera;
@@ -185,7 +190,6 @@ function load_kill(pilot, offset) {
 
         function animate() {
 
-
             requestAnimationFrame(animate);
             delta = delta + clock.getDelta();
 
@@ -196,20 +200,16 @@ function load_kill(pilot, offset) {
                 tube.pos_idx = tube.pos_idx + 1;
 
                 if (tube.drawCount >= tube.line_points.length*5) {
-                    console.log('Restarting....Draw count: ' + tube.drawCount.toString());
-                    console.log("N-Draw: " + (tube.geometry.getIndex().count - 1).toString());
                     tube.drawCount = 2;
                     tube.pos_idx = 5;
                 }
 
+                tube.geometry.setDrawRange(0, tube.drawCount);
                 tube.sphere.position.set(
                     tube.geometry.attributes.position.getX(tube.pos_idx),
                     tube.geometry.attributes.position.getY(tube.pos_idx),
                     tube.geometry.attributes.position.getZ(tube.pos_idx)
                 );
-
-                tube.geometry.setDrawRange(0, tube.drawCount);
-
             }
 
             render();
@@ -238,7 +238,7 @@ function load_kill(pilot, offset) {
         info.style.textAlign = 'center';
         info.style.color = 'white';
         info.style.fontWeight = 'bold';
-        info.style.backgroundColor = 'transparent';
+        info.style.backgroundColor = '#2c2d44';
         info.style.zIndex = '1';
         info.style.fontFamily = 'Monospace';
         info.innerHTML =
@@ -252,7 +252,7 @@ function load_kill(pilot, offset) {
 
         scene = new THREE.Scene();
         // scene.background = new THREE.Color(0xffffff);
-        var ambientlight = new THREE.AmbientLight(0xffffff, 100);
+        var ambientlight = new THREE.AmbientLight(0xffffff, 1000);
         scene.add(ambientlight);
 
         var light = new THREE.DirectionalLight(0xffffff, 1000);
@@ -264,7 +264,7 @@ function load_kill(pilot, offset) {
         scene.add(killer.obj_3d);
         scene.add(killer.sphere);
 
-        var weapon = tube_prep(data.weapon.data, 0x008000, 2, 'weapon', max_pt);
+        var weapon = tube_prep(data.weapon.data, '#2c6e27', 2, 'weapon', max_pt);
         tubes.push(weapon);
         scene.add(weapon.obj_3d);
         scene.add(weapon.sphere);
@@ -275,9 +275,9 @@ function load_kill(pilot, offset) {
         scene.add(target.sphere);
 
         var plane_geo = new THREE.CircleBufferGeometry( 100000, 10 );
-        var plane_mat = new THREE.MeshBasicMaterial( {color: 0xffffff, side: THREE.DoubleSide, reflective:true, transparent:true, opacity: 0.5} );
+        var plane_mat = new THREE.MeshBasicMaterial( {color: 0xffffff, side: THREE.DoubleSide, transparent:true, opacity: 0.25} );
         var plane_1 = new THREE.Mesh( plane_geo, plane_mat );
-        var plane_wire = new THREE.MeshBasicMaterial( {color: 0xffffff, wireframe: true, transparent:true, opacity:0.5 } );
+        var plane_wire = new THREE.MeshBasicMaterial( {color: 0xffffff, wireframe: true, transparent:true, opacity:0.25 } );
         var plane_2 = new THREE.Mesh( plane_geo, plane_wire );
         var plane = new THREE.Object3D();
         plane.add(plane_1);

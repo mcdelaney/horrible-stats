@@ -12,6 +12,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
   CREATE TABLE IF NOT EXISTS mission_stat_files (
       file_name VARCHAR(500) PRIMARY KEY,
       session_start_time TIMESTAMP,
+      session_last_update TIMESTAMP,
+      file_size_kb float,
       processed boolean DEFAULT FALSE,
       processed_at timestamp DEFAULT NULL,
       uploaded_at timestamp DEFAULT date_trunc('second', CURRENT_TIMESTAMP),
@@ -29,6 +31,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
   CREATE TABLE IF NOT EXISTS mission_event_files (
       file_name VARCHAR(500) PRIMARY KEY,
       session_start_time TIMESTAMP,
+      session_last_update TIMESTAMP,
+      file_size_kb float,
       processed boolean DEFAULT FALSE,
       processed_at timestamp DEFAULT NULL,
       uploaded_at timestamp DEFAULT date_trunc('second', CURRENT_TIMESTAMP),
@@ -44,6 +48,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
   CREATE TABLE IF NOT EXISTS frametime_files (
       file_name VARCHAR(500) PRIMARY KEY,
       session_start_time TIMESTAMP,
+      session_last_update TIMESTAMP,
+      file_size_kb float,
       processed boolean DEFAULT FALSE,
       processed_at timestamp DEFAULT NULL,
       uploaded_at timestamp DEFAULT date_trunc('second', CURRENT_TIMESTAMP),

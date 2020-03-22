@@ -13,4 +13,7 @@ database/pgdata/**
 .vscode/settings.json
 horrible/static/js/three.js/**/**
 horrible/mission-events/**
+**/tacview/**
 **/**/dcs.db*
+**/**/*.log
+**/**/*.gz

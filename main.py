@@ -1,8 +1,9 @@
-import logging
 from pathlib import Path
 import urllib.parse
 from typing import cast
-import sqlite3
+import os
+from functools import partial
+
 
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
@@ -10,31 +11,29 @@ import pandas as pd
 from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
+from tacview_client import db as tac_db
+from horrible.database import (db, weapon_types, stat_files, frametime_files,
+                               event_files)
+from horrible import read_stats, killcam
+from horrible.config import log
 
-from horrible.database import db, weapon_types, stat_files, frametime_files, event_files
-from horrible import read_stats
-
-
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(__name__)
-log.setLevel(level=logging.INFO)
-consoleHandler = logging.StreamHandler()
-log.addHandler(consoleHandler)
-
-conn = sqlite3.connect("horrible/data/dcs.db")
 templates = Jinja2Templates(directory='horrible/templates')
 app = FastAPI(title="Stat-Server")
 app.mount("/main",
           StaticFiles(directory="horrible/static", html=True),
           name="static")
 
+tasks = BackgroundTasks()
+
 
 @app.on_event("startup")
 async def database_connect():
     try:
         await db.connect()
-        tasks = BackgroundTasks()
-        tasks.add_task(read_stats.update_all_logs_and_stats)
+        tac_db.create_tables()
+        global tasks
+
+        await read_stats.update_all_logs_and_stats(db)
     except Exception as err:
         log.error(f"Could not conect to database at {db.url}!")
         raise err
@@ -89,14 +88,20 @@ async def get_stat_logs(request: Request):
         data_recs = await db.fetch_all(query=stat_files.select())
         data = pd.DataFrame.from_records(data_recs, index=None)
         # Convert datetimes into strings because json cant serialize them otherwise.
-        data[['processed_at', 'session_start_time'
-              ]] = data[['processed_at',
-                         'session_start_time']].astype(str)  # type: ignore
+        data[[
+            'processed_at',
+            'session_start_time',
+            'session_last_update',
+        ]] = data[[
+            'processed_at',
+            'session_start_time',
+            'session_last_update',
+        ]].astype(str)  # type: ignore
         # Make sure columns are correctly ordered.
         # This table will render incorrectly if we dont... I don't know why.
         data = data[[
-            "file_name", "session_start_time", "processed", "processed_at",
-            "errors"
+            "file_name", "session_start_time", 'session_last_update', 'file_size_kb',
+            "processed", "processed_at", "errors"
         ]]
         return JSONResponse(content=data.to_dict('split'))  # type: ignore
     except Exception as e:
@@ -113,14 +118,20 @@ async def get_event_logs(request: Request):
         data_recs = await db.fetch_all(query=event_files.select())
         data = pd.DataFrame.from_records(data_recs, index=None)
         # Convert datetimes into strings because json cant serialize them otherwise.
-        data[['processed_at', 'session_start_time'
-              ]] = data[['processed_at',
-                         'session_start_time']].astype(str)  # type: ignore
+        data[[
+            'processed_at',
+            'session_start_time',
+            'session_last_update',
+        ]] = data[[
+            'processed_at',
+            'session_start_time',
+            'session_last_update',
+        ]].astype(str)  # type: ignore
         # Make sure columns are correctly ordered.
         # This table will render incorrectly if we dont... I don't know why.
         data = data[[
-            "file_name", "session_start_time", "processed", "processed_at",
-            "errors"
+            "file_name", "session_start_time", 'session_last_update',
+            'file_size_kb', "processed", "processed_at", "errors"
         ]]
         return JSONResponse(content=data.to_dict('split'))  # type: ignore
     except Exception as e:
@@ -134,14 +145,20 @@ async def get_frametime_logs(request: Request):
     data_recs = await db.fetch_all(frametime_files.select())
     data = pd.DataFrame.from_records(data_recs, index=None)
     # Convert datetimes into strings because json cant serialize them otherwise.
-    data[['processed_at',
-          'session_start_time']] = data[['processed_at', 'session_start_time'
-                                         ]].astype(str)  # type: ignore
+    data[[
+        'processed_at',
+        'session_start_time',
+        'session_last_update',
+    ]] = data[[
+        'processed_at',
+        'session_start_time',
+        'session_last_update',
+    ]].astype(str)  # type: ignore
     # Make sure columns are correctly ordered.
     # This table will render incorrectly if we dont... I don't know why.
     data = data[[
-        "file_name", "session_start_time", "processed", "processed_at",
-        "errors"
+        "file_name", "session_start_time", 'session_last_update', "processed",
+        'file_size_kb', "processed_at", "errors"
     ]]
     return JSONResponse(content=data.to_dict('split'))  # type: ignore
 
@@ -179,8 +196,10 @@ async def get_overall_stats(request: Request):
 async def get_session_perf_stats(request: Request):
     """Get a json dictionary of grouped statistics as key-value pairs."""
     data = await read_stats.calculate_overall_stats(
-        grouping_cols=['session_date', 'pilot'])
-    data.sort_values(by=['session_date', 'A/A Kills'], ascending=False, inplace=True)
+        grouping_cols=['session_start_date', 'pilot'])
+    data.sort_values(by=['session_start_date', 'A/A Kills'],
+                     ascending=False,
+                     inplace=True)
     data = data.to_dict('split')
     return JSONResponse(content=data)
 
@@ -217,9 +236,20 @@ async def loss_detail(request: Request):
 @app.get("/tacview")
 async def tacview_detail(request: Request):
     """Return tacview download links."""
-    data = pd.DataFrame()
+    data = await read_stats.read_tacview_files(db)
     return JSONResponse(content=data.to_dict("split"))
 
+
+@app.get("/process_tacview/")
+async def process_tacview(request:Request, filename: str):
+    """Trigger processing of a tacview file."""
+    # tasks = BackgroundTasks()
+    # tasks.add_task(read_stats.process_tacview_file, filename)
+    try:
+        read_stats.process_tacview_file(urllib.parse.unquote(filename))
+    except Exception as err:
+        raise err
+    return "ok"
 
 @app.get("/events")
 async def event_detail(request: Request):
@@ -238,10 +268,12 @@ async def raw_cats(request: Request, pilot: str = None):
                     data.query(f"pilot == '{urllib.parse.unquote(pilot)}'"))
         data.reset_index(drop=True, inplace=True)
 
-    data = data.groupby(
-        ['session_date', 'equipment', 'stat_group', 'key_orig', 'category', 'metric'],
-        as_index=False).sum()
-    data.sort_values(by=['session_date'], ascending=False, inplace=True)
+    data = data.groupby([
+        'session_start_date', 'equipment', 'stat_group', 'key_orig',
+        'category', 'metric'
+    ],
+                        as_index=False).sum()
+    data.sort_values(by=['session_start_date'], ascending=False, inplace=True)
     return HTMLResponse(content=data.to_html())
 
 
@@ -257,102 +289,7 @@ async def serve_killcam(request: Request):
 async def get_kill_coords(request: Request, pilot: str, sec_offset: int):
     """Get Points Preceeding kill."""
     pilot = urllib.parse.unquote(pilot)
-
-    query = conn.execute(
-        f"""WITH TMP AS (
-                SELECT killer, target, weapon, kill.pilot,
-                    tar.target_name, weap.weapon_name, time_offset as impact_ts
-                FROM impact
-                INNER JOIN (SELECT id AS killer, COALESCE(pilot, name, type) AS pilot FROM object) kill
-                USING (killer)
-                INNER JOIN (SELECT id AS target, COALESCE(pilot, name) AS target_name FROM object) tar
-                USING(target)
-                INNER JOIN (SELECT id AS weapon, name AS weapon_name FROM object) weap
-                USING (weapon)
-                WHERE killer IS NOT NULL and target IS NOT NULL
-                --AND target == 1158658
-                --AND TARGET == 190978
-                --AND killer == 73219 and target == 399106
-                ORDER BY RANDOM()
-            )
-
-            SELECT killer, target, weapon, weap_time.weap_fire_time, pilot,
-                target_name, weapon_name, impact_ts, weap_end_time
-            FROM tmp t
-            INNER JOIN (SELECT id as weapon,
-                        MIN(time_offset) as weap_fire_time,
-                        MAX(time_offset) AS weap_end_time
-                    FROM event
-                    WHERE id IN (SELECT weapon FROM tmp LIMIT 1)
-                    ) weap_time
-            USING (weapon)""")
-
-    killer_id, target_id, weapon_id, weap_fire_time, pilot, target_name, weapon_name, \
-     impact_ts, weap_end_time = query.fetchone()
-    # val = query.fetchone()
-    # log.info(val)
-
-    log.info(f"Returing killcam for pilot: {pilot}, weapon: {weapon_name}, "
-             f"target: {target_name} Weapon first ts {weap_fire_time}, "
-             f"Impact TS: {impact_ts}")
-    # TODO Make sure that the entire lifespan of the weapon is captured.
-    # Otherwise it will look like the weapon appears some distance from the killer.
-    points = pd.read_sql(
-        f"""
-        WITH lagged AS (
-            SELECT lon, lat, alt, time_offset, u_coord, v_coord,
-                velocity_kts/0.514444 AS velocity_ms, id
-            FROM obj_events
-            WHERE id in ({weapon_id}, {target_id}, {killer_id})
-                AND  time_offset >= {weap_fire_time} AND
-                time_offset <= {weap_end_time}
-                AND alive = 1
-            ORDER BY updates
-        )
-        SELECT
-            v_coord, alt, u_coord, time_offset, id
-        FROM lagged
-        """, conn)
-
-    log.info(f'Total points returned: {points.shape[0]}...')
-    points = cast(pd.DataFrame, points)
-
-    times = pd.DataFrame({'time_offset': [points.time_offset.min(),
-                                          points.time_offset.max()]})
-
-    data = {
-            'weapon_id': weapon_id,
-            'min_ts': times['time_offset'].min(),
-            'killer_id': killer_id,
-            'target_id': target_id,
-            'target_name': target_name,
-            'weapon_name': weapon_name,
-            'pilot_name': pilot,
-    }
-
-    for id_val, name in zip([target_id, weapon_id, killer_id],
-                            ['target', 'weapon', 'killer']):
-        subset = cast(pd.DataFrame, points.query(f"id=={id_val}"))
-        if subset.shape[0] <= 1:
-            subset = pd.read_sql(f"""SELECT v_coord, alt, u_coord, time_offset
-                                     FROM object WHERE id = {id_val}""", conn)
-            subset = cast(pd.DataFrame, pd.concat([subset, subset]))
-            subset.reset_index(inplace=True)
-        if subset.shape[0] <= 1:
-            return JSONResponse(status_code=500)
-
-        subset.reset_index(inplace=True)
-        for var in ['v_coord', 'u_coord', 'alt']:
-            subset[var] = subset[var].interpolate(
-                method='linear', limit=50, limit_direction='both')
-
-        subset = subset[['v_coord', 'alt', 'u_coord', 'time_offset']]
-        subset = cast(pd.DataFrame, subset)
-        subset.dropna(inplace=True)
-        data[name] = subset.to_dict('split')
-
-    log.info(f"Killer: {killer_id} -- Target: {target_id} -- "
-             f"Weapon: {weapon_id} -- Min ts: {data['min_ts']}")
-    log.info([len(data['killer']['data']), len(data['target']['data']),
-              len(data['weapon']['data'])])
+    data = await killcam.get_kill(pilot, db)
+    if not data:
+        return JSONResponse(status_code=500)
     return JSONResponse(content=data)

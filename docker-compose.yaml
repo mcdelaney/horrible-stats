@@ -13,6 +13,12 @@ services:
       - POSTGRES_PASSWORD=pwd
     restart: always
 
+#   memcached:
+#     image: memcached:latest
+#     ports:
+#       - "11211:11211"
+#     restart: always
+
   app:
     build:
       context: .
@@ -24,11 +30,14 @@ services:
       - "8000:8000"
     depends_on:
       - db
+    #   - memcached
     links:
       - db
+    #   - memcached
     environment:
     - GOOGLE_APPLICATION_CREDENTIALS=/etc/dcs-storage-gcs.json
     - DATABASE_URL=postgresql://db:5432/dcs?user=prod&password=pwd
+    - TACVIEW_DSN=postgresql://db:5432/dcs?user=prod&password=pwd
     volumes:
       - ./horrible/:/app/horrible/:rw
       - ./main.py:/app/main.py:rw

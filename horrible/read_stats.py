@@ -1,27 +1,26 @@
 import collections
 import json
-import logging
 from pathlib import Path
 import re
+from functools import partial
 import threading
+from datetime import datetime, timedelta
 import traceback
 from typing import Dict, List, Optional, cast
-
+from multiprocessing import Process
 import numpy as np
-from lupa import LuaRuntime
+from lupa import LuaRuntime # type:ignore
 import pandas as pd
 import sqlalchemy as sa
+import lupa
+import asyncpg
+from tacview_client import client
 
 from horrible.database import (db, frametime_files, mission_stats, stat_files,
                                weapon_types, event_files, mission_events,
-                               event_files)
-from horrible.gcs import get_gcs_bucket, sync_gs_files_with_db
-
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(__name__)
-log.setLevel(level=logging.INFO)
-consoleHandler = logging.StreamHandler()
-log.addHandler(consoleHandler)
+                               event_files, file_format_ref)
+from horrible.gcs import get_gcs_bucket
+from horrible.config import log
 
 
 async def update_all_logs_and_stats(db) -> None:
@@ -29,10 +28,12 @@ async def update_all_logs_and_stats(db) -> None:
     log.info("Syncing log files and updating stats...")
     await sync_weapons()
     await sync_gs_files_with_db('mission-stats/', stat_files, db)
-    await sync_gs_files_with_db('mission-events/', event_files, db)
-    await sync_gs_files_with_db('frametime/', frametime_files, db)
     await process_lua_records('mission-stats')
+
+    await sync_gs_files_with_db('mission-events/', event_files, db)
     await process_lua_records('mission-events')
+
+    await sync_gs_files_with_db('frametime/', frametime_files, db)
     log.info("All log and stats files updated...")
 
 
@@ -44,54 +45,102 @@ def pctile(n):
     return percentile_
 
 
-# def read_frametime(filename: str, pctile: int = 50) -> Dict:
-#     """Given a google-storage blob, return a dataframe with frametime stats."""
-#     Path("frametimes").mkdir(parents=True, exist_ok=True)
-#     local_file = Path('frametimes').joinpath(Path(filename).name)
-#     if not local_file.exists():
-#         bucket = get_gcs_bucket()
-#         log.info(f"Downloading file: {filename} to location: {local_file}...")
-#         log.info(f"{str(filename)==str(local_file)}")
-#         blob = bucket.get_blob(str(filename))
-#         with local_file.open('wb') as fp_:
-#             blob.download_to_file(fp_)
-#         log.info("File downloaded successfully...")
-#     else:
-#         log.info("File exists in local cache...")
+def parse_prefix(line, fmt):
+    try:
+        t = datetime.strptime(line, fmt)
+    except ValueError as v:
+        if len(v.args) > 0 and v.args[0].startswith('unconverted data remains: '):
+            line = line[:-(len(v.args[0]) - 26)]
+            t = datetime.strptime(line, fmt)
+        else:
+            raise
+    return t
 
-#     with local_file.open('rb') as fp_:
-#         raw_text = fp_.read().decode().split()
-#     rec = np.array(raw_text, dtype=np.float)
-#     fps = float(1) / (rec[1:, ] - rec[:-1])
-#     fps = fps.astype(pd.Int64Dtype)
 
-#     tstamp_fps = np.stack([fps, rec[1:, ]], axis=1)
-#     df = pd.DataFrame(tstamp_fps, columns=['fps', 'tstamp'])
+async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,
+                                db) -> None:
+    """Ensure all gs files are in database."""
+    if not db.is_connected:
+        await db.connect()
+    log.info(f"Syncing gs files at {bucket_prefix} to table {table.name}...")
+    bucket = get_gcs_bucket()
+    stats_list = bucket.client.list_blobs(bucket, prefix=bucket_prefix)
+    files = await db.fetch_all(f"SELECT file_name FROM {table.name}")
+    files = [file["file_name"] for file in files]
+    for stat_file in stats_list:
+        if stat_file.name in files:
+            log.debug(f"File: {stat_file.name} already recorded...")
+            continue
 
-#     df['tstamp'] = pd.to_datetime(df['tstamp'], unit='s')
-#     dfgroup = df.groupby(pd.Grouper(key='tstamp', freq='1s'))
+        if stat_file.name == bucket_prefix:
+            continue
 
-#     max = 5000
-#     # nrows = len(dfgroup.groups)
-#     nrows = max
-#     out = {
-#         'labels': [None] * nrows,
-#         'data': [None] * nrows,
-#         'points': [None] * nrows,
-#         'name': f"FPS: {pctile} Percentile"
-#     }
-#     i = 0
-#     max_it = 50
-#     for group, data in dfgroup:
-#         ptile = int(np.percentile(data.fps, pctile))
-#         tstamp = group.strftime("%Y-%M-%d %H:%m:%S")
-#         out['labels'][i] = tstamp
-#         out['data'][i] = {'x': i, 'y': ptile}
-#         out['points'][i] = ptile
-#         i += 1
-#         if i >= max_it:
-#             break
-#     return out
+        try:
+            log.info(f"Inserting stat file: {stat_file.name}")
+            file_ts = file_format_ref[bucket_prefix](stat_file.name)
+            last_update = datetime.fromtimestamp(stat_file.updated.timestamp())
+            last_update = last_update.replace(microsecond=0)
+            await db.execute(
+                table.insert(), {
+                    'file_name': stat_file.name,
+                    'session_start_time': file_ts,
+                    'session_last_update': last_update,
+                    'file_size_kb': round(stat_file.size/1000, 2),
+                    'processed': False,
+                    'processed_at': None,
+                    'errors': 0
+                })
+        except asyncpg.UniqueViolationError:
+            log.error("File already has been inserted!")
+            raise asyncpg.UniqueViolationError
+
+
+async def read_tacview_files(db) -> pd.DataFrame:
+    """Return a list of remote tacview files."""
+    log.info("Reading tacview files...")
+    bucket = get_gcs_bucket()
+    tac_files = []
+    recs = [r['title'] for r in await db.fetch_all("SELECT title FROM session")]
+
+    for obj in bucket.client.list_blobs(bucket, prefix='tacview/'):
+        if obj.name == 'tacview/':
+            continue
+
+        filename = obj.name
+        start_time = parse_prefix(Path(filename).name, 'Tacview-%Y%m%d-%H%M%S')
+        status = "Unprocessed" if filename not in recs else "Processed"
+        last_mod = datetime.fromtimestamp(obj.updated.timestamp())
+        last_mod = last_mod.replace(microsecond=0)
+        tmp = {
+            'file_name': filename,
+            'start_time': str(start_time),
+            'session_last_update': str(last_mod),
+            'file_size_MB': round(obj.size / 1e+6, 2),
+            'status': status
+        }
+        tac_files.append(tmp)
+    log.info(f"Found {len(tac_files)} files...")
+    return cast(pd.DataFrame, pd.DataFrame.from_records(tac_files, index=None))
+
+
+def process_tacview_file(filename) -> None:
+    """process a single tacview file."""
+    bucket = get_gcs_bucket()
+    local_path = Path('horrible').joinpath(filename)
+    local_path.parent.mkdir(exist_ok=True, parents=True)
+    blob = bucket.get_blob(filename)
+    log.info(f"Downloading blob object to file: {filename}....")
+    blob.download_to_file(local_path.open('wb'))
+    try:
+        funcall = partial(client.serve_and_read,
+                          filename=local_path,
+                          port=5676)
+        proc = Process(target=funcall)
+        proc.start()
+    except Exception as err:
+        log.error(err)
+    # except Exception as err:
+    # log.error(err)
 
 
 async def sync_weapons() -> None:
@@ -257,12 +306,12 @@ async def process_lua_records(file_type) -> None:
                     raise ValueError("File could not be downloaded")
 
             stat_parsed = proc_fun(local_path)
-            log.info("Dumping record to database...")
+
+            log.info("Writing record to database...")
             if stat_parsed:
                 insert = rec_table.insert()
                 await db.execute_many(insert, stat_parsed)
 
-            log.info("Marking record as processed...")
             await db.execute(f"""UPDATE {file_table}
                              SET
                                 processed = TRUE,
@@ -290,19 +339,19 @@ async def process_lua_records(file_type) -> None:
 def format_cols(df: pd.DataFrame) -> pd.DataFrame:
     """Format a dataframe for display in HTML."""
     not_ints = ['kills__A/A Kill Ratio']
-    for c in df.columns:
+    for c in df.columns: # type: ignore
         if "times__" in c:
-            df[c] = df[c].apply(lambda x: int(round(x / 60)))
+            df[c] = df[c].apply(lambda x: int(round(x / 60))) # type: ignore
 
     to_int_cols = []
-    for c in df.columns:
+    for c in df.columns: # type: ignore
         if (any([x in c for x in ['weapons__', 'kills__', 'losses__']])
                 and c not in not_ints):
             to_int_cols.append(c)
     if to_int_cols:
-        df[to_int_cols] = df[to_int_cols].applymap(int)
+        df[to_int_cols] = df[to_int_cols].applymap(int) # type: ignore
 
-    cleaned_cols = [c.replace("__", "_").replace("_", " ") for c in df.columns]
+    cleaned_cols = [c.replace("__", "_").replace("_", " ") for c in df.columns] # type: ignore
     df.columns = cleaned_cols
     return df
 
@@ -310,13 +359,15 @@ def format_cols(df: pd.DataFrame) -> pd.DataFrame:
 async def collect_stat_recs() -> pd.DataFrame:
     data = []
     async for rec in db.iterate(
-            """SELECT record, pilot, files.session_start_time
+            """SELECT record, pilot, files.session_start_time,
+                        session_last_update,
                                     FROM mission_stats
                                     LEFT JOIN mission_stat_files files
                                     USING (file_name)
                                 """):
         tmp = json.loads(rec['record'])
         tmp['session_stat_time'] = rec['session_start_time']
+        tmp['session_last_update'] = rec['session_last_update']
         tmp['pilot'] = rec['pilot']
         data.append(tmp)
     df = pd.DataFrame.from_records(data, index=None)
@@ -326,7 +377,7 @@ async def collect_stat_recs() -> pd.DataFrame:
 def parse_rec_keys(field_key: str) -> Optional[Dict]:
     """Extract fields from concatenated dict key."""
     cats: Dict[str, Optional[str]]
-    matches = re.match("^(times)__(\w.*)__(kills)__(\w.*)__([A-z].*)$",
+    matches = re.match(r"^(times)__(\w.*)__(kills)__(\w.*)__([A-z].*)$",
                        field_key)
     if matches:
         # eg: times__JF-17__kills__Planes__total
@@ -339,7 +390,7 @@ def parse_rec_keys(field_key: str) -> Optional[Dict]:
         }
         return cats
 
-    matches = re.match("^(times)__(\w.*)__(actions)__(\w.*)__([A-z].*)$",
+    matches = re.match(r"^(times)__(\w.*)__(actions)__(\w.*)__([A-z].*)$",
                        field_key)
     if matches:
         # eg: times__JF-17__actions__losses__pilotDeath
@@ -352,7 +403,7 @@ def parse_rec_keys(field_key: str) -> Optional[Dict]:
         }
         return cats
 
-    matches = re.match("^(times)__(\w.*)__(losses)__(\w.*)__([A-z].*)$",
+    matches = re.match(r"^(times)__(\w.*)__(losses)__(\w.*)__([A-z].*)$",
                        field_key)
     if matches:
         # eg: times__JF-17__actions__losses__pilotDeath
@@ -365,7 +416,7 @@ def parse_rec_keys(field_key: str) -> Optional[Dict]:
         }
         return cats
 
-    matches = re.match("^(weapons)__(\w.*)__([A-z].*)$", field_key)
+    matches = re.match(r"^(weapons)__(\w.*)__([A-z].*)$", field_key)
     if matches:
         # eg: weapons__Mk-20 Rockeye__kills
         # weapons
@@ -380,7 +431,7 @@ def parse_rec_keys(field_key: str) -> Optional[Dict]:
             return None
         return cats
 
-    matches = re.match("^(losses)__(\w.*)__([A-z].*)$", field_key)
+    matches = re.match(r"^(losses)__(\w.*)__([A-z].*)$", field_key)
     if matches:
         # losses
         cats = {
@@ -391,7 +442,7 @@ def parse_rec_keys(field_key: str) -> Optional[Dict]:
         }
         return cats
 
-    matches = re.match("^(kills)__(\w.*)__([A-z].*)$", field_key)
+    matches = re.match(r"^(kills)__(\w.*)__([A-z].*)$", field_key)
     if matches:
         # losses
         cats = {
@@ -402,7 +453,7 @@ def parse_rec_keys(field_key: str) -> Optional[Dict]:
         }
         return cats
 
-    matches = re.match("^(times)__(\w.*)__([A-z].*)$", field_key)
+    matches = re.match(r"^(times)__(\w.*)__([A-z].*)$", field_key)
     if matches:
         #eg: times__AV8BNA__total
         # times air/total
@@ -414,7 +465,7 @@ def parse_rec_keys(field_key: str) -> Optional[Dict]:
         }
         return cats
 
-    matches = re.match("^(PvP)__(\w.*)$", field_key)
+    matches = re.match(r"^(PvP)__(\w.*)$", field_key)
     if matches:
         # old format losses only
         cats = {
@@ -425,7 +476,7 @@ def parse_rec_keys(field_key: str) -> Optional[Dict]:
         }
         return cats
 
-    matches = re.match("^([A-z]*)__(\w.*)$", field_key)
+    matches = re.match(r"^([A-z]*)__(\w.*)$", field_key)
     if matches:
         # old format losses only
         cats = {
@@ -475,7 +526,7 @@ async def collect_recs_kv() -> pd.DataFrame:
                 data_row_dicts.append(parsed_rec)
 
     data = pd.DataFrame.from_records(data_row_dicts, index=None)
-    data['session_date'] = data['session_start_time'].dt.date
+    data['session_start_date'] = data['session_start_time'].dt.date # type: ignore
     data = data.merge(weapons, how='left', on='equipment')
     data["category"] = data.category.combine_first(data.weapon_cat)
     data.value = data.apply(
@@ -497,10 +548,10 @@ async def calculate_overall_stats(grouping_cols: List) -> pd.DataFrame:
     """Calculate per-user/category/sub-type metrics."""
     df = await collect_recs_kv()
     # df = df[~df['metric'].isin(['hit', 'crash', 'inAir'])]
-    df = df[~df['metric'].isin(['hit', 'crash'])]
+    df = df[~df['metric'].isin(['hit', 'crash'])] # type: ignore
 
-    df = df.groupby(grouping_cols + ["category", "metric"],
-                    as_index=False).sum()
+    df = df.groupby(grouping_cols + ["category", "metric"], # type: ignore
+                    as_index=False).sum() # type: ignore
 
     df['col'] = df[['category', 'metric']].apply(lambda x: ' '.join(x), axis=1)
     df.drop(labels=['category', 'metric'], axis=1, inplace=True)
@@ -544,6 +595,7 @@ async def calculate_overall_stats(grouping_cols: List) -> pd.DataFrame:
         "Gun gun",
         # "Bomb kills", "Air-to-Air kills", "A/G Kills", "Gun kills",
     ]
+
     df.drop([d for d in drop_cols if d in df.columns], axis=1, inplace=True)
 
     df.fillna(0, inplace=True)
@@ -554,7 +606,7 @@ async def calculate_overall_stats(grouping_cols: List) -> pd.DataFrame:
     df.columns = [c.replace(' kills', ' Kills') for c in df.columns]
 
     try:
-        df['session_date'] = df['session_date'].apply(str)
+        df['session_start_date'] = df['session_start_date'].apply(str)
     except KeyError:
         pass
 
@@ -581,7 +633,7 @@ async def get_dataframe(subset: Optional[List] = None,
             stat_data = stat_data.query(f"pilot == '{user_name}'")
 
         if subset:
-            stat_data =  stat_data[stat_data.stat_group.isin(subset)]
+            stat_data =  stat_data[stat_data.stat_group.isin(subset)] # type: ignore
 
         stat_data = cast(pd.DataFrame, stat_data)
 
@@ -595,8 +647,8 @@ async def get_dataframe(subset: Optional[List] = None,
             idx_key = ['pilot', 'equipment']
             col_key = ['category', 'metric', 'stat_group']
 
-        stat_data['key'] = stat_data[col_key].apply(
-            lambda x: '__'.join(x.map(str)), axis=1)
+        stat_data['key'] = stat_data[col_key].apply( # type: ignore
+            lambda x: '__'.join(x.map(str)), axis=1) # type: ignore
 
         stat_data = stat_data.pivot_table(index=idx_key,
                                           fill_value=0,
@@ -614,7 +666,6 @@ async def get_dataframe(subset: Optional[List] = None,
 async def read_events() -> pd.DataFrame:
     """Return a dataframe of event log data."""
     return_types = ['kill', 'hit']
-
     evt = await db.fetch_all(event_files.select())
     evt_files = {r['file_name']: r['session_start_time'] for r in evt}
     resp = await db.fetch_all(mission_events.select())
@@ -625,20 +676,82 @@ async def read_events() -> pd.DataFrame:
     for item in resp:
         if item['record']['type'] in return_types:
             tmp = item['record']
-            tmp['file_name'] = item['file_name']
-            tmp['session_date'] = str(evt_files[item['file_name']])
+            tmp['event_timestamp'] = evt_files[item['file_name']] + timedelta(seconds=float(tmp['t']))
+            tmp['event_timestamp'] = str(tmp['event_timestamp'].replace(microsecond=0))
+            tmp['event_duration'] = float(tmp['stoptime']) - tmp['t']
             recs.append(tmp)
+
     events = pd.DataFrame(recs, index=None)
+    events['initiator'] = events.initiatorPilotName.combine_first(events.initiator) # type: ignore
+    events['target'] = events.targetPilotName.combine_first(events.target) # type: ignore
+    events.rename(columns={'target_objtype': 'target_type',
+                           'type': 'event_type',
+                           'initiator_objtype': 'initiator_type'},
+                  inplace=True)
 
-    events['initiator'] = events.initiatorPilotName.combine_first(events.initiator)
-    events['target'] = events.targetPilotName.combine_first(events.target)
-    events['StartTime'] = events['t']
-    events = events[['file_name', 'session_date', 'type', 'initiator',
-                     'target', 'weapon', 'numtimes', 'target_objtype',
-                     'initiator_objtype', 'StartTime', 'stoptime']]
+    events = events[[
+        'event_timestamp',
+        'event_type',
+        'initiator',
+        'initiator_type',
+        'weapon',
+        'target',
+        'target_type',
+        'numtimes',
+    ]]
 
-    events = events.fillna('None')
+    events = events.fillna('None') # type: ignore
     log.info(f"Returning data with {events.shape[0]} rows and {events.shape[1]} cols...")
-    return events
+    return events # type: ignore
 
 
+
+
+# def read_frametime(filename: str, pctile: int = 50) -> Dict:
+#     """Given a google-storage blob, return a dataframe with frametime stats."""
+#     Path("frametimes").mkdir(parents=True, exist_ok=True)
+#     local_file = Path('frametimes').joinpath(Path(filename).name)
+#     if not local_file.exists():
+#         bucket = get_gcs_bucket()
+#         log.info(f"Downloading file: {filename} to location: {local_file}...")
+#         log.info(f"{str(filename)==str(local_file)}")
+#         blob = bucket.get_blob(str(filename))
+#         with local_file.open('wb') as fp_:
+#             blob.download_to_file(fp_)
+#         log.info("File downloaded successfully...")
+#     else:
+#         log.info("File exists in local cache...")
+
+#     with local_file.open('rb') as fp_:
+#         raw_text = fp_.read().decode().split()
+#     rec = np.array(raw_text, dtype=np.float)
+#     fps = float(1) / (rec[1:, ] - rec[:-1])
+#     fps = fps.astype(pd.Int64Dtype)
+
+#     tstamp_fps = np.stack([fps, rec[1:, ]], axis=1)
+#     df = pd.DataFrame(tstamp_fps, columns=['fps', 'tstamp'])
+
+#     df['tstamp'] = pd.to_datetime(df['tstamp'], unit='s')
+#     dfgroup = df.groupby(pd.Grouper(key='tstamp', freq='1s'))
+
+#     max = 5000
+#     # nrows = len(dfgroup.groups)
+#     nrows = max
+#     out = {
+#         'labels': [None] * nrows,
+#         'data': [None] * nrows,
+#         'points': [None] * nrows,
+#         'name': f"FPS: {pctile} Percentile"
+#     }
+#     i = 0
+#     max_it = 50
+#     for group, data in dfgroup:
+#         ptile = int(np.percentile(data.fps, pctile))
+#         tstamp = group.strftime("%Y-%M-%d %H:%m:%S")
+#         out['labels'][i] = tstamp
+#         out['data'][i] = {'x': i, 'y': ptile}
+#         out['points'][i] = ptile
+#         i += 1
+#         if i >= max_it:
+#             break
+#     return out
