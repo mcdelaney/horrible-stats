@@ -139,6 +139,8 @@ def process_tacview_file(filename) -> None:
         proc.start()
     except Exception as err:
         log.error(err)
+    finally:
+        proc.terminate()
     # except Exception as err:
     # log.error(err)
 
