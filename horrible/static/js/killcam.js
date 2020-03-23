@@ -1,20 +1,21 @@
 /*jshint esversion: 6 */
-var  kill_id  = 11;
-var MAX_POINTS;
 var renderer, scene, camera, controls, line, drawCount, killer_obj, coords,
-     something, prog, look_at_pt, render, animate, light;
+     something, prog, look_at_pt, render, animate, light, max_pt, progress;
 var tubes = [];
 var pause = false;
 var elem = document.getElementById('killcam_div');
-var look = "target";
-var follow = 'weapon';
+var look = "weapon";
+var follow = 'killer';
+var CONTROLS = true;
+var obj_loader = new THREE.OBJLoader(loadingManager);
+
 
 function get_window_size() {
-    var width = window.innerWidth * 0.9;
-    var height = window.innerHeight * 0.9;
+    var width = window.innerWidth * 0.935;
+    var height = window.innerHeight * 0.88;
     var dim = {
-        'height': height,
-        'width': width
+        height: height,
+        width: width
     };
     return dim;
 }
@@ -22,10 +23,11 @@ function get_window_size() {
 
 var params = {
     width: 20,
+    obj_scale: 5,
     animationView: false,
     lookAhead: false,
     cameraHelper: false,
-    'radius': 10,
+    radius: 10,
 };
 
 
@@ -42,9 +44,27 @@ function addFloor() {
     scene.add(floorMesh);
 }
 
-
+function get_model_path(obj_name){
+    var model_path;
+    if (obj_name === 'weapon') {
+        model_path = '/main/mesh/Missile.AIM-120C.obj';
+    } else {
+        model_path = '/main/mesh/FixedWing.F-18C.obj';
+    }
+    return model_path;
+}
 
 function tube_prep(data, color, init_step, name, max_pt) {
+
+    var out = {
+        line_points: null,
+        draw_max: null,
+        drawCount: init_step,
+        pos_idx: 0,
+        object: null,
+        ribbon: null,
+        name: name
+    };
 
     var points = [];
     for (var i = 0, l = data.length; i < l; i++) {
@@ -52,23 +72,21 @@ function tube_prep(data, color, init_step, name, max_pt) {
     }
 
     var curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.05);
-
     var line_points = curve.getPoints(max_pt);
-
 
     var max_pt1 = max_pt+1;
     var widthSteps = 1;
-
     let pts2 = curve.getPoints(max_pt);
     pts2.forEach(p => {
         p.z += params.width;
     });
-    pts = line_points.concat(pts2);
+
+    var pts = line_points.concat(pts2);
 
     var ribbonGeom = new THREE.BufferGeometry().setFromPoints(pts);
 
     var indices = [];
-    for (iy = 0; iy < widthSteps; iy++) { // the idea taken from PlaneBufferGeometry
+    for (iy = 0; iy < widthSteps; iy++) {
         for (ix = 0; ix < max_pt; ix++) {
             var a = ix + max_pt1 * iy;
             var b = ix + max_pt1 * (iy + 1);
@@ -78,6 +96,7 @@ function tube_prep(data, color, init_step, name, max_pt) {
             indices.push(b, c, d);
         }
     }
+
     ribbonGeom.setIndex(indices);
     ribbonGeom.computeVertexNormals();
 
@@ -86,24 +105,43 @@ function tube_prep(data, color, init_step, name, max_pt) {
     }));
     ribbon.geometry.setDrawRange(0, 0);
     scene.add(ribbon);
+    out.ribbon = ribbon;
 
-    var sphere = new THREE.Mesh(
-        new THREE.SphereBufferGeometry(15, 10, 10, 0, Math.PI * 2, 0, Math.PI * 2),
-        new THREE.MeshBasicMaterial({color: color}));
-    sphere.updateMatrix();
-    scene.add(sphere);
+    var model_path = get_model_path(out.name);
 
-    val = {
-        'line_points': line_points,
-        'draw_max': line_points.length*3*2,
-        'drawCount': init_step,
-        'pos_idx': 0,
-        'sphere': sphere,
-        'ribbon': ribbon,
-        'name': name
-    };
+    var obj_mater = new THREE.MeshStandardMaterial();
+    obj_loader.load(
+        model_path,
+        success = function (object) {
+            object.traverse(function (child) {
+                if (child instanceof THREE.Mesh) {
+                    child.material = obj_mater;
+                }
+            });
 
-    return val;
+            object.scale.x = params.obj_scale;
+            object.scale.y = params.obj_scale;
+            object.scale.z = params.obj_scale;
+
+            object.position.x = line_points[0].x;
+            object.position.y = line_points[0].y;
+            object.position.z = line_points[0].z;
+            out.object = object;
+            scene.add(out.object);
+        }
+    );
+
+    // var object = new THREE.Mesh(
+    //     new THREE.objectBufferGeometry(15, 10, 10, 0, Math.PI * 2, 0, Math.PI * 2),
+    //     new THREE.MeshBasicMaterial({color: color}));
+    // object.updateMatrix();
+    // scene.add(object);
+    // out.object = object;
+
+    out.line_points = line_points;
+    out.draw_max = line_points.length*3*2;
+
+    return out;
 }
 
 
@@ -126,21 +164,26 @@ function make_circle_floor(target){
     scene.add( plane );
 }
 
-function makeCameraAndControls() {
+
+function makeCameraAndControls(add_controls) {
     var dim = get_window_size();
-    camera = new THREE.PerspectiveCamera(45, dim.width / dim.height, 0.01, 1000000);
+    camera = new THREE.PerspectiveCamera(55, dim.width / dim.height, 0.01, 1000000);
+
+
+    if (add_controls) {
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.07;
+        controls.rotateSpeed = 0.05;
+        controls.zoomSpeed = 0.05;
+        // controls.maxPolarAngle = Math.PI / 2 - 0.009;
+
+        scene.controls = controls;
+        controls.addEventListener("change", () => {
+            if (this.renderer) this.renderer.render(this.scene, camera);
+        });
+    }
     scene.camera = camera;
-    // controls = new THREE.OrbitControls(camera, renderer.domElement);
-    // controls.enableDamping = true;
-    // controls.dampingFactor = 0.07;
-    // controls.rotateSpeed = 0.05;
-    // controls.zoomSpeed = 0.05;
-    // controls.maxPolarAngle = Math.PI / 2 - 0.009;
-    // controls.target = look_at_pt;
-    // scene.controls = controls;
-    // controls.addEventListener("change", () => {
-    //     if (this.renderer) this.renderer.render(this.scene, camera);
-    // });
 }
 
 
@@ -181,6 +224,7 @@ function set_camera(tube, look, follow){
         camera.position.y = pt.y + 1000;
         camera.position.z = pt.z;
     }
+    // controls.update();
 }
 
 function load_kill(kill_id) {
@@ -218,13 +262,18 @@ function load_kill(kill_id) {
 
                     tube.ribbon.geometry.setDrawRange(0, tube.drawCount);
 
-                    tube.sphere.position.set(
+                    tube.object.position.set(
                         tube.line_points[tube.pos_idx].x,
                         tube.line_points[tube.pos_idx].y,
                         tube.line_points[tube.pos_idx].z
                     );
 
                     set_camera(tube, look, follow);
+
+                    if (n === 0) {
+                        progress.innerHTML = Math.round((tube.pos_idx/max_pt)*100).toString() + "%";
+                    }
+
                 }
 
                 render();
@@ -234,9 +283,11 @@ function load_kill(kill_id) {
         function render() {
             renderer.render(scene, camera);
         }
+        document.getElementById('load_spin').hidden = true;
         window.addEventListener('resize', onWindowResize, false);
         renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
         var dim = get_window_size();
+
 
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(dim.width, dim.height);
@@ -249,27 +300,40 @@ function load_kill(kill_id) {
         var info = document.createElement('div');
         info.setAttribute("id", "killcam_info");
         info.style.position = 'absolute';
-        info.style.top = '65px';
-        info.style.width = '100%';
+        info.style.top = '75px';
+        info.opacity = '100%';
         info.style.textAlign = 'left';
-        info.style.color = 'white';
-        info.style.fontWeight = 'bold';
-        info.style.backgroundColor = '#2c2d44';
-        info.style.zIndex = '1';
+        info.style.paddingLeft= '5px';
+        info.style.color = 'black';
+        info.style.fontWeight = 'light';
+        info.style.zIndex = '100';
         info.style.fontFamily = 'Monospace';
         info.innerHTML =
-            "[Kill-ID: " + data.impact_id +
-            "] -- [Pilot: " + data.pilot_name +
-            "] -- [Weapon: " + data.weapon_name +
-            "] -- [Target: " + data.target_name +
-            "]";
-        page.appendChild(info);
+            "Kill-ID: " + data.impact_id + "<br>" +
+            "Initiator: " + data.killer_name + "<br>" +
+            'Initiator Type: ' + data.killer_type + "<br>" +
+            "Weapon: " + data.weapon_name + "<br>" +
+            "Target: " + data.target_name + '<br>' +
+            'Target Type: ' + data.target_type + "<br>";
+        canv.appendChild(info);
+
+        progress = document.createElement('div');
+        progress.setAttribute("id", "kill_progress");
+        progress.style.position = 'absolute';
+        progress.style.top = '75px';
+        progress.opacity = '100%';
+        progress.style.textAlign = 'right';
+        progress.style.paddingLeft = '92%';
+        progress.style.color = 'black';
+        progress.style.fontWeight = 'light';
+        progress.style.zIndex = '100';
+        progress.style.fontFamily = 'Monospace';
+        progress.innerHTML = '0%';
+        canv.appendChild(progress);
 
         scene = new THREE.Scene();
         scene.background = new THREE.Color('white');
-        // scene.background = new THREE.MeshLambertMaterial({
-            // emissive: 'white'
-        // });
+
         var max_fog = 100000 - 3000;
         scene.fog = new THREE.Fog('white', 0.0, max_fog);
 
@@ -287,7 +351,7 @@ function load_kill(kill_id) {
         tubes.push(target);
 
         make_circle_floor(target);
-        makeCameraAndControls();
+        makeCameraAndControls(add_controls=CONTROLS);
 
         clock = new THREE.Clock();
         min_ts = data.min_ts;

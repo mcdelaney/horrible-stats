@@ -31,9 +31,8 @@ async def database_connect():
     try:
         await db.connect()
         tac_db.create_tables()
-        global tasks
-
-        await read_stats.update_all_logs_and_stats(db)
+        # global tasks
+        # await read_stats.update_all_logs_and_stats(db)
     except Exception as err:
         log.error(f"Could not conect to database at {db.url}!")
         raise err
@@ -281,7 +280,7 @@ async def raw_cats(request: Request, pilot: str = None):
 async def tacview_kills(request: Request):
     """Get a list of tacview kills."""
     data = await killcam.get_all_kills(db)
-    return JSONResponse(content=data.to_dict("split"))
+    return JSONResponse(content=data.to_dict("split")) # type: ignore
 
 
 @app.get("/killcam")

@@ -132,12 +132,12 @@ def process_tacview_file(filename) -> None:
     log.info(f"Downloading blob object to file: {filename}....")
     blob.download_to_file(local_path.open('wb'))
     log.info('File downloaded...')
+    funcall = partial(client.serve_and_read,
+                        filename=local_path,
+                        port=5676)
+    proc = Process(target=funcall)
+    log.info('Starting reader...')
     try:
-        funcall = partial(client.serve_and_read,
-                          filename=local_path,
-                          port=5676)
-        proc = Process(target=funcall)
-        log.info('Starting reader...')
         proc.start()
         proc.join()
     except Exception as err:

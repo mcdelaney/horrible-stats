@@ -1,0 +1,13 @@
+env/**
+__pycache__/**/*
+.git/*
+horrible/cache/**
+postgresql_/*
+database/postgresql_/*
+database/pgdata/**/**
+pgdata/**/**
+horrible/mission-stats/**
+horrible/mission-events/**
+horrible/framtimes/**
+**/**/.mypy_cache/**/**
+horrible/tacview/**

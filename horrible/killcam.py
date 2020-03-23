@@ -4,51 +4,65 @@ from typing import cast
 from horrible.config import log
 from datetime import timedelta
 
+IMPACT_QUERY = f"""WITH TMP AS (
+        SELECT
+            id as impact_id, impact_dist,
+            killer, killer_name, killer_type,
+            target, target_name, target_type,
+            weapon, weapon_name
+
+        FROM impact
+        INNER JOIN (SELECT id killer, pilot killer_name, name killer_type
+                    FROM object) kill
+        USING (killer)
+        INNER JOIN (SELECT id target, pilot as target_name, name as target_type
+                    FROM object) tar
+        USING(target)
+        INNER JOIN (SELECT id weapon, name AS weapon_name
+                    FROM object
+                    WHERE type like ('%Missile%') and NAME IS NOT NULL) weap
+        USING (weapon)
+        WHERE killer IS NOT NULL AND
+            target IS NOT NULL AND weapon IS NOT NULL
+            AND impact_dist < 10
+    ),
+    TMP2 as (
+        SELECT start_time as kill_timestamp,
+            killer_name, killer_type, killer as killer_id,
+            target_name, target_type, target as target_id,
+            weapon_name, weapon_type, weapon as weapon_id,
+            impact_dist, impact_id,
+            weapon_first_time, weapon_last_time
+        FROM tmp t
+        INNER JOIN (SELECT id as weapon,
+                    first_seen as weapon_first_time,
+                    last_seen AS weapon_last_time
+                FROM object
+                ) weap_time
+        USING (weapon)
+        INNER JOIN (select id as killer, session_id FROM object) sess1
+        USING (killer)
+        INNER JOIN (select session_id, start_time FROM session) sess2
+        USING (session_id)
+        LEFT JOIN (SELECT name AS weapon_name, category AS weapon_type
+                   FROM weapon_types) weap_type
+        USING (weapon_name)
+    )
+"""
 
 async def get_all_kills(db):
     """Get a table of all kills."""
-    query = await db.fetch_all(f"""WITH TMP AS (
-                    SELECT id as impact_id, killer, target, weapon, kill.killer_name,
-                        tar.target_name, weap.weapon_name
-                    FROM impact
-                    INNER JOIN (SELECT id AS killer, COALESCE(pilot, name, type) AS killer_name FROM object) kill
-                    USING (killer)
-                    INNER JOIN (SELECT id AS target, COALESCE(pilot, name) AS target_name FROM object) tar
-                    USING(target)
-                    INNER JOIN (SELECT id AS weapon, name AS weapon_name, type as weap_type
-                                FROM object) weap
-                    USING (weapon)
-                    WHERE killer IS NOT NULL AND
-                        target IS NOT NULL AND weapon IS NOT NULL AND weapon_name is not nULL
-                        AND weap_type like ('%Missile%')
-                        AND impact_dist < 50
-                )
-
-                SELECT start_time as kill_timestamp,
-                    weap_time.weap_fire_time, killer_name,
-                    target_name, weapon_name, impact_id, weapon_type
-                FROM tmp t
-                INNER JOIN (SELECT id as weapon,
-                            first_seen as weap_fire_time,
-                            last_seen AS weap_end_time
-                        FROM object
-                        ) weap_time
-                USING (weapon)
-                INNER JOIN (select id as killer, session_id FROM object) sess1
-                USING (killer)
-                INNER JOIN (select session_id, start_time FROM session) sess2
-                USING (session_id)
-                LEFT JOIN (select name as weapon_name, category as weapon_type FROM weapon_types) weap_type
-                USING (weapon_name)
-                """)
-
+    query = await db.fetch_all(IMPACT_QUERY + " SELECT * FROM tmp2")
     data = pd.DataFrame.from_records(query, index=None)
-    data['weap_fire_time'] = data['weap_fire_time'].apply(lambda x: timedelta(seconds=x)) # type:ignore
-    data['kill_timestamp'] = data['kill_timestamp'] + data['weap_fire_time'] # type:ignore
+    data.impact_dist = data.impact_dist.apply(lambda x: round(x, 2))
+    data['weapon_first_time'] = data['weapon_first_time'].apply(lambda x: timedelta(seconds=x)) # type:ignore
+    data['kill_timestamp'] = data['kill_timestamp'] + data['weapon_first_time'] # type:ignore
     data['kill_timestamp'] = data['kill_timestamp'].apply(  # type:ignore
         lambda x: str(x.replace(microsecond=0)))  # type:ignore
-    data = data[['kill_timestamp', 'killer_name', 'weapon_name', 'target_name',
-                 'weapon_type', 'impact_id']]
+    data = data[[
+        'kill_timestamp', 'killer_name', 'killer_type', 'weapon_name',
+        'weapon_type', 'target_name', 'target_type', 'impact_dist', 'impact_id'
+    ]]
     return data
 
 
@@ -59,41 +73,8 @@ async def get_kill(kill_id: int, db):
         else:
             filter_clause = f"WHERE impact_id = {kill_id}"
 
-        query = await db.fetch_all(f"""WITH TMP AS (
-                    SELECT id as impact_id, killer, target, weapon, kill.pilot,
-                        tar.target_name, weap.weapon_name, time_offset as impact_ts, weapon_type
-                    FROM impact
-                    INNER JOIN (SELECT id AS killer, COALESCE(pilot, name, type) AS pilot FROM object) kill
-                    USING (killer)
-                    INNER JOIN (SELECT id AS target, COALESCE(pilot, name) AS target_name FROM object) tar
-                    USING(target)
-                    INNER JOIN (SELECT id AS weapon, name AS weapon_name, type as weap_type
-                                FROM object) weap
-                    USING (weapon)
-                    LEFT JOIN (select name as weapon_name, category as weapon_type FROM weapon_types) weap_type
-                    USING (weapon_name)
-                    WHERE
-                        killer IS NOT NULL AND
-                        target IS NOT NULL AND weapon IS NOT NULL
-                        AND weap_type like ('%Missile%')
-                        AND impact_dist < 5
-                )
-
-                SELECT killer, target, weapon, weap_time.weap_fire_time, pilot,
-                    target_name, weapon_name, impact_ts, weap_end_time, impact_id
-                FROM (SELECT * FROM tmp {filter_clause}) t
-                INNER JOIN (SELECT id as weapon,
-                            first_seen as weap_fire_time,
-                            last_seen AS weap_end_time
-                        FROM object
-                        ) weap_time
-                USING (weapon)
-
-                LIMIT 1
-                """)
-
-        killer_id, target_id, weapon_id, weap_fire_time, pilot, target_name, weapon_name, \
-        impact_ts, weap_end_time, impact_id = list(query[0].values())
+        resp = await db.fetch_one(IMPACT_QUERY + f"SELECT * FROM tmp2 {filter_clause} limit 1")
+        resp = dict(resp)
 
         # TODO Make sure that the entire lifespan of the weapon is captured.
         # Otherwise it will look like the weapon appears some distance from the killer.
@@ -103,9 +84,9 @@ async def get_kill(kill_id: int, db):
                 SELECT lon, lat, alt, last_seen, u_coord, v_coord,
                     velocity_kts/0.514444 AS velocity_ms, id
                 FROM obj_events
-                WHERE id in ({weapon_id}, {target_id}, {killer_id})
-                    AND  last_seen >= {weap_fire_time} AND
-                    last_seen <= {weap_end_time}
+                WHERE id in ({resp['weapon_id']}, {resp['target_id']}, {resp['killer_id']})
+                    AND  last_seen >= {resp['weapon_first_time']} AND
+                    last_seen <= {resp['weapon_last_time']}
                     AND alive = TRUE
                 ORDER BY updates
             )
@@ -115,23 +96,25 @@ async def get_kill(kill_id: int, db):
             """)
         points = [dict(p) for p in points]
         points = pd.DataFrame.from_records(points, index=None)
-        log.info(f'Total points returned: {points.shape[0]}...id: {impact_id}...') # type: ignore
+        log.info(f"Total points returned: {points.shape[0]}...id: {resp['impact_id']}...") # type: ignore
 
         times = pd.DataFrame({'time_offset': [points.time_offset.min(), # type: ignore
                                             points.time_offset.max()]}) # type: ignore
 
         data = {
-                'weapon_id': weapon_id,
-                'min_ts': times['time_offset'].min(), # type: ignore
-                'killer_id': killer_id,
-                'target_id': target_id,
-                'target_name': target_name,
-                'weapon_name': weapon_name,
-                'pilot_name': pilot,
-                'impact_id': impact_id
+            'min_ts': times['time_offset'].min(),  # type: ignore
+            'killer_id': resp['killer_id'],
+            'killer_name': resp['killer_name'],
+            'killer_type': resp['killer_type'],
+            'weapon_id': resp['weapon_id'],
+            'weapon_name': resp['weapon_name'],
+            'target_id': resp['target_id'],
+            'target_name': resp['target_name'],
+            'target_type': resp['target_type'],
+            'impact_id': resp['impact_id']
         }
 
-        for id_val, name in zip([target_id, weapon_id, killer_id],
+        for id_val, name in zip([resp['target_id'], resp['weapon_id'], resp['killer_id']],
                                 ['target', 'weapon', 'killer']):
             subset = cast(pd.DataFrame, points.query(f"id=={id_val}"))
             if subset.shape[0] <= 1:
@@ -144,9 +127,9 @@ async def get_kill(kill_id: int, db):
             subset.dropna(inplace=True)
             data[name] = subset.to_dict('split')
 
-        log.info(f"Killer: {killer_id} -- Target: {target_id} -- "
-                f"Weapon: {weapon_id} -- Min ts: {data['min_ts']}"
-                f" Impact id: {impact_id}")
+        log.info(f"Killer: {resp['killer_id']} -- Target: {resp['target_id']} -- "
+                f"Weapon: {resp['weapon_id']} -- Min ts: {data['min_ts']}"
+                f" Impact id: {resp['impact_id']}")
         log.info([len(data['killer']['data']), len(data['target']['data']),
                 len(data['weapon']['data'])])
     except Exception as err:
