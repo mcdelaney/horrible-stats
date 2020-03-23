@@ -1,12 +1,10 @@
 from pathlib import Path
 import urllib.parse
 from typing import cast
-import os
-from functools import partial
-
 
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
@@ -17,11 +15,23 @@ from horrible.database import (db, weapon_types, stat_files, frametime_files,
 from horrible import read_stats, killcam
 from horrible.config import log
 
+origins = [
+    "http://ahorribleserver.com", "http://localhost", "http://localhost",
+    "http://0.0.0.0:8000", 'https://cdnjs.cloudflare.com/*'
+]
+
 templates = Jinja2Templates(directory='horrible/templates')
 app = FastAPI(title="Stat-Server")
 app.mount("/main",
           StaticFiles(directory="horrible/static", html=True),
           name="static")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 tasks = BackgroundTasks()
 
