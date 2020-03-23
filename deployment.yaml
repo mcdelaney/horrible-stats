@@ -22,6 +22,8 @@ spec:
             value: "/etc/keys/dcs-storage-gcs.json"
           - name: DATABASE_URL
             value: postgresql://db:5432/dcs?user=prod&password=pwd
+          - name: TACVIEW_DSN
+            value: postgresql://db:5432/dcs?user=prod&password=pwd
         ports:
         - containerPort: 80
         volumeMounts:
