@@ -1,19 +1,14 @@
 /*jshint esversion: 6 */
-var  kill_id  = 11
+var  kill_id  = 11;
 var MAX_POINTS;
 var renderer, scene, camera, controls, line, drawCount, killer_obj, coords, something, prog, look_at_pt, render, animate;
 var tubes = [];
 var pause = false;
 var elem = document.getElementById('killcam_div');
-
-// elem.appendChild(prog);
+var look = "target";
+var follow = 'weapon';
 
 function get_window_size() {
-    var rect = elem.getBoundingClientRect();
-    // console.log(rect.width + " " + rect.height);
-    var width = rect.width;
-    var height = width * (9 / 16) * 0.9;
-
     var width = window.innerWidth * 0.9;
     var height = window.innerHeight * 0.9;
     var dim = {
@@ -52,67 +47,84 @@ function make_cone(position) {
 
 
 var params = {
-    scale: 25,
-    extrusionSegments: 100,
-    radiusSegments: 50,
-    closed: false,
+    width: 20,
     animationView: false,
     lookAhead: false,
     cameraHelper: false,
-    'radius': 500,
+    'radius': 10,
 };
+
+
+function addFloor() {
+    var floorGeometry = new THREE.PlaneGeometry(100, 100, 20, 20);
+    var floorMaterial = new THREE.MeshPhongMaterial();
+    floorMaterial.map = THREE.ImageUtils.loadTexture("../assets/textures/floor_2-1024x1024.png");
+
+    floorMaterial.map.wrapS = floorMaterial.map.wrapT = THREE.RepeatWrapping;
+    floorMaterial.map.repeat.set(8, 8);
+    var floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+    floorMesh.receiveShadow = true;
+    floorMesh.rotation.x = -0.5 * Math.PI;
+    scene.add(floorMesh);
+}
+
 
 
 function tube_prep(data, color, init_step, name, max_pt) {
 
     var points = [];
-    // var steps = [];
     for (var i = 0, l = data.length; i < l; i++) {
         points.push(new THREE.Vector3(...data[i]));
-        // steps.push(data[i][3]);
     }
 
     var curve = new THREE.CatmullRomCurve3(points);
     var line_points = curve.getPoints(max_pt);
-    console.log(line_points.length);
+
+
+    var max_pt1 = max_pt+1;
+    var widthSteps = 1;
+
+    let pts2 = curve.getPoints(max_pt);
+    pts2.forEach(p => {
+        p.z += params.width;
+    });
+    pts = line_points.concat(pts2);
+
+    var ribbonGeom = new THREE.BufferGeometry().setFromPoints(pts);
+
+    var indices = [];
+    for (iy = 0; iy < widthSteps; iy++) { // the idea taken from PlaneBufferGeometry
+        for (ix = 0; ix < max_pt; ix++) {
+            var a = ix + max_pt1 * iy;
+            var b = ix + max_pt1 * (iy + 1);
+            var c = (ix + 1) + max_pt1 * (iy + 1);
+            var d = (ix + 1) + max_pt1 * iy;
+            indices.push(a, b, d);
+            indices.push(b, c, d);
+        }
+    }
+    ribbonGeom.setIndex(indices);
+    ribbonGeom.computeVertexNormals();
+
+    var ribbon = new THREE.Mesh(ribbonGeom, new THREE.MeshBasicMaterial({
+        side: THREE.DoubleSide, color: color
+    }));
+    ribbon.geometry.setDrawRange(0, 0);
+    scene.add(ribbon);
 
     var sphere = new THREE.Mesh(
         new THREE.SphereBufferGeometry(15, 10, 10, 0, Math.PI * 2, 0, Math.PI * 2),
-        new THREE.MeshLambertMaterial({color: color, emissive: 'black'}));
+        new THREE.MeshBasicMaterial({color: color}));
     sphere.updateMatrix();
-
-    var geometry = new THREE.TubeBufferGeometry(curve, params.extrusionSegments, params.radius,
-        params.radiusSegments, params.closed).setFromPoints(line_points);
-    geometry.normalizeNormals();
-    geometry.setDrawRange(0, init_step);
-
-
-    var tube_mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({emissive: color}));
-
-    var wire_material = new THREE.MeshBasicMaterial({
-        color: color,
-        opacity: 0.9,
-        wireframe: true,
-        transparent: true
-    });
-
-    var wireframe = new THREE.Mesh(geometry, wire_material);
-    tube_mesh.add(wireframe);
-
-    var obj_3d = new THREE.Object3D();
-    obj_3d.updateMatrix();
-    obj_3d.add(tube_mesh);
+    scene.add(sphere);
 
     val = {
         'line_points': line_points,
-        'geometry': geometry,
-        'obj_3d': obj_3d,
-        'mesh': tube_mesh,
+        'draw_max': line_points.length*3*2,
         'drawCount': init_step,
-        'pos_idx': 5,
-        'n_draw': geometry.getIndex().count - 1,
-        'step_end': init_step,
+        'pos_idx': 0,
         'sphere': sphere,
+        'ribbon': ribbon,
         'name': name
     };
 
@@ -120,43 +132,30 @@ function tube_prep(data, color, init_step, name, max_pt) {
 }
 
 
-function makeCameraAndControls(min_bound, max_bound, look_at_pt) {
-
+function makeCameraAndControls() {
     var dim = get_window_size();
     camera = new THREE.PerspectiveCamera(45, dim.width / dim.height, 0.01, 1000000);
-    controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.07;
-    controls.rotateSpeed = 0.05;
-    controls.zoomSpeed = 0.1;
-    // controls.maxPolarAngle = Math.PI / 2 - 0.009;
-    controls.target = look_at_pt;
-    scene.controls = controls;
     scene.camera = camera;
-
-    controls.addEventListener("change", () => {
-        if (this.renderer) this.renderer.render(this.scene, camera);
-    });
-
-    camera.position.x = min_bound.x + 5000;
-    camera.position.y = max_bound.y + 1000;
-    camera.position.z = min_bound.z;
-    controls.update();
-    camera.updateProjectionMatrix();
-    camera.lookAt(look_at_pt.x, look_at_pt.y, look_at_pt.z);
-    controls.update();
-    camera.updateProjectionMatrix();
+    // controls = new THREE.OrbitControls(camera, renderer.domElement);
+    // controls.enableDamping = true;
+    // controls.dampingFactor = 0.07;
+    // controls.rotateSpeed = 0.05;
+    // controls.zoomSpeed = 0.05;
+    // controls.maxPolarAngle = Math.PI / 2 - 0.009;
+    // controls.target = look_at_pt;
+    // scene.controls = controls;
+    // controls.addEventListener("change", () => {
+    //     if (this.renderer) this.renderer.render(this.scene, camera);
+    // });
 }
 
 
 function onWindowResize() {
     var dim = get_window_size();
-    console.log("Window now is width: " + dim.width + ", height: " + dim.height);
     if (camera != null) {
         camera.aspect = dim.width / dim.height;
         renderer.setSize(dim.width, dim.height);
         camera.updateProjectionMatrix();
-        controls.update();
     }
 }
 
@@ -176,44 +175,67 @@ function getCenterPoint(obj) {
     return center;
 }
 
+function set_camera(tube, look, follow){
+    if (tube.name === look) {
+        let pt = tube.line_points[tube.pos_idx];
+        camera.lookAt(pt.x, pt.y, pt.z);
+    }
+
+    if (tube.name == follow) {
+        let pt = tube.line_points[tube.pos_idx];
+        camera.position.x = pt.x + 5000;
+        camera.position.y = pt.y + 1000;
+        camera.position.z = pt.z;
+    }
+}
+
 function load_kill(kill_id) {
 
+    pause = false;
     const loader = new THREE.FileLoader(loadingManager);
+    if (typeof kill_id === 'undefined') {
+        kill_id = -1;
+    }
 
+    console.log("Requesting kill id: " + kill_id.toString());
     loader.load("/kill_coords?kill_id=" + kill_id, function (resp) {
         var data = JSON.parse(resp);
 
         function animate() {
-            if (pause) {
-                return;
-            }
+
             requestAnimationFrame(animate);
-            delta = delta + clock.getDelta();
+            if (pause) {
+                render();
+            }else{
 
-            for (var n = 0, t = tubes.length; n < t; n++) {
-                tube = tubes[n];
+                for (var n = 0, t = tubes.length; n < t; n++) {
+                    tube = tubes[n];
 
-                tube.drawCount = Math.min(tube.drawCount + 3, tube.line_points.length*5);
-                tube.pos_idx = tube.pos_idx + 1;
+                    tube.drawCount += 6;
+                    tube.pos_idx += 1;
 
-                if (tube.drawCount >= tube.line_points.length*5) {
-                    tube.drawCount = 1;
-                    tube.pos_idx = 1;
+                    if (tube.drawCount >= tube.draw_max) {
+                        tube.drawCount = 6;
+                    }
+
+                    if (tube.pos_idx > tube.line_points.length-1) {
+                        tube.pos_idx = 1;
+                    }
+
+                    tube.ribbon.geometry.setDrawRange(0, tube.drawCount);
+
+                    tube.sphere.position.set(
+                        tube.line_points[tube.pos_idx].x,
+                        tube.line_points[tube.pos_idx].y,
+                        tube.line_points[tube.pos_idx].z
+                    );
+
+                    set_camera(tube, look, follow);
+
                 }
 
-                tube.geometry.setDrawRange(0, tube.drawCount);
-                tube.geometry.computeVertexNormals();
-
-                tube.sphere.position.set(
-                    tube.geometry.attributes.position.getX(tube.pos_idx),
-                    tube.geometry.attributes.position.getY(tube.pos_idx),
-                    tube.geometry.attributes.position.getZ(tube.pos_idx)
-                );
-
+                render();
             }
-            controls.update();
-            camera.updateProjectionMatrix();
-            render();
         }
 
         function render() {
@@ -226,12 +248,15 @@ function load_kill(kill_id) {
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(dim.width, dim.height);
         var page = document.getElementById('killcam_div');
-        page.appendChild(renderer.domElement);
+        var canv = document.createElement('div');
+        canv.setAttribute('id', 'killcam_canv');
+        page.appendChild(canv);
+        canv.appendChild(renderer.domElement);
 
         var info = document.createElement('div');
         info.setAttribute("id", "killcam_info");
         info.style.position = 'absolute';
-        info.style.top = '100px';
+        info.style.top = '65px';
         info.style.width = '100%';
         info.style.textAlign = 'left';
         info.style.color = 'white';
@@ -240,10 +265,11 @@ function load_kill(kill_id) {
         info.style.zIndex = '1';
         info.style.fontFamily = 'Monospace';
         info.innerHTML =
-            "Kill-ID: " + data.impact_id +
-            " Pilot: " + data.pilot_name +
-            " Weapon: " + data.weapon_name +
-            " Target: " + data.target_name;
+            "[Kill-ID: " + data.impact_id +
+            "] -- [Pilot: " + data.pilot_name +
+            "] -- [Weapon: " + data.weapon_name +
+            "] -- [Target: " + data.target_name +
+            "]";
         page.appendChild(info);
 
         scene = new THREE.Scene();
@@ -252,7 +278,7 @@ function load_kill(kill_id) {
             // emissive: 'white'
         // });
 
-        var max_fog = 100000 - 5000;
+        var max_fog = 100000 - 3000;
         scene.fog = new THREE.Fog('white', 0.0, max_fog);
 
         var ambientlight = new THREE.AmbientLight(0xffffff, 1000);
@@ -262,20 +288,14 @@ function load_kill(kill_id) {
         scene.add(light);
 
         max_pt = Math.max(data.killer.data.length, data.target.data.length, data.weapon.data.length) * 3;
-        var killer = tube_prep(data.killer.data, 0x0000ff, 1, 'killer', max_pt);
+        var killer = tube_prep(data.killer.data, 0x0000ff, 0, 'killer', max_pt);
         tubes.push(killer);
-        scene.add(killer.obj_3d);
-        scene.add(killer.sphere);
 
-        var weapon = tube_prep(data.weapon.data, 0x2c6e27, 1, 'weapon', max_pt);
+        var weapon = tube_prep(data.weapon.data, 'green', 0, 'weapon', max_pt);
         tubes.push(weapon);
-        scene.add(weapon.obj_3d);
-        scene.add(weapon.sphere);
 
-        var target = tube_prep(data.target.data, 0xff0000, 1, 'target', max_pt);
+        var target = tube_prep(data.target.data, 0xff0000, 0, 'target', max_pt);
         tubes.push(target);
-        scene.add(target.obj_3d);
-        scene.add(target.sphere);
 
         var plane_geo = new THREE.CircleBufferGeometry( 100000, 10 );
         var plane_mat = new THREE.MeshBasicMaterial( {color: 'black', side: THREE.DoubleSide, transparent:true, opacity: 0.25} );
@@ -294,24 +314,13 @@ function load_kill(kill_id) {
         );
         scene.add( plane );
 
-        killer.geometry.computeBoundingBox();
-
-        var min_bound = killer.geometry.boundingBox.min;
-        var max_bound = killer.geometry.boundingBox.max;
-
-        var box = new THREE.BoxHelper(target.obj_3d, "black");
-        // scene.add(box);
-
-        box.geometry.computeBoundingBox();
-        look_at_pt = box.geometry.boundingBox.getCenter();
-        box.localToWorld( look_at_pt );
-
-        makeCameraAndControls(min_bound, max_bound, look_at_pt);
+        makeCameraAndControls();
 
         clock = new THREE.Clock();
         min_ts = data.min_ts;
         delta = data.min_ts;
         restart = 0;
+        stat();
         render();
         animate();
     });
@@ -319,16 +328,18 @@ function load_kill(kill_id) {
     onWindowResize();
 }
 
-// function stat() {
-//     var script = document.createElement('script');
-//     script.onload = function () {
-//         var stats = new Stats();
-//         document.body.appendChild(stats.dom);
-//         requestAnimationFrame(function loop() {
-//             stats.update();
-//             requestAnimationFrame(loop);
-//         });
-//     };
-//     script.src = '//mrdoob.github.io/stats.js/build/stats.min.js';
-//     document.head.appendChild(script);
-// }
+function stat() {
+    var script = document.createElement('script');
+    script.onload = function () {
+        var stats = new Stats();
+        document.getElementById('killcam_div').appendChild(stats.dom);
+        // document.body.appendChild(stats.dom);
+        requestAnimationFrame(function loop() {
+            stats.update();
+            requestAnimationFrame(loop);
+        });
+    };
+    script.src = '//mrdoob.github.io/stats.js/build/stats.min.js';
+
+    document.head.appendChild(script);
+}

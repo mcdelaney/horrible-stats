@@ -277,6 +277,13 @@ async def raw_cats(request: Request, pilot: str = None):
     return HTMLResponse(content=data.to_html())
 
 
+@app.get("/tacview_kills")
+async def tacview_kills(request: Request):
+    """Get a list of tacview kills."""
+    data = await killcam.get_all_kills(db)
+    return JSONResponse(content=data.to_dict("split"))
+
+
 @app.get("/killcam")
 async def serve_killcam(request: Request):
     """Serve the index.html template."""

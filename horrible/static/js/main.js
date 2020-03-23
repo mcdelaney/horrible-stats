@@ -1,5 +1,4 @@
 /*jshint esversion: 6 */
-var window
 
 var sortKeys = {
     "overall": [
@@ -28,6 +27,9 @@ var sortKeys = {
     ],
     "frametime_logs": [
         [1, "desc"]
+    ],
+    "tacview_kills": [
+        [0, "desc"]
     ]
 };
 
@@ -139,19 +141,20 @@ function load_dt(path) {
             fixedColumns: false,
             autoWidth: true,
             lengthChange: false,
+            width:"1200px",
             scrollY: 600,
             info: false,
             scrollX: true,
-            sScrollX: "100%",
+            // sScrollX: "100%",
         });
-
         document.getElementById('load_spin').hidden = true;
         document.getElementById('overall_container').hidden = false;
+        $(tbl_nm).DataTable().columns.adjust();
     });
 }
 
 
-function set_onclick(elem) {
+function set_onclick(elem, kill_id) {
     set_tab_active(elem.id);
 
     if (elem.id === "killcam") {
@@ -168,7 +171,6 @@ function set_onclick(elem) {
             }
             var killcam_canv = document.getElementById('killcam_canv');
             killcam_canv.parentNode.removeChild(killcam_canv);
-
         }
 
         var prev_info = document.getElementById('killcam_info');
@@ -176,7 +178,7 @@ function set_onclick(elem) {
             prev_info.parentNode.removeChild(prev_info);
         }
 
-        load_kill(11);
+        load_kill(kill_id);
     } else {
         load_dt(elem.id);
     }
@@ -213,15 +215,27 @@ $(document).ready(function () {
 // var selected_row;
 
 $('#overall_tbl').on('click', 'tbody tr', function () {
-    // For table clicks...
     var current = document.getElementsByClassName("active");
-    if (current[0].id != 'tacview') {
-        return;
-    }
+    var row_idx = null;
+    var endpoint = null;
+
     var table = $('#overall_tbl').DataTable();
     selected_row = table.row(this).data();
 
-    //now use AJAX with data, which is on the form [ { col1 : value, col2: value ..}]
+    if (current[0].id == 'tacview') {
+        endpoint = 'process_tacview?filename=';
+        row_id = 0;
+    }else if (current[0].id == 'tacview_kills') {
+        var kill_id = selected_row[selected_row.length - 1].toString();
+        console.log(kill_id);
+        window.location.href = '#killcam';
+        var elem = document.getElementById('killcam');
+        set_onclick(elem, kill_id);
+        return;
+    }else{
+        return;
+    }
+
     $.ajax({
         // data: data[0],
         url: "/process_tacview?filename=" + selected_row[0],
@@ -233,9 +247,6 @@ $('#overall_tbl').on('click', 'tbody tr', function () {
         },
         error: function(response){
             console.log(response);
-            // var table = $('#overall_tbl').DataTable();
-            // table.cell({row: 1, column: 2}).data("Error");
-            // table.draw();
         }
     });
 
