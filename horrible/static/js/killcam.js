@@ -1,7 +1,8 @@
 /*jshint esversion: 6 */
 var  kill_id  = 11;
 var MAX_POINTS;
-var renderer, scene, camera, controls, line, drawCount, killer_obj, coords, something, prog, look_at_pt, render, animate;
+var renderer, scene, camera, controls, line, drawCount, killer_obj, coords,
+     something, prog, look_at_pt, render, animate, light;
 var tubes = [];
 var pause = false;
 var elem = document.getElementById('killcam_div');
@@ -19,33 +20,6 @@ function get_window_size() {
 }
 
 
-function make_cone(position) {
-
-    var p1 = position[position.length - 1];
-    console.log(p1);
-    var p2 = position[position.length - 2];
-    var dir = new THREE.Vector3();
-    var subdir = dir.subVectors(p1, p2).normalize();
-
-    height = Math.abs(p2.distanceTo(p1));
-    radius = 5;
-    segments = 15;
-    var geom = new THREE.ConeBufferGeometry(radius, height, segments);
-    geom.rotateX(subdir.x);
-    geom.rotateY(subdir.y);
-    geom.rotateZ(subdir.z);
-
-    var material = new THREE.MeshNormalMaterial();
-    var cone = new THREE.Mesh(geom, material);
-    cone.position.x = p1.x;
-    cone.position.y = p1.y;
-    cone.position.z = p1.z;
-
-    return cone;
-}
-
-
-
 var params = {
     width: 20,
     animationView: false,
@@ -56,7 +30,7 @@ var params = {
 
 
 function addFloor() {
-    var floorGeometry = new THREE.PlaneGeometry(100, 100, 20, 20);
+    var floorGeometry = new THREE.PlaneGeometry(100000, 100, 20, 20);
     var floorMaterial = new THREE.MeshPhongMaterial();
     floorMaterial.map = THREE.ImageUtils.loadTexture("../assets/textures/floor_2-1024x1024.png");
 
@@ -77,7 +51,8 @@ function tube_prep(data, color, init_step, name, max_pt) {
         points.push(new THREE.Vector3(...data[i]));
     }
 
-    var curve = new THREE.CatmullRomCurve3(points);
+    var curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.05);
+
     var line_points = curve.getPoints(max_pt);
 
 
@@ -131,6 +106,25 @@ function tube_prep(data, color, init_step, name, max_pt) {
     return val;
 }
 
+
+function make_circle_floor(target){
+    var plane_geo = new THREE.CircleBufferGeometry( 100000, 10 );
+    var plane_mat = new THREE.MeshBasicMaterial( {color: 'black', side: THREE.DoubleSide, transparent:true, opacity: 0.25} );
+    var plane_1 = new THREE.Mesh( plane_geo, plane_mat );
+    var plane_wire = new THREE.MeshBasicMaterial( {color: 'black', wireframe: true, transparent:true, opacity:0.25 } );
+    var plane_2 = new THREE.Mesh( plane_geo, plane_wire );
+    var plane = new THREE.Object3D();
+    plane.add(plane_1);
+    plane.add(plane_2);
+    plane.lookAt(new THREE.Vector3(0, 1, 0));
+
+    plane.position.set(
+        target.line_points[target.line_points.length - 1].x,
+        0,
+        target.line_points[target.line_points.length - 1].z
+    );
+    scene.add( plane );
+}
 
 function makeCameraAndControls() {
     var dim = get_window_size();
@@ -231,7 +225,6 @@ function load_kill(kill_id) {
                     );
 
                     set_camera(tube, look, follow);
-
                 }
 
                 render();
@@ -277,15 +270,11 @@ function load_kill(kill_id) {
         // scene.background = new THREE.MeshLambertMaterial({
             // emissive: 'white'
         // });
-
         var max_fog = 100000 - 3000;
         scene.fog = new THREE.Fog('white', 0.0, max_fog);
 
-        var ambientlight = new THREE.AmbientLight(0xffffff, 1000);
+        var ambientlight = new THREE.AmbientLight(0xffffff, 10000);
         scene.add(ambientlight);
-
-        var light = new THREE.DirectionalLight(0xffffff, 1000);
-        scene.add(light);
 
         max_pt = Math.max(data.killer.data.length, data.target.data.length, data.weapon.data.length) * 3;
         var killer = tube_prep(data.killer.data, 0x0000ff, 0, 'killer', max_pt);
@@ -297,30 +286,14 @@ function load_kill(kill_id) {
         var target = tube_prep(data.target.data, 0xff0000, 0, 'target', max_pt);
         tubes.push(target);
 
-        var plane_geo = new THREE.CircleBufferGeometry( 100000, 10 );
-        var plane_mat = new THREE.MeshBasicMaterial( {color: 'black', side: THREE.DoubleSide, transparent:true, opacity: 0.25} );
-        var plane_1 = new THREE.Mesh( plane_geo, plane_mat );
-        var plane_wire = new THREE.MeshBasicMaterial( {color: 'black', wireframe: true, transparent:true, opacity:0.25 } );
-        var plane_2 = new THREE.Mesh( plane_geo, plane_wire );
-        var plane = new THREE.Object3D();
-        plane.add(plane_1);
-        plane.add(plane_2);
-        plane.lookAt(new THREE.Vector3(0, 1, 0));
-
-        plane.position.set(
-            target.line_points[target.line_points.length - 1].x,
-            0,
-            target.line_points[target.line_points.length - 1].z
-        );
-        scene.add( plane );
-
+        make_circle_floor(target);
         makeCameraAndControls();
 
         clock = new THREE.Clock();
         min_ts = data.min_ts;
         delta = data.min_ts;
         restart = 0;
-        stat();
+
         render();
         animate();
     });
