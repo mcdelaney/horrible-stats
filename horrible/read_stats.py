@@ -82,32 +82,12 @@ async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,
     log.info("Files inserted successfully!")
 
 
-async def read_tacview_files(db) -> pd.DataFrame:
+async def read_tacview_files(db) -> List:
     """Return a list of remote tacview files."""
     log.info("Reading tacview files...")
-    bucket = get_gcs_bucket()
-    tac_files = []
-    recs = [r['title'] for r in await db.fetch_all("SELECT title FROM session")]
-
-    for obj in bucket.client.list_blobs(bucket, prefix='tacview/'):
-        if obj.name == 'tacview/':
-            continue
-
-        filename = obj.name
-        start_time = parse_tacview_prefix(Path(filename).name)
-        status = "Unprocessed" if filename not in recs else "Processed"
-        last_mod = datetime.fromtimestamp(obj.updated.timestamp())
-        last_mod = last_mod.replace(microsecond=0)
-        tmp = {
-            'file_name': filename,
-            'start_time': str(start_time),
-            'session_last_update': str(last_mod),
-            'file_size_MB': round(obj.size / 1e+6, 2),
-            'status': status
-        }
-        tac_files.append(tmp)
-    log.info(f"Found {len(tac_files)} files...")
-    return cast(pd.DataFrame, pd.DataFrame.from_records(tac_files, index=None))
+    recs = [dict(r) for r in await db.fetch_all("SELECT title FROM session")]
+    log.info(f"Found {len(recs)} files...")
+    return recs
 
 
 def process_tacview_file(filename) -> None:
