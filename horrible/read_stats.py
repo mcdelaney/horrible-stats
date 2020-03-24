@@ -35,6 +35,13 @@ async def update_all_logs_and_stats(db) -> None:
     log.info("All log and stats files updated...")
 
 
+async def update_file_set(prefix: str, table, db) -> None:
+    """Sync a subdir from GS with local database."""
+    log.info(f"Syncing {prefix} files and updating records...")
+    await sync_gs_files_with_db(prefix, table, db)
+    await process_lua_records(prefix)
+
+
 def pctile(n):
     def percentile_(x):
         return np.percentile(x, n)
@@ -527,6 +534,8 @@ async def collect_recs_kv() -> pd.DataFrame:
                 data_row_dicts.append(parsed_rec)
 
     data = pd.DataFrame.from_records(data_row_dicts, index=None)
+    if data.shape[0] == 0:
+        return data
     data['session_start_date'] = data['session_start_time'].dt.date # type: ignore
     data = data.merge(weapons, how='left', on='equipment')
     data["category"] = data.category.combine_first(data.weapon_cat)
@@ -548,6 +557,9 @@ async def all_category_grouped() -> pd.DataFrame:
 async def calculate_overall_stats(grouping_cols: List) -> pd.DataFrame:
     """Calculate per-user/category/sub-type metrics."""
     df = await collect_recs_kv()
+    if df.empty:
+        return pd.DataFrame(columns = ['session_start_date', 'overall_kills',
+                                       'total_deaths'])
     # df = df[~df['metric'].isin(['hit', 'crash', 'inAir'])]
     df = df[~df['metric'].isin(['hit', 'crash'])] # type: ignore
 

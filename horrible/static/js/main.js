@@ -147,6 +147,7 @@ function load_dt(path) {
             scrollX: true,
             // sScrollX: "100%",
         });
+
         document.getElementById('load_spin').hidden = true;
         document.getElementById('overall_container').hidden = false;
         $(tbl_nm).DataTable().columns.adjust();
