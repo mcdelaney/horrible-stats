@@ -7,5 +7,6 @@ kubectl create secret docker-registry $SECRETNAME \
   --docker-email=mcdelaney@gmail.com \
   --docker-password="$(cat dcs-storage-gcs.json)"
 
+kubectl create secret generic dcs-storage-gcs --from-file dcs-storage-gcs.json
 
 kubectl apply -f scripts/gcr-pull-local-svc-acct.yaml

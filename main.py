@@ -85,8 +85,7 @@ async def get_stat_logs(request: Request):
             "file_name", "session_start_time", 'session_last_update', 'file_size_kb',
             "processed", "processed_at", "errors"
         ]]
-        return data
-    # .to_dict('split') # type: ignore
+        return data.to_dict('split') # type: ignore
     except Exception as e:
         log.error(e)
         return {}
