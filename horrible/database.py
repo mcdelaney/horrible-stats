@@ -34,7 +34,7 @@ def parse_frametime_ts(path: str) -> datetime.datetime:
 
 
 def parse_tacview_prefix(line):
-    fmt = 'Tacview-%Y%m%d-%H%M%S'
+    fmt = 'tacview/Tacview-%Y%m%d-%H%M%S'
     try:
         t = datetime.datetime.strptime(line, fmt)
     except ValueError as v:
