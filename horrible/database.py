@@ -8,10 +8,26 @@ import databases
 from starlette.config import Config
 import sqlalchemy
 
-metadata = sqlalchemy.MetaData()
+
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger(__name__)
 LOG.setLevel(level=logging.INFO)
+
+config = Config('.env')
+DATABASE_URL = config(
+    'DATABASE_URL',
+    default="postgresql://localhost:5432/dcs?user=prod&password=pwd")
+db = databases.Database(DATABASE_URL)
+
+eng = sqlalchemy.create_engine(DATABASE_URL)
+metadata = sqlalchemy.MetaData(bind=eng)
+
+def create_tables():
+    """ensure tables are created."""
+    try:
+        metadata.create_all()
+    except Exception as err:
+        LOG.error(err)
 
 
 def parse_mission_stat_ts(path: str) -> Optional[datetime.datetime]:
@@ -141,8 +157,3 @@ file_format_ref = {
 }
 
 
-config = Config('.env')
-DATABASE_URL = config(
-    'DATABASE_URL',
-    default="postgresql://localhost:5432/dcs?user=prod&password=pwd")
-db = databases.Database(DATABASE_URL)
