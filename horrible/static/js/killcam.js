@@ -6,7 +6,7 @@ var renderer, scene, camera, controls, line, drawCount, killer_obj, coords,time,
 var tubes = [];
 var pause = false;
 var elem = document.getElementById('killcam_div');
-var look = "killer";
+var look = "weapon";
 var follow = 'killer';
 var CONTROLS = false;
 var obj_loader = new THREE.OBJLoader(loadingManager);
