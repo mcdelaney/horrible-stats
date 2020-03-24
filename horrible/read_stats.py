@@ -14,10 +14,9 @@ import pandas as pd
 import sqlalchemy as sa
 from tacview_client import client
 
-from horrible.database import (db, mission_stats, stat_files, tacview_files,
+from horrible.database import (db, mission_stats, stat_files,
                                weapon_types, event_files, mission_events,
-                               event_files, file_format_ref,
-                               parse_tacview_prefix)
+                               event_files, file_format_ref)
 from horrible.gcs import get_gcs_bucket
 from horrible.config import log
 
@@ -89,7 +88,8 @@ async def query_tacview_files(db) -> Dict:
               'index': [],
               'columns': []}
     i = 0
-    async for record in await db.fetch_all("SELECT * FROM tacview_files"):
+    recs = await db.fetch_all("SELECT * FROM tacview_files")
+    for record in recs:
         if i == 0:
             output['columns'].extend(record.keys())
         output['data'].append(record.values())
@@ -319,7 +319,8 @@ def format_cols(df: pd.DataFrame) -> pd.DataFrame:
             df[c] = df[c].apply(lambda x: int(round(x / 60))) # type: ignore
 
     to_int_cols = []
-    for c in df.columns: # type: ignore
+    df = cast(pd.DataFrame, df)
+    for c in df.columns:
         if (any([x in c for x in ['weapons__', 'kills__', 'losses__']])
                 and c not in not_ints):
             to_int_cols.append(c)
@@ -328,24 +329,6 @@ def format_cols(df: pd.DataFrame) -> pd.DataFrame:
 
     cleaned_cols = [c.replace("__", "_").replace("_", " ") for c in df.columns] # type: ignore
     df.columns = cleaned_cols
-    return df
-
-
-async def collect_stat_recs() -> pd.DataFrame:
-    data = []
-    async for rec in db.iterate(
-            """SELECT record, pilot, files.session_start_time,
-                        session_last_update,
-                                    FROM mission_stats
-                                    LEFT JOIN mission_stat_files files
-                                    USING (file_name)
-                                """):
-        tmp = json.loads(rec['record'])
-        tmp['session_stat_time'] = rec['session_start_time']
-        tmp['session_last_update'] = rec['session_last_update']
-        tmp['pilot'] = rec['pilot']
-        data.append(tmp)
-    df = pd.DataFrame.from_records(data, index=None)
     return df
 
 
