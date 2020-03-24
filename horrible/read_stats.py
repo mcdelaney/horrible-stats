@@ -16,7 +16,8 @@ from tacview_client import client
 
 from horrible.database import (db, mission_stats, stat_files, tacview_files,
                                weapon_types, event_files, mission_events,
-                               event_files, file_format_ref)
+                               event_files, file_format_ref,
+                               parse_tacview_prefix)
 from horrible.gcs import get_gcs_bucket
 from horrible.config import log
 
@@ -27,17 +28,6 @@ def pctile(n):
     percentile_.__name__ = 'percentile_%s' % n
     return percentile_
 
-
-def parse_prefix(line, fmt):
-    try:
-        t = datetime.strptime(line, fmt)
-    except ValueError as v:
-        if len(v.args) > 0 and v.args[0].startswith('unconverted data remains: '):
-            line = line[:-(len(v.args[0]) - 26)]
-            t = datetime.strptime(line, fmt)
-        else:
-            raise
-    return t
 
 
 async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,
@@ -104,7 +94,7 @@ async def read_tacview_files(db) -> pd.DataFrame:
             continue
 
         filename = obj.name
-        start_time = parse_prefix(Path(filename).name, 'Tacview-%Y%m%d-%H%M%S')
+        start_time = parse_tacview_prefix(Path(filename).name)
         status = "Unprocessed" if filename not in recs else "Processed"
         last_mod = datetime.fromtimestamp(obj.updated.timestamp())
         last_mod = last_mod.replace(microsecond=0)

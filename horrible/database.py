@@ -33,6 +33,18 @@ def parse_frametime_ts(path: str) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(file_ts).replace(microsecond=0)
 
 
+def parse_tacview_prefix(line):
+    fmt = 'Tacview-%Y%m%d-%H%M%S'
+    try:
+        t = datetime.datetime.strptime(line, fmt)
+    except ValueError as v:
+        if len(v.args) > 0 and v.args[0].startswith('unconverted data remains: '):
+            line = line[:-(len(v.args[0]) - 26)]
+            t = datetime.datetime.strptime(line, fmt)
+        else:
+            raise
+    return t
+
 weapon_types = sqlalchemy.Table(
     "weapon_types",
     metadata,
@@ -124,7 +136,8 @@ frametimes = sqlalchemy.Table(
 file_format_ref = {
     'mission-stats': parse_mission_stat_ts,
     'frametime': parse_frametime_ts,
-    'mission-events': parse_mission_stat_ts
+    'mission-events': parse_mission_stat_ts,
+    'tacview': parse_tacview_prefix
 }
 
 
