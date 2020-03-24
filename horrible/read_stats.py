@@ -85,9 +85,17 @@ async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,
 async def read_tacview_files(db) -> List:
     """Return a list of remote tacview files."""
     log.info("Reading tacview files...")
-    recs = [dict(r) for r in await db.fetch_all("SELECT title FROM session")]
-    log.info(f"Found {len(recs)} files...")
-    return recs
+    output = {'data': [],
+              'index': [],
+              'columns': []}
+    i = 0
+    async for record in await db.fetch_all("SELECT * FROM tacview_files"):
+        if i == 0:
+            output['columns'].extend(record.keys())
+        output['data'].append(record.values())
+        output['index'].append(i)
+        i += 1
+    return output
 
 
 def process_tacview_file(filename) -> None:
