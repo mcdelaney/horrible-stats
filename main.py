@@ -14,6 +14,7 @@ from horrible.database import (db, weapon_types, stat_files,
 from horrible import read_stats, killcam
 from horrible.config import log
 
+
 templates = Jinja2Templates(directory='horrible/templates')
 app = FastAPI(title="Stat-Server")
 app.mount("/static",
@@ -41,7 +42,6 @@ async def database_disconnect():
 def healthz():
     """Health-check endpoint.  Should return 200."""
     return "ok"
-
 
 
 @app.get("/resync_file/")
@@ -85,10 +85,11 @@ async def get_stat_logs(request: Request):
             "file_name", "session_start_time", 'session_last_update', 'file_size_kb',
             "processed", "processed_at", "errors"
         ]]
-        return JSONResponse(content=data.to_dict('split'))  # type: ignore
+        return data
+    # .to_dict('split') # type: ignore
     except Exception as e:
         log.error(e)
-        return JSONResponse(content={})
+        return {}
 
 
 @app.get("/event_logs")
@@ -113,10 +114,10 @@ async def get_event_logs(request: Request):
             "file_name", "session_start_time", 'session_last_update',
             'file_size_kb', "processed", "processed_at", "errors"
         ]]
-        return JSONResponse(content=data.to_dict('split'))  # type: ignore
+        return data.to_dict('split')  # type: ignore
     except Exception as e:
         log.error(e)
-        return JSONResponse(content={})
+        return {}
 
 
 @app.get("/frametime_logs")
@@ -140,7 +141,7 @@ async def get_frametime_logs(request: Request):
         "file_name", "session_start_time", 'session_last_update', "processed",
         'file_size_kb', "processed_at", "errors"
     ]]
-    return JSONResponse(content=data.to_dict('split'))  # type: ignore
+    return data.to_dict('split')  # type: ignore
 
 
 # @app.get("/frametime_charts")
@@ -161,7 +162,7 @@ async def get_weapon_db_logs(request: Request):
     content = {"data": [], "columns": list(data[0].keys())}
     for row in data:
         content['data'].append(list(row.values()))
-    return JSONResponse(content=content)
+    return content
 
 
 @app.get("/overall")
@@ -169,7 +170,7 @@ async def get_overall_stats(request: Request):
     """Get a json dictionary of grouped statistics as key-value pairs."""
     data = await read_stats.calculate_overall_stats(grouping_cols=['pilot'])
     data = data.to_dict('split')
-    return JSONResponse(content=data)
+    return data
 
 
 @app.get("/session_performance")
@@ -181,7 +182,7 @@ async def get_session_perf_stats(request: Request):
                      ascending=False,
                      inplace=True)
     data = data.to_dict('split')
-    return JSONResponse(content=data)
+    return data
 
 
 @app.get("/")
@@ -196,28 +197,28 @@ async def serve_homepage(request: Request):
 async def weapon_stats(request: Request):
     """Return a rendered template with a table displaying per-weapon stats."""
     data = await read_stats.get_dataframe(subset=["weapons"])
-    return JSONResponse(content=data.to_dict('split'))
+    return data.to_dict('split')
 
 
 @app.get("/kills")
 async def kill_detail(request: Request):
     """Return a rendered template showing kill/loss statistics."""
     data = await read_stats.get_dataframe(subset=["kills"])
-    return JSONResponse(content=data.to_dict("split"))
+    return data.to_dict("split")
 
 
 @app.get("/losses")
 async def loss_detail(request: Request):
     """Return a rendered template showing kill/loss statistics."""
     data = await read_stats.get_dataframe(subset=["losses"])
-    return JSONResponse(content=data.to_dict("split"))
+    return data.to_dict("split")
 
 
 @app.get("/tacview")
 async def tacview_detail(request: Request):
     """Return tacview download links."""
     data = await read_stats.query_tacview_files(db)
-    return JSONResponse(content=data)
+    return data
 
 
 @app.get("/process_tacview/")
@@ -231,7 +232,7 @@ async def process_tacview(filename: str):
 async def event_detail(request: Request):
     """Return SlMod event records."""
     data = await read_stats.read_events()
-    return JSONResponse(content=data.to_dict("split"))
+    data.to_dict("split")
 
 
 @app.get("/raw_cats/")
@@ -254,7 +255,7 @@ async def raw_cats(request: Request, pilot: str = None):
 async def tacview_kills(request: Request):
     """Get a list of tacview kills."""
     data = await killcam.get_all_kills(db)
-    return JSONResponse(content=data.to_dict("split")) # type: ignore
+    data.to_dict("split") # type: ignore
 
 
 @app.get("/killcam")
@@ -272,4 +273,4 @@ async def get_kill_coords(request: Request, kill_id: int):
     data = await killcam.get_kill(kill_id, db)
     if not data:
         return JSONResponse(status_code=500)
-    return JSONResponse(content=data)
+    return data
