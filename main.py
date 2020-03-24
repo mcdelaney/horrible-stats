@@ -216,7 +216,7 @@ async def loss_detail(request: Request):
 @app.get("/tacview")
 async def tacview_detail(request: Request):
     """Return tacview download links."""
-    data = await read_stats.read_tacview_files(db)
+    data = await read_stats.query_tacview_files(db)
     return JSONResponse(content=data)
 
 

@@ -82,7 +82,7 @@ async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,
     log.info("Files inserted successfully!")
 
 
-async def read_tacview_files(db) -> List:
+async def query_tacview_files(db) -> Dict:
     """Return a list of remote tacview files."""
     log.info("Reading tacview files...")
     output = {'data': [],
