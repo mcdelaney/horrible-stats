@@ -91,8 +91,8 @@ async def query_tacview_files(db) -> Dict:
     recs = await db.fetch_all("SELECT * FROM tacview_files")
     for record in recs:
         if i == 0:
-            output['columns'].extend(record.keys())
-        output['data'].append(record.values())
+            output['columns'].extend(list(record.keys()))
+        output['data'].append(list(record.values()))
         output['index'].append(i)
         i += 1
     return output
