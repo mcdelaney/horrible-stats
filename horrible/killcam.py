@@ -54,7 +54,7 @@ async def get_all_kills(db):
     """Get a table of all kills."""
     query = await db.fetch_all(IMPACT_QUERY + " SELECT * FROM tmp2")
     data = pd.DataFrame.from_records(query, index=None)
-    data.impact_dist = data.impact_dist.apply(lambda x: round(x, 2))
+    data['impact_dist'] = data['impact_dist'].apply(lambda x: round(x, 2)) # type: ignore
     data['weapon_first_time'] = data['weapon_first_time'].apply(lambda x: timedelta(seconds=x)) # type:ignore
     data['kill_timestamp'] = data['kill_timestamp'] + data['weapon_first_time'] # type:ignore
     data['kill_timestamp'] = data['kill_timestamp'].apply(  # type:ignore
@@ -82,16 +82,16 @@ async def get_kill(kill_id: int, db):
             f"""
             WITH lagged AS (
                 SELECT lon, lat, alt, last_seen, u_coord, v_coord,
-                    velocity_kts/0.514444 AS velocity_ms, id
+                    velocity_kts/0.514444 AS velocity_ms, yaw, pitch, roll, id
                 FROM obj_events
                 WHERE id in ({resp['weapon_id']}, {resp['target_id']}, {resp['killer_id']})
                     AND  last_seen >= {resp['weapon_first_time']} AND
                     last_seen <= {resp['weapon_last_time']}
-                    AND alive = TRUE
+                    --AND alive = TRUE
                 ORDER BY updates
             )
             SELECT
-                v_coord, alt, u_coord, last_seen AS time_offset, id
+                lat, lon, v_coord, alt, u_coord, last_seen AS time_offset, yaw, pitch, roll, id
             FROM lagged
             """)
         points = [dict(p) for p in points]
@@ -122,7 +122,7 @@ async def get_kill(kill_id: int, db):
             if subset.shape[0] <= 1:
                 return
             subset.reset_index(inplace=True)
-            subset = subset[['v_coord', 'alt', 'u_coord', 'time_offset']]
+            subset = subset[['v_coord', 'alt', 'u_coord', 'pitch', 'roll', 'yaw', 'time_offset']]
             subset = cast(pd.DataFrame, subset)
             subset.dropna(inplace=True)
             data[name] = subset.to_dict('split')

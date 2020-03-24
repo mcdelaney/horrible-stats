@@ -20,6 +20,7 @@ origins = [
     "http://0.0.0.0:8000", 'https://cdnjs.cloudflare.com/*'
 ]
 
+
 templates = Jinja2Templates(directory='horrible/templates')
 app = FastAPI(title="Stat-Server")
 app.mount("/main",
@@ -250,14 +251,10 @@ async def tacview_detail(request: Request):
 
 
 @app.get("/process_tacview/")
-async def process_tacview(request:Request, filename: str):
+async def process_tacview(filename: str, tasks: BackgroundTasks):
     """Trigger processing of a tacview file."""
-    # tasks = BackgroundTasks()
-    # tasks.add_task(read_stats.process_tacview_file, filename)
-    try:
-        read_stats.process_tacview_file(urllib.parse.unquote(filename))
-    except Exception as err:
-        raise err
+    tasks.add_task(read_stats.process_tacview_file,
+                         urllib.parse.unquote(filename))
     return "ok"
 
 @app.get("/events")

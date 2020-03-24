@@ -1,12 +1,14 @@
 /*jshint esversion: 6 */
-var renderer, scene, camera, controls, line, drawCount, killer_obj, coords,
+// import * as myModule from '/main/js/TWEEN.js';
+
+var renderer, scene, camera, controls, line, drawCount, killer_obj, coords,time,
      something, prog, look_at_pt, render, animate, light, max_pt, progress;
 var tubes = [];
 var pause = false;
 var elem = document.getElementById('killcam_div');
-var look = "weapon";
+var look = "killer";
 var follow = 'killer';
-var CONTROLS = true;
+var CONTROLS = false;
 var obj_loader = new THREE.OBJLoader(loadingManager);
 
 
@@ -21,14 +23,38 @@ function get_window_size() {
 }
 
 
+function ToQuaternion(yaw, pitch, roll) // yaw (Z), pitch (Y), roll (X)
+{
+    // Abbreviations for the various angular functions
+    cy = Math.cos(yaw * 0.5);
+    sy = Math.sin(yaw * 0.5);
+    cp = Math.cos(pitch * 0.5);
+    sp = Math.sin(pitch * 0.5);
+    cr = Math.cos(roll * 0.5);
+    sr = Math.sin(roll * 0.5);
+
+    w = cy * cp * cr + sy * sp * sr;
+    x = cy * cp * sr - sy * sp * cr;
+    y = sy * cp * sr + cy * sp * cr;
+    z = sy * cp * cr - cy * sp * sr;
+
+    return [x, y, z, w];
+}
+
 var params = {
     width: 20,
-    obj_scale: 5,
+    obj_scale: 8,
     animationView: false,
     lookAhead: false,
     cameraHelper: false,
     radius: 10,
 };
+
+
+function to_rad(degrees) {
+    var pi = Math.PI;
+    return degrees * (pi / 180);
+}
 
 
 function addFloor() {
@@ -63,13 +89,19 @@ function tube_prep(data, color, init_step, name, max_pt) {
         pos_idx: 0,
         object: null,
         ribbon: null,
-        name: name
+        tween: null,
+        name: name,
+        angles: null
     };
 
     var points = [];
+    var angles = [];
     for (var i = 0, l = data.length; i < l; i++) {
-        points.push(new THREE.Vector3(...data[i]));
+        // points.push(new THREE.Vector3(...calcPosFromLatLonRad(data[i][0], data[i][1], data[i][2])));
+        points.push(new THREE.Vector3(data[i][0], data[i][1], data[i][2]));
+        angles.push(new THREE.Euler(to_rad(data[i][3]), to_rad(data[i][4]), to_rad(data[i][5])));
     }
+    out.angles = angles;
 
     var curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.05);
     var line_points = curve.getPoints(max_pt);
@@ -109,7 +141,7 @@ function tube_prep(data, color, init_step, name, max_pt) {
 
     var model_path = get_model_path(out.name);
 
-    var obj_mater = new THREE.MeshStandardMaterial();
+    var obj_mater = new THREE.MeshStandardMaterial({'color': color});
     obj_loader.load(
         model_path,
         success = function (object) {
@@ -123,11 +155,13 @@ function tube_prep(data, color, init_step, name, max_pt) {
             object.scale.y = params.obj_scale;
             object.scale.z = params.obj_scale;
 
-            object.position.x = line_points[0].x;
-            object.position.y = line_points[0].y;
-            object.position.z = line_points[0].z;
+            object.position.set(line_points[0].x, points[0].y, points[0].z);
+            object.setRotationFromEuler(angles[0]);
+            // object.computeVertexNormals();
+            // object.normalizeNormals();
             out.object = object;
             scene.add(out.object);
+            // out.tween = make_tween_chain(data, 'black', 'target', object);
         }
     );
 
@@ -144,6 +178,54 @@ function tube_prep(data, color, init_step, name, max_pt) {
     return out;
 }
 
+
+function calcPosFromLatLonRad(lat, lon, radius) {
+
+    var phi = (90 - lat) * (Math.PI / 180);
+    var theta = (lon + 180) * (Math.PI / 180);
+
+    x = -((radius) * Math.sin(phi) * Math.cos(theta));
+    z = ((radius) * Math.sin(phi) * Math.sin(theta));
+    y = ((radius) * Math.cos(phi));
+
+    return [x, y, z];
+}
+
+
+function make_tween_chain(data, color, name, object) {
+    var points = [];
+    var times = [];
+    for (var i = 0, l = data.length; i < l; i++) {
+        points.push(new THREE.Vector3(...data[i]));
+
+        if (i === 0){
+            times.push(0);
+        }else{
+            times.push((data[i][3] - data[i-1][3])*1000);
+        }
+    }
+
+    // var object = new THREE.Mesh(
+    //     new THREE.SphereBufferGeometry(15, 10, 10, 0, Math.PI * 2, 0, Math.PI * 2),
+    //     new THREE.MeshBasicMaterial({
+    //         color: 'black'
+    //     }));
+
+    object.position.set(points[0].x, points[0].y, points[0].z);
+    scene.add(object);
+    object.updateMatrix();
+
+    var firstTween = new TWEEN.Tween(object);
+    var earlierTween = firstTween;
+    for (var i = 0, l = points.length; i < l; i++) {
+        var tween = new TWEEN.Tween(object);
+        tween.to({x: points[i].x, y: points[i].y, z: points[i].z}, times[i]);
+        earlierTween.chain(tween);
+        earlierTween = tween;
+    }
+    firstTween.start();
+    return earlierTween;
+}
 
 function make_circle_floor(target){
     var plane_geo = new THREE.CircleBufferGeometry( 100000, 10 );
@@ -169,7 +251,6 @@ function makeCameraAndControls(add_controls) {
     var dim = get_window_size();
     camera = new THREE.PerspectiveCamera(55, dim.width / dim.height, 0.01, 1000000);
 
-
     if (add_controls) {
         controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
@@ -177,7 +258,6 @@ function makeCameraAndControls(add_controls) {
         controls.rotateSpeed = 0.05;
         controls.zoomSpeed = 0.05;
         // controls.maxPolarAngle = Math.PI / 2 - 0.009;
-
         scene.controls = controls;
         controls.addEventListener("change", () => {
             if (this.renderer) this.renderer.render(this.scene, camera);
@@ -219,12 +299,53 @@ function set_camera(tube, look, follow){
     }
 
     if (tube.name == follow) {
-        let pt = tube.line_points[tube.pos_idx];
-        camera.position.x = pt.x + 5000;
+        let pt = tube.object.position;
+        camera.position.x = pt.x + 3000;
         camera.position.y = pt.y + 1000;
         camera.position.z = pt.z;
     }
+    // camera.updateProjectionMatrix();
     // controls.update();
+}
+
+function animate(time) {
+
+    requestAnimationFrame(animate);
+    if (pause) {
+        camera.updateProjectionMatrix();
+        renderer.render(scene, camera);
+    } else {
+
+        for (var n = 0, t = tubes.length; n < t; n++) {
+            tube = tubes[n];
+
+            tube.drawCount += 6;
+            tube.pos_idx += 1;
+
+            if (tube.drawCount >= tube.draw_max) {
+                tube.drawCount = 6;
+            }
+
+            if (tube.pos_idx > tube.line_points.length - 1) {
+                tube.pos_idx = 1;
+            }
+
+            var pnow = tube.line_points[tube.pos_idx];
+            tube.ribbon.geometry.setDrawRange(0, tube.drawCount);
+            tube.object.position.set(pnow.x, pnow.y, pnow.z);
+            // tube.object.updateProjectionMatrix();
+            // tube.object.setRotationFromEuler(tube.angles[tube.pos_idx]);
+
+            set_camera(tube, look, follow);
+
+            if (n === 0) {
+                progress.innerHTML = Math.round((tube.pos_idx / max_pt) * 100).toString() + "%";
+            }
+
+        }
+
+        renderer.render(scene, camera);
+    }
 }
 
 function load_kill(kill_id) {
@@ -234,55 +355,16 @@ function load_kill(kill_id) {
     if (typeof kill_id === 'undefined') {
         kill_id = -1;
     }
-
+    // kill_id = 14;
     console.log("Requesting kill id: " + kill_id.toString());
     loader.load("/kill_coords?kill_id=" + kill_id, function (resp) {
         var data = JSON.parse(resp);
 
-        function animate() {
 
-            requestAnimationFrame(animate);
-            if (pause) {
-                render();
-            }else{
 
-                for (var n = 0, t = tubes.length; n < t; n++) {
-                    tube = tubes[n];
-
-                    tube.drawCount += 6;
-                    tube.pos_idx += 1;
-
-                    if (tube.drawCount >= tube.draw_max) {
-                        tube.drawCount = 6;
-                    }
-
-                    if (tube.pos_idx > tube.line_points.length-1) {
-                        tube.pos_idx = 1;
-                    }
-
-                    tube.ribbon.geometry.setDrawRange(0, tube.drawCount);
-
-                    tube.object.position.set(
-                        tube.line_points[tube.pos_idx].x,
-                        tube.line_points[tube.pos_idx].y,
-                        tube.line_points[tube.pos_idx].z
-                    );
-
-                    set_camera(tube, look, follow);
-
-                    if (n === 0) {
-                        progress.innerHTML = Math.round((tube.pos_idx/max_pt)*100).toString() + "%";
-                    }
-
-                }
-
-                render();
-            }
-        }
-
-        function render() {
-            renderer.render(scene, camera);
-        }
+        // function render() {
+        //     renderer.render(scene, camera);
+        // }
         document.getElementById('load_spin').hidden = true;
         window.addEventListener('resize', onWindowResize, false);
         renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
@@ -357,8 +439,8 @@ function load_kill(kill_id) {
         min_ts = data.min_ts;
         delta = data.min_ts;
         restart = 0;
-
-        render();
+        stat();
+        renderer.render(scene, camera);
         animate();
     });
 
@@ -372,7 +454,7 @@ function stat() {
         document.getElementById('killcam_div').appendChild(stats.dom);
         // document.body.appendChild(stats.dom);
         requestAnimationFrame(function loop() {
-            stats.update();
+            // stats.update();
             requestAnimationFrame(loop);
         });
     };

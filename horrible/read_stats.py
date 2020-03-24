@@ -12,8 +12,6 @@ import numpy as np
 from lupa import LuaRuntime # type:ignore
 import pandas as pd
 import sqlalchemy as sa
-import lupa
-import asyncpg
 from tacview_client import client
 
 from horrible.database import (db, frametime_files, mission_stats, stat_files,
@@ -40,7 +38,6 @@ async def update_all_logs_and_stats(db) -> None:
 def pctile(n):
     def percentile_(x):
         return np.percentile(x, n)
-
     percentile_.__name__ = 'percentile_%s' % n
     return percentile_
 
@@ -60,13 +57,14 @@ def parse_prefix(line, fmt):
 async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,
                                 db) -> None:
     """Ensure all gs files are in database."""
+    inserts = []
     if not db.is_connected:
         await db.connect()
     log.info(f"Syncing gs files at {bucket_prefix} to table {table.name}...")
     bucket = get_gcs_bucket()
     stats_list = bucket.client.list_blobs(bucket, prefix=bucket_prefix)
     files = await db.fetch_all(f"SELECT file_name FROM {table.name}")
-    files = [file["file_name"] for file in files]
+    files = [f_["file_name"] for f_ in files]
     for stat_file in stats_list:
         if stat_file.name in files:
             log.debug(f"File: {stat_file.name} already recorded...")
@@ -75,24 +73,21 @@ async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,
         if stat_file.name == bucket_prefix:
             continue
 
-        try:
-            log.info(f"Inserting stat file: {stat_file.name}")
-            file_ts = file_format_ref[bucket_prefix](stat_file.name)
-            last_update = datetime.fromtimestamp(stat_file.updated.timestamp())
-            last_update = last_update.replace(microsecond=0)
-            await db.execute(
-                table.insert(), {
-                    'file_name': stat_file.name,
-                    'session_start_time': file_ts,
-                    'session_last_update': last_update,
-                    'file_size_kb': round(stat_file.size/1000, 2),
-                    'processed': False,
-                    'processed_at': None,
-                    'errors': 0
-                })
-        except asyncpg.UniqueViolationError:
-            log.error("File already has been inserted!")
-            raise asyncpg.UniqueViolationError
+        file_ts = file_format_ref[bucket_prefix](stat_file.name)
+        last_update = datetime.fromtimestamp(stat_file.updated.timestamp())
+        last_update = last_update.replace(microsecond=0)
+        inserts.append({
+                'file_name': stat_file.name,
+                'session_start_time': file_ts,
+                'session_last_update': last_update,
+                'file_size_kb': round(stat_file.size/1000, 2),
+                'processed': False,
+                'processed_at': None,
+                'errors': 0
+            })
+    log.info(f"Inserting {len(inserts)} files to {table.name}")
+    await db.execute_many(table.insert(), inserts)
+    log.info("Files inserted successfully!")
 
 
 async def read_tacview_files(db) -> pd.DataFrame:

@@ -124,7 +124,7 @@ function load_dt(path) {
                 "title": col_nm.join(" ")
             };
             if (col_nm.title === 'Session Date') {
-                col_nm.render = function (data, type) {
+                col_nm.render = function (data, type) { // jshint ignore:line
                     return type === 'sort' ? data : moment(data).format('L');
                 };
             }
