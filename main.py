@@ -3,22 +3,23 @@ import urllib.parse
 from typing import cast
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 import pandas as pd
 from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
 from tacview_client import db as tac_db
-from horrible.database import (db, weapon_types, stat_files, frametime_files,
-                               event_files)
+from horrible.database import (db, weapon_types, stat_files,
+                               frametime_files, event_files)
 from horrible import read_stats, killcam
 from horrible.config import log
 
 templates = Jinja2Templates(directory='horrible/templates')
 app = FastAPI(title="Stat-Server")
-app.mount("/main",
+app.mount("/static",
           StaticFiles(directory="horrible/static", html=True),
           name="static")
+
 
 @app.on_event("startup")
 async def database_connect():

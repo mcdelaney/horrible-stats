@@ -1,6 +1,4 @@
 /*jshint esversion: 6 */
-// import * as myModule from '/main/js/TWEEN.js';
-
 var renderer, scene, camera, controls, line, drawCount, killer_obj, coords,time,
      something, prog, look_at_pt, render, animate, light, max_pt, progress;
 var tubes = [];
@@ -73,9 +71,9 @@ function addFloor() {
 function get_model_path(obj_name){
     var model_path;
     if (obj_name === 'weapon') {
-        model_path = '/main/mesh/Missile.AIM-120C.obj';
+        model_path = '/static/mesh/Missile.AIM-120C.obj';
     } else {
-        model_path = '/main/mesh/FixedWing.F-18C.obj';
+        model_path = '/static/mesh/FixedWing.F-18C.obj';
     }
     return model_path;
 }
