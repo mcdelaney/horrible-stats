@@ -39,6 +39,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: horrible-stats
   name: db
   labels:
     app: db
