@@ -18,9 +18,10 @@ echo "Pushing commit hash image to GCR..."
 docker push gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG
 
 echo "Deploying new image to prod..."
-kubectl set image deployment horrible-stats stat-updater=gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG -n horrible-stats
-kubectl set image deployment horrible-stats event-updater=gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG -n horrible-stats
-kubectl set image deployment horrible-stats app=gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG -n horrible-stats
+kubectl apply -f deployment.yaml
+kubectl set image deployment stat-updater stat-updater=gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG -n horrible-stats
+kubectl set image deployment event-updater event-updater=gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG -n horrible-stats
+kubectl set image deployment app app=gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG -n horrible-stats
 
 echo "Pushing latest image to GCR..."
 docker push gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:latest

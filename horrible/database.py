@@ -100,6 +100,17 @@ frametime_files = sqlalchemy.Table(
     sqlalchemy.Column("errors", sqlalchemy.Integer))
 
 
+tacview_files = sqlalchemy.Table(
+    "tacview_files", metadata,
+    sqlalchemy.Column("file_name", sqlalchemy.String(), primary_key=True),
+    sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("session_last_update", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("file_size_kb", sqlalchemy.Float()),
+    sqlalchemy.Column("processed", sqlalchemy.Boolean()),
+    sqlalchemy.Column("processed_at", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("errors", sqlalchemy.Integer))
+
+
 frametimes = sqlalchemy.Table(
     "frametimes",
     metadata,

@@ -14,18 +14,11 @@ import pandas as pd
 import sqlalchemy as sa
 from tacview_client import client
 
-from horrible.database import (db, mission_stats, stat_files,
+from horrible.database import (db, mission_stats, stat_files, tacview_files,
                                weapon_types, event_files, mission_events,
                                event_files, file_format_ref)
 from horrible.gcs import get_gcs_bucket
 from horrible.config import log
-
-
-async def update_file_set(prefix: str, table, db) -> None:
-    """Sync a subdir from GS with local database."""
-    log.info(f"Syncing {prefix} files and updating records...")
-    await sync_gs_files_with_db(prefix, table, db)
-    await process_lua_records(prefix)
 
 
 def pctile(n):
@@ -136,21 +129,12 @@ def process_tacview_file(filename) -> None:
     log.info(f"Downloading blob object to file: {filename}....")
     blob.download_to_file(local_path.open('wb'))
     log.info('File downloaded...')
-    funcall = partial(client.serve_and_read,
-                        filename=local_path,
-                        port=5676)
-    proc = Process(target=funcall)
     log.info('Starting reader...')
     try:
-        proc.start()
-        proc.join()
+        client.serve_and_read(filename=local_path, port=5676)
+        log.info('Reader compete...')
     except Exception as err:
         log.error(err)
-    finally:
-        log.info('Terminating reader thread...')
-        proc.terminate()
-    # except Exception as err:
-    # log.error(err)
 
 
 async def sync_weapons() -> None:

@@ -56,6 +56,17 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
       errors INTEGER DEFAULT 0
   );
 
+CREATE TABLE IF NOT EXISTS tacview_files (
+      file_name VARCHAR(500) PRIMARY KEY,
+      session_start_time TIMESTAMP,
+      session_last_update TIMESTAMP,
+      file_size_kb float,
+      processed boolean DEFAULT FALSE,
+      processed_at timestamp DEFAULT NULL,
+      uploaded_at timestamp DEFAULT date_trunc('second', CURRENT_TIMESTAMP),
+      errors INTEGER DEFAULT 0
+  );
+
   CREATE TABLE IF NOT EXISTS frametimes (
       file_name VARCHAR(500) REFERENCES frametime_files(file_name) ON DELETE CASCADE,
       frame_ts TIMESTAMP,

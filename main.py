@@ -55,7 +55,6 @@ async def resync_file(request: Request, file_name: str):
                 WHERE file_name = '{stat_file_name}'""")
             await db.execute(f"""DELETE FROM mission_stat_files
                 WHERE file_name = '{stat_file_name}'""")
-
             if stat_file_name.exists():
                 stat_file_name.unlink()
             else:
