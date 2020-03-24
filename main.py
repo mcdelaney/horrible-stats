@@ -2,9 +2,8 @@ from pathlib import Path
 import urllib.parse
 from typing import cast
 
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
-from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 from starlette.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
@@ -15,35 +14,18 @@ from horrible.database import (db, weapon_types, stat_files, frametime_files,
 from horrible import read_stats, killcam
 from horrible.config import log
 
-origins = [
-    "http://ahorribleserver.com", "http://localhost", "http://localhost",
-    "http://0.0.0.0:8000", 'https://cdnjs.cloudflare.com/*'
-]
-
-
 templates = Jinja2Templates(directory='horrible/templates')
 app = FastAPI(title="Stat-Server")
 app.mount("/main",
           StaticFiles(directory="horrible/static", html=True),
           name="static")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-tasks = BackgroundTasks()
-
 
 @app.on_event("startup")
 async def database_connect():
     try:
         await db.connect()
+        await read_stats.sync_weapons()
         tac_db.create_tables()
-        # global tasks
-        # await read_stats.update_all_logs_and_stats(db)
     except Exception as err:
         log.error(f"Could not conect to database at {db.url}!")
         raise err
@@ -59,12 +41,6 @@ def healthz():
     """Health-check endpoint.  Should return 200."""
     return "ok"
 
-
-@app.get("/check_db_files")
-async def check_db_files(request: Request):
-    """Trigger db update."""
-    await read_stats.update_all_logs_and_stats(db)
-    return RedirectResponse('/')
 
 
 @app.get("/resync_file/")
@@ -84,16 +60,12 @@ async def resync_file(request: Request, file_name: str):
                 stat_file_name.unlink()
             else:
                 log.warning("Local cached copy of file not found!")
-
-        await read_stats.update_all_logs_and_stats(db)
     return "ok"
 
 
 @app.get("/stat_logs")
 async def get_stat_logs(request: Request):
     """Get a json dictionary of mission-stat file status data."""
-    tasks = BackgroundTasks()
-    tasks.add_task(read_stats.update_all_logs_and_stats)
     try:
         data_recs = await db.fetch_all(query=stat_files.select())
         data = pd.DataFrame.from_records(data_recs, index=None)
@@ -122,8 +94,6 @@ async def get_stat_logs(request: Request):
 @app.get("/event_logs")
 async def get_event_logs(request: Request):
     """Get a json dictionary of mission-event file status data."""
-    tasks = BackgroundTasks()
-    tasks.add_task(read_stats.update_all_logs_and_stats)
     try:
         data_recs = await db.fetch_all(query=event_files.select())
         data = pd.DataFrame.from_records(data_recs, index=None)
@@ -251,10 +221,10 @@ async def tacview_detail(request: Request):
 
 
 @app.get("/process_tacview/")
-async def process_tacview(filename: str, tasks: BackgroundTasks):
+async def process_tacview(filename: str):
     """Trigger processing of a tacview file."""
-    tasks.add_task(read_stats.process_tacview_file,
-                         urllib.parse.unquote(filename))
+    # tasks.add_task(read_stats.process_tacview_file,
+    #                      urllib.parse.unquote(filename))
     return "ok"
 
 @app.get("/events")
@@ -268,7 +238,6 @@ async def event_detail(request: Request):
 async def raw_cats(request: Request, pilot: str = None):
     """Return a rendered template showing kill/loss statistics."""
     data = await read_stats.collect_recs_kv()
-
     if pilot:
         data = cast(pd.DataFrame,
                     data.query(f"pilot == '{urllib.parse.unquote(pilot)}'"))
@@ -276,9 +245,7 @@ async def raw_cats(request: Request, pilot: str = None):
 
     data = data.groupby([
         'session_start_date', 'equipment', 'stat_group', 'key_orig',
-        'category', 'metric'
-    ],
-                        as_index=False).sum()
+        'category', 'metric'], as_index=False).sum()
     data.sort_values(by=['session_start_date'], ascending=False, inplace=True)
     return HTMLResponse(content=data.to_html())
 

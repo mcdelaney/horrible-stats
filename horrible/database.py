@@ -111,9 +111,9 @@ frametimes = sqlalchemy.Table(
 
 
 file_format_ref = {
-    'mission-stats/': parse_mission_stat_ts,
-    'frametime/': parse_frametime_ts,
-    'mission-events/': parse_mission_stat_ts
+    'mission-stats': parse_mission_stat_ts,
+    'frametime': parse_frametime_ts,
+    'mission-events': parse_mission_stat_ts
 }
 
 

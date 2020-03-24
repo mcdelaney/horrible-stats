@@ -1,48 +1,83 @@
 version: "2"
 services:
-  db:
-    build:
-      context: ./database/
-    volumes:
-      - ./database/pgdata:/var/lib/postgresql/data:delegated
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_DB=dcs
-      - POSTGRES_USER=prod
-      - POSTGRES_PASSWORD=pwd
-    restart: always
+    db:
+        build:
+            context: ./database/
+        volumes:
+        - ./database/pgdata:/var/lib/postgresql/data:delegated
+        ports:
+        - "5432:5432"
+        environment:
+        - POSTGRES_DB=dcs
+        - POSTGRES_USER=prod
+        - POSTGRES_PASSWORD=pwd
+        restart: always
 
-#   memcached:
-#     image: memcached:latest
-#     ports:
-#       - "11211:11211"
-#     restart: always
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile_local
+        command: [
+        "bash", "/var/dev/wait-for-it.sh", "db:5432", "--",
+        "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+        ports:
+        - "8000:8000"
+        depends_on:
+        - db
+        links:
+        - db
+        environment:
+        - GOOGLE_APPLICATION_CREDENTIALS=/etc/dcs-storage-gcs.json
+        - DATABASE_URL=postgresql://db:5432/dcs?user=prod&password=pwd
+        - TACVIEW_DSN=postgresql://db:5432/dcs?user=prod&password=pwd
+        volumes:
+        - ./horrible/:/app/horrible/:rw
+        - ./main.py:/app/main.py:rw
+        - ./dcs-storage-gcs.json:/etc/dcs-storage-gcs.json:rw
+        restart: always
 
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile_local
-    command: [
-      "bash", "/var/dev/wait-for-it.sh", "db:5432", "--",
-      "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-    #   - memcached
-    links:
-      - db
-    #   - memcached
-    environment:
-    - GOOGLE_APPLICATION_CREDENTIALS=/etc/dcs-storage-gcs.json
-    - DATABASE_URL=postgresql://db:5432/dcs?user=prod&password=pwd
-    - TACVIEW_DSN=postgresql://db:5432/dcs?user=prod&password=pwd
-    volumes:
-      - ./horrible/:/app/horrible/:rw
-      - ./main.py:/app/main.py:rw
-      - ./dcs-storage-gcs.json:/etc/dcs-storage-gcs.json:rw
-    restart: always
+    stat-updater:
+        build:
+            context: .
+            dockerfile: Dockerfile_local
+        command: [
+            "bash", "/var/dev/wait-for-it.sh", "db:5432", "--",
+            "python", "file_updater.py", "--prefix", "mission-stats", "--interval", "120"]
+        depends_on:
+        - db
+        links:
+        - db
+        environment:
+        - GOOGLE_APPLICATION_CREDENTIALS=/etc/dcs-storage-gcs.json
+        - DATABASE_URL=postgresql://db:5432/dcs?user=prod&password=pwd
+        - TACVIEW_DSN=postgresql://db:5432/dcs?user=prod&password=pwd
+        volumes:
+            - ./horrible/:/app/horrible/:rw
+            - ./file_updater.py:/app/file_updater.py:rw
+            - ./dcs-storage-gcs.json:/etc/dcs-storage-gcs.json:rw
+        restart: always
+
+    event-updater:
+        build:
+            context: .
+            dockerfile: Dockerfile_local
+        command: [
+            "bash", "/var/dev/wait-for-it.sh", "db:5432", "--",
+            "python", "file_updater.py", "--prefix", "mission-events", "--interval", "120"]
+        depends_on:
+        - db
+        links:
+        - db
+        environment:
+        - GOOGLE_APPLICATION_CREDENTIALS=/etc/dcs-storage-gcs.json
+        - DATABASE_URL=postgresql://db:5432/dcs?user=prod&password=pwd
+        - TACVIEW_DSN=postgresql://db:5432/dcs?user=prod&password=pwd
+        volumes:
+            - ./horrible/:/app/horrible/:rw
+            - ./file_updater.py:/app/file_updater.py:rw
+            - ./dcs-storage-gcs.json:/etc/dcs-storage-gcs.json:rw
+        restart: always
+
 
 volumes:
   pgdata:

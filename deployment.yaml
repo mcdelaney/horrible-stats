@@ -30,10 +30,48 @@ spec:
         - name: dcs-storage-gcs
           mountPath: "/etc/keys/"
           readOnly: true
+    #   volumes:
+    #   - name: dcs-storage-gcs
+    #     secret:
+    #       secretName: dcs-storage-gcs
+
+      - name: stat-updater
+        image: gcr.io/dcs-analytics-257714/horrible_stats:latest
+        command: ["python", "file_updater.py"]
+        args: ["--prefix", "mission-stats", "--interval", "120"]
+        env:
+          - name: GOOGLE_APPLICATION_CREDENTIALS
+            value: "/etc/keys/dcs-storage-gcs.json"
+          - name: DATABASE_URL
+            value: postgresql://db:5432/dcs?user=prod&password=pwd
+          - name: TACVIEW_DSN
+            value: postgresql://db:5432/dcs?user=prod&password=pwd
+        volumeMounts:
+        - name: dcs-storage-gcs
+          mountPath: "/etc/keys/"
+          readOnly: true
+
+      - name: event-updater
+        image: gcr.io/dcs-analytics-257714/horrible_stats:latest
+        command: ["python", "file_updater.py"]
+        args: ["--prefix", "mission-events", "--interval", "120"]
+        env:
+          - name: GOOGLE_APPLICATION_CREDENTIALS
+            value: "/etc/keys/dcs-storage-gcs.json"
+          - name: DATABASE_URL
+            value: postgresql://db:5432/dcs?user=prod&password=pwd
+          - name: TACVIEW_DSN
+            value: postgresql://db:5432/dcs?user=prod&password=pwd
+        volumeMounts:
+        - name: dcs-storage-gcs
+          mountPath: "/etc/keys/"
+          readOnly: true
+
       volumes:
       - name: dcs-storage-gcs
         secret:
           secretName: dcs-storage-gcs
+
 ---
   apiVersion: v1
   kind: Service

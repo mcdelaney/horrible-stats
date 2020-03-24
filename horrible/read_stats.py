@@ -14,25 +14,11 @@ import pandas as pd
 import sqlalchemy as sa
 from tacview_client import client
 
-from horrible.database import (db, frametime_files, mission_stats, stat_files,
+from horrible.database import (db, mission_stats, stat_files,
                                weapon_types, event_files, mission_events,
                                event_files, file_format_ref)
 from horrible.gcs import get_gcs_bucket
 from horrible.config import log
-
-
-async def update_all_logs_and_stats(db) -> None:
-    """Sync weapon db, gs stats files, and process any new records."""
-    log.info("Syncing log files and updating stats...")
-    await sync_weapons()
-    await sync_gs_files_with_db('mission-stats/', stat_files, db)
-    await process_lua_records('mission-stats')
-
-    await sync_gs_files_with_db('mission-events/', event_files, db)
-    await process_lua_records('mission-events')
-
-    await sync_gs_files_with_db('frametime/', frametime_files, db)
-    log.info("All log and stats files updated...")
 
 
 async def update_file_set(prefix: str, table, db) -> None:
@@ -70,19 +56,35 @@ async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,
     log.info(f"Syncing gs files at {bucket_prefix} to table {table.name}...")
     bucket = get_gcs_bucket()
     stats_list = bucket.client.list_blobs(bucket, prefix=bucket_prefix)
-    files = await db.fetch_all(f"SELECT file_name FROM {table.name}")
-    files = [f_["file_name"] for f_ in files]
+    files = await db.fetch_all(f"""SELECT file_name, session_last_update
+                               FROM {table.name}""")
+    files = {f_["file_name"]:f_['session_last_update'] for f_ in files}
     for stat_file in stats_list:
-        if stat_file.name in files:
-            log.debug(f"File: {stat_file.name} already recorded...")
+        if stat_file.name.replace("/", "") == bucket_prefix:
             continue
+        last_update = datetime.fromtimestamp(stat_file.updated.timestamp())
+        last_update = last_update.replace(microsecond=0)
+
+        if stat_file.name in files.keys():
+            if files[stat_file.name] == last_update:
+                log.debug(f"File: {stat_file.name} already recorded with same timestamp...")
+                continue
+            else:
+                log.info(f"Updating modified date of file: {stat_file.name}...")
+                await db.execute(f"""
+                                 UPDATE {table.name} SET
+                                 file_size_kb = {round(stat_file.size/1000, 2)},
+                                 session_last_update = '{last_update}',
+                                 processed = FALSE,
+                                 processed_at = NULL
+                                 WHERE file_name = '{stat_file.name}'
+                                 """)
+                continue
 
         if stat_file.name == bucket_prefix:
             continue
 
         file_ts = file_format_ref[bucket_prefix](stat_file.name)
-        last_update = datetime.fromtimestamp(stat_file.updated.timestamp())
-        last_update = last_update.replace(microsecond=0)
         inserts.append({
                 'file_name': stat_file.name,
                 'session_start_time': file_ts,
@@ -298,27 +300,30 @@ async def process_lua_records(file_type) -> None:
 
     for stat in proc_files:
         try:
-            log.info(f"Handing {stat['file_name']}")
             if stat['file_name'] == "mission-stats/":
                 continue
+            log.info(f"Handing {stat['file_name']}")
             local_path = Path(f"{stat['file_name']}")
-            if local_path.exists():
-                log.info("Cached file found...skipping download...")
-            else:
-                log.info(f"Downloading {stat['file_name']} to {local_path}...")
-                try:
-                    blob = bucket.get_blob(stat['file_name'])
-                    blob.download_to_filename(local_path)
-                except Exception as e:
-                    log.error(f"Error downloading file! {e}")
-                    raise ValueError("File could not be downloaded")
+
+            log.info(f"Downloading {stat['file_name']} to {local_path}...")
+            try:
+                blob = bucket.get_blob(stat['file_name'])
+                blob.download_to_filename(local_path)
+            except Exception as e:
+                log.error(f"Error downloading file! {e}")
+                raise ValueError("File could not be downloaded")
 
             stat_parsed = proc_fun(local_path)
 
             log.info("Writing record to database...")
             if stat_parsed:
-                insert = rec_table.insert()
-                await db.execute_many(insert, stat_parsed)
+                log.info('Deleting existing records...')
+                await db.execute(f"""DELETE FROM {rec_table.name}
+                                 WHERE file_name = '{stat['file_name']}'""")
+
+                await db.execute_many(rec_table.insert(), stat_parsed)
+            else:
+                log.info('No results in data...')
 
             await db.execute(f"""UPDATE {file_table}
                              SET
@@ -326,7 +331,7 @@ async def process_lua_records(file_type) -> None:
                                 errors = 0,
                                 processed_at = date_trunc('second', CURRENT_TIMESTAMP)
                                 WHERE file_name = '{stat['file_name']}'
-                                """)
+                            """)
             log.info("Record processing complete...")
 
         except Exception as err:
