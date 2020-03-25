@@ -12,7 +12,8 @@ import numpy as np
 from lupa import LuaRuntime # type:ignore
 import pandas as pd
 import sqlalchemy as sa
-from tacview_client import client
+from tacview_client import client, serve_file
+import os
 
 from horrible.database import (db, mission_stats, stat_files,
                                weapon_types, event_files, mission_events,
@@ -106,13 +107,22 @@ def process_tacview_file(filename) -> None:
     blob = bucket.get_blob(filename)
     log.info(f"Downloading blob object to file: {filename}....")
     blob.download_to_file(local_path.open('wb'))
-    log.info('File downloaded...')
-    log.info('Starting reader...')
-    try:
-        client.serve_and_read(filename=local_path, port=5676)
-        log.info('Reader compete...')
-    except Exception as err:
-        log.error(err)
+    log.info('File downloaded...starting reader...')
+    dsn = os.getenv("TACVIEW_DSN")
+
+    server_proc = Process(target=partial(
+        serve_file.main, filename=local_path, port=5555))
+    server_proc.start()
+
+    client.main(host='127.0.0.1',
+                port=5555,
+                debug=False,
+                max_iters=50000000,
+                batch_size=50000,
+                dsn=dsn)
+    server_proc.terminate()
+    log.info('Reader compete...')
+
 
 
 async def sync_weapons() -> None:
