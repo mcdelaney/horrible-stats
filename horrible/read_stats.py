@@ -124,7 +124,6 @@ def process_tacview_file(filename) -> None:
     log.info('Reader compete...')
 
 
-
 async def sync_weapons() -> None:
     """Sync contents of data/weapons-db.csv with database."""
     weapons = pd.read_csv("horrible/data/weapon-db.csv").to_dict('records')

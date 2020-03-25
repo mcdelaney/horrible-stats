@@ -6,9 +6,8 @@ TAG=$(date +"%s")
 
 echo "Building base image..."
 docker build -t horrible_base -f Dockerfile_base .
-echo "Building and deploying $IMAGE_NAME at hash $TAG..."
 
-echo "Building new image..."
+echo "Building $IMAGE_NAME at hash $TAG..."
 docker build -t gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:latest .
 
 echo "Setting commit hash tag on latest image..."

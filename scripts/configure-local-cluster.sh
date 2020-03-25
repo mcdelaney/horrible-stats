@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 SECRETNAME="gcr-auth"
-kubectl create secret docker-registry $SECRETNAME \
+kubectl create secret docker-registry gcr-auth \
   --docker-server=https://gcr.io \
   --docker-username=_json_key \
   --docker-email=mcdelaney@gmail.com \
