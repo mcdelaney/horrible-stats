@@ -126,7 +126,7 @@ spec:
       - name: tacview-updater
         image: gcr.io/dcs-analytics-257714/horrible_stats:latest
         command: ["python", "file_updater.py"]
-        args: ["--prefix", "tacview", "--interval", "120"]
+        args: ["--prefix", "tacview", "--interval", "30"]
         env:
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: "/etc/keys/dcs-storage-gcs.json"

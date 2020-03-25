@@ -18,7 +18,7 @@ from horrible.config import log
 templates = Jinja2Templates(directory='horrible/templates')
 app = FastAPI(title="Stat-Server")
 app.mount("/static",
-          StaticFiles(directory="horrible/static", html=True),
+          StaticFiles(directory="static", html=True),
           name="static")
 
 
@@ -187,7 +187,7 @@ async def get_session_perf_stats(request: Request):
 @app.get("/")
 async def serve_homepage(request: Request):
     """Serve the index.html template."""
-    with open("horrible/static/index.html", mode='r') as fp_:
+    with open("static/index.html", mode='r') as fp_:
         page = fp_.read()
     return HTMLResponse(page)
 
@@ -257,11 +257,10 @@ async def tacview_kills(request: Request):
     return data
 
 
-
 @app.get("/killcam")
 async def serve_killcam(request: Request):
     """Serve the index.html template."""
-    with open("horrible/static/killcam.html", mode='r') as fp_:
+    with open("static/killcam.html", mode='r') as fp_:
         page = fp_.read()
     return HTMLResponse(page)
 

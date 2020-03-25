@@ -7,7 +7,9 @@ from datetime import timedelta
 async def get_all_kills(db) -> List:
     """Get a table of all kills."""
     data = []
-    query = await db.fetch_all("SELECT * FROM impact_comb")
+    query = await db.fetch_all("""SELECT *,
+                               (weapon_last_seen - weapon_first_seen) kill_duration
+                               FROM impact_comb""")
     for rec in query:
         tmp = {
             'kill_timestamp': (
@@ -20,6 +22,7 @@ async def get_all_kills(db) -> List:
             'target_name': rec['target_name'],
             'target_type': rec['target_type'],
             'impact_dist': rec['impact_dist'],
+            'kill_duration': rec['kill_duration'],
             'impact_id': rec['impact_id'],
         }
         data.append(tmp)

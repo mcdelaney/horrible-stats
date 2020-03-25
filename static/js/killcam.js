@@ -437,7 +437,7 @@ function load_kill(kill_id) {
         min_ts = data.min_ts;
         delta = data.min_ts;
         restart = 0;
-        stat();
+        // stat();
         renderer.render(scene, camera);
         animate();
     });

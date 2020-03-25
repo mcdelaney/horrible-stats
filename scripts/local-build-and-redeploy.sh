@@ -24,6 +24,6 @@ kubectl set image deployment tacview-updater tacview-updater=gcr.io/$GCP_PROJECT
 kubectl set image deployment app app=gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG -n horrible-stats
 
 echo "Pushing latest image to GCR..."
-docker push gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:latest
+docker push gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:latest > /dev/null 2>&1 &
 
 # kubectl delete deployment horrible-stats -n horrible-stats

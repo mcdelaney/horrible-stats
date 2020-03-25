@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.css"/>
+    <script src="/static/js/three.min.js"></script>
+    <!-- <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script> -->
+    <script src="/static/js/OrbitControls.js"></script>
+    <script src="/static/js/OBJLoader.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/fc-3.3.0/sc-2.0.1/datatables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.min.js"></script> -->
+  </head>
+  <body>
+
+    <!-- <div id="particles-background" class="vertical-centered-box"></div>
+    <div id="particles-foreground" class="vertical-centered-box"></div> -->
+
+    <div class="container-fluid" style="width:95%">
+        <!-- <div class="row"> -->
+          <!-- <div class="col"> -->
+          <nav class="navbar navbar-expand-lg navbar-light">
+            <a class="navbar-brand">
+              <!-- <img src="/static/images/full_brand_white.png" alt=""> -->
+              <img src="/static/images/full_brand.png" alt="">
+            </a>
+            <ul id="nav_set" class="nav nav-pills">
+              <li class="nav-item">
+                <a id="overall" class="nav-link" role="button" onclick="set_onclick(this)">Overall</a>
+              </li>
+              <li class="nav-item">
+                <a  id="session_performance" class="nav-link"  onclick="set_onclick(this)">Session Performance</a>
+              </li>
+              <li class="nav-item">
+                <a  id="weapons" class="nav-link" onclick="set_onclick(this)">Weapon Efficiency</a>
+              </li>
+              <li class="nav-item">
+                <a  id="losses" class="nav-link" onclick="set_onclick(this)">Losses</a>
+              </li>
+              <li class="nav-item">
+                <a  id="kills" class="nav-link" onclick="set_onclick(this)">Kills</a>
+              </li>
+              <li class="nav-item">
+                <a  id="events" class="nav-link" onclick="set_onclick(this)">Events</a>
+              </li>
+              <li class="nav-item">
+                <a id="tacview_kills" class="nav-link" onclick="set_onclick(this)">Tacview Kills</a>
+              </li>
+              <li class="nav-item">
+                <a  id="killcam" class="nav-link" onclick="set_onclick(this)">KillCam</a>
+              </li>
+              <li class="nav-item">
+                <a  id="event_logs" class="nav-link" onclick="set_onclick(this)">Event-Db-Status</a>
+              </li>
+              <li class="nav-item">
+                <a id="stat_logs"class="nav-link" onclick="set_onclick(this)">Log-DB-Status</a>
+              </li>
+              <li class="nav-item">
+                <a id="weapon_db" class="nav-link" onclick="set_onclick(this)">Weapon-DB</a>
+              </li>
+              <li class="nav-item">
+                <a id="tacview" class="nav-link" onclick="set_onclick(this)">Tacview</a>
+              </li>
+              <!-- <li class="nav-item">
+                <a id="frametime_logs" class="nav-link" href="#">Frametime Logs</a>
+              </li> -->
+              <!-- <li class="nav-item">
+                <a id="frametime_charts" class="nav-link" href="#">Frametime Charts</a>
+              </li> -->
+            </ul>
+          </nav>
+
+          <div id="table_container" style="padding-top:15px">
+
+            <div id="killcam_div" hidden>
+                <section id="loading-screen">
+                    <div id="loader"></div>
+                </section>
+            </div>
+
+            <div id="load_spin" class="spinner-border text-primary" style="margin-top:25px;position:relative;left:50%;" hidden></div>
+
+            <div id="overall_container" hidden>
+              <table id="overall_tbl" class="table table-dark table-bordered table-hover" style="width: 100%"></table>
+            </div>
+
+          </div>
+        <!-- </div> -->
+      <!-- </div> -->
+    </div>
+  </body>
+  <!-- <script type="text/javascript" src="/static/js/stars.js"></script> -->
+  <script type="text/javascript" src="/static/js/main.js"></script>
+  <script type="text/javascript" src="/static/js/killcam.js"></script>
+</html>

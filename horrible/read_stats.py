@@ -677,8 +677,6 @@ async def read_events() -> pd.DataFrame:
     return events # type: ignore
 
 
-
-
 # def read_frametime(filename: str, pctile: int = 50) -> Dict:
 #     """Given a google-storage blob, return a dataframe with frametime stats."""
 #     Path("frametimes").mkdir(parents=True, exist_ok=True)

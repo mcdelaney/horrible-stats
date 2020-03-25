@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 import re
 from typing import Optional
+import pytz
 
 import databases
 from starlette.config import Config
@@ -17,7 +18,7 @@ config = Config('.env')
 DATABASE_URL = config(
     'DATABASE_URL',
     default="postgresql://localhost:5432/dcs?user=prod&password=pwd")
-db = databases.Database(DATABASE_URL)
+db = databases.Database(DATABASE_URL, min_size=2, max_size=5)
 
 eng = sqlalchemy.create_engine(DATABASE_URL)
 metadata = sqlalchemy.MetaData(bind=eng)
@@ -30,13 +31,23 @@ def create_tables():
         LOG.error(err)
 
 
+def get_tz_offset(ts):
+    if ts.date > datetime.datetime(2020, 3, 20, 1, 1, 1):
+        return pytz.timezone('US/Mountain')
+    else:
+        return pytz.timezone('US/Eastern')
+
+
 def parse_mission_stat_ts(path: str) -> Optional[datetime.datetime]:
     file_ = Path(path).name
     mat = re.search("([A-z]{3} [0-9]{1,2}, [0-9]{4} at [0-9]{2} [0-9]{2} [0-9]{2})",
                     file_)
     if mat:
         parsed = mat.group().replace("at ", "")
-        return datetime.datetime.strptime(parsed, "%b %d, %Y %H %M %S")
+        ts = datetime.datetime.strptime(parsed, "%b %d, %Y %H %M %S")
+        ts = ts.replace(microsecond=0)
+        ts = ts.replace(tzinfo=get_tz_offset(ts))
+        return ts
     else:
         LOG.warning(f"Could not find timestamp in file path for {file_}!")
         return None
@@ -46,20 +57,26 @@ def parse_frametime_ts(path: str) -> datetime.datetime:
     file_ = Path(path).name
     file_ = file_.replace("fps_tracklog", "")
     file_ts = round(float(file_.replace(".log", "")), 2)
-    return datetime.datetime.fromtimestamp(file_ts).replace(microsecond=0)
+    ts =  datetime.datetime.fromtimestamp(file_ts)
+    ts = ts.replace(microsecond=0)
+    ts = ts.replace(tzinfo=get_tz_offset(ts))
+    return ts
 
 
 def parse_tacview_prefix(line):
     fmt = 'tacview/Tacview-%Y%m%d-%H%M%S'
     try:
-        t = datetime.datetime.strptime(line, fmt)
+        ts = datetime.datetime.strptime(line, fmt)
     except ValueError as v:
         if len(v.args) > 0 and v.args[0].startswith('unconverted data remains: '):
             line = line[:-(len(v.args[0]) - 26)]
-            t = datetime.datetime.strptime(line, fmt)
+            ts = datetime.datetime.strptime(line, fmt)
         else:
             raise
-    return t
+    ts = ts.replace(microsecond=0)
+    ts = ts.replace(tzinfo=get_tz_offset(ts))
+    return ts
+
 
 weapon_types = sqlalchemy.Table(
     "weapon_types",
@@ -74,7 +91,7 @@ stat_files = sqlalchemy.Table(
     "mission_stat_files",
     metadata,
     sqlalchemy.Column("file_name", sqlalchemy.String(), primary_key=True),
-    sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP(timezone=True)),
     sqlalchemy.Column("session_last_update", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("file_size_kb", sqlalchemy.Float()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
@@ -98,7 +115,7 @@ event_files = sqlalchemy.Table(
     "mission_event_files",
     metadata,
     sqlalchemy.Column("file_name", sqlalchemy.String(), primary_key=True),
-    sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP(timezone=True)),
     sqlalchemy.Column("session_last_update", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("file_size_kb", sqlalchemy.Float()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
@@ -120,7 +137,7 @@ mission_events = sqlalchemy.Table(
 frametime_files = sqlalchemy.Table(
     "frametime_files", metadata,
     sqlalchemy.Column("file_name", sqlalchemy.String(), primary_key=True),
-    sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP(timezone=True)),
     sqlalchemy.Column("session_last_update", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("file_size_kb", sqlalchemy.Float()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
@@ -131,7 +148,7 @@ frametime_files = sqlalchemy.Table(
 tacview_files = sqlalchemy.Table(
     "tacview_files", metadata,
     sqlalchemy.Column("file_name", sqlalchemy.String(), primary_key=True),
-    sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("session_start_time", sqlalchemy.TIMESTAMP(timezone=True)),
     sqlalchemy.Column("session_last_update", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("file_size_kb", sqlalchemy.Float()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
