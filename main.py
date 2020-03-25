@@ -254,7 +254,8 @@ async def raw_cats(request: Request, pilot: str = None):
 async def tacview_kills(request: Request):
     """Get a list of tacview kills."""
     data = await killcam.get_all_kills(db)
-    data.to_dict("split") # type: ignore
+    return data
+
 
 
 @app.get("/killcam")

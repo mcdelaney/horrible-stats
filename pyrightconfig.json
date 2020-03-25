@@ -1,0 +1,8 @@
+{
+    "exclude": [
+      "**/**/__pycache__/**/**",
+      "database/pgdata/**/**",
+      "horrible/static/**/**"
+    ],
+    "include": ["horrible"]
+  }

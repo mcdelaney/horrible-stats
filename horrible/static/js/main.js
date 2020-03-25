@@ -213,7 +213,6 @@ $(document).ready(function () {
 });
 
 // var selected_row;
-
 $('#overall_tbl').on('click', 'tbody tr', function () {
     var current = document.getElementsByClassName("active");
     var row_idx = null;
