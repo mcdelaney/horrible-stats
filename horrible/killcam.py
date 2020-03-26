@@ -21,8 +21,8 @@ async def get_all_kills(db) -> List:
             'weapon_type': rec['weapon_type'],
             'target_name': rec['target_name'],
             'target_type': rec['target_type'],
-            'impact_dist': rec['impact_dist'],
-            'kill_duration': rec['kill_duration'],
+            'impact_dist': round(rec['impact_dist'], 2),
+            'kill_duration': round(rec['kill_duration'], 2),
             'impact_id': rec['impact_id'],
         }
         data.append(tmp)

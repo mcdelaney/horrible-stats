@@ -5,7 +5,7 @@ var tubes = [];
 var pause = false;
 var elem = document.getElementById('killcam_div');
 var look = "weapon";
-var follow = 'killer';
+var follow = 'target';
 var CONTROLS = false;
 var obj_loader = new THREE.OBJLoader(loadingManager);
 

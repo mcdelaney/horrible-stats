@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+echo "Creating registry..."
+docker run -d -p 5000:5000 --restart=always --name registry registry:2
 
 SECRETNAME="gcr-auth"
 kubectl create secret docker-registry gcr-auth \

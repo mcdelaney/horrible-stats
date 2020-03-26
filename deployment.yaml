@@ -4,7 +4,7 @@ metadata:
   name: app
   namespace: horrible-stats
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: app
@@ -17,6 +17,11 @@ spec:
       containers:
       - name: app
         image: gcr.io/dcs-analytics-257714/horrible_stats:latest
+        resources:
+            limits:
+              cpu: "2"
+            requests:
+              cpu: "1"
         env:
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: "/etc/keys/dcs-storage-gcs.json"
@@ -113,7 +118,7 @@ metadata:
   name: tacview-updater
   namespace: horrible-stats
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: app
