@@ -59,7 +59,7 @@ async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,
                                  file_size_kb = {round(stat_file.size/1000, 2)},
                                  session_last_update = '{last_update}',
                                  processed = FALSE,
-                                 processed_at = NULL
+                                 process_start = NULL
                                  WHERE file_name = '{stat_file.name}'
                                  """)
                 continue
@@ -74,7 +74,7 @@ async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,
                 'session_last_update': last_update,
                 'file_size_kb': round(stat_file.size/1000, 2),
                 'processed': False,
-                'processed_at': None,
+                'process_start': None,
                 'errors': 0
             })
     log.info(f"Inserting {len(inserts)} files to {table.name}")
@@ -89,7 +89,14 @@ async def query_tacview_files(db) -> Dict:
               'index': [],
               'columns': []}
     i = 0
-    recs = await db.fetch_all("SELECT * FROM tacview_files")
+    recs = await db.fetch_all(
+        """SELECT file_name, session_start_time, session_last_update,
+            ROUND(CAST((file_size_kb / 1000) as NUMERIC), 2) file_size_mb,
+            processed,
+            DATE_TRUNC('seconds', process_start) process_start,
+            DATE_TRUNC('seconds', process_end) process_end,
+            errors
+        FROM tacview_files""")
     for record in recs:
         if i == 0:
             output['columns'].extend(list(record.keys()))
@@ -300,7 +307,7 @@ async def process_lua_records(file_type) -> None:
                              SET
                                 processed = TRUE,
                                 errors = 0,
-                                processed_at = date_trunc('second', CURRENT_TIMESTAMP)
+                                process_start = date_trunc('second', CURRENT_TIMESTAMP)
                                 WHERE file_name = '{stat['file_name']}'
                             """)
             log.info("Record processing complete...")
@@ -314,7 +321,7 @@ async def process_lua_records(file_type) -> None:
                                 FROM {file_table}
                                 WHERE file_name = '{stat['file_name']}'
                              ),
-                             processed_at = CURRENT_TIMESTAMP,
+                             process_start = CURRENT_TIMESTAMP,
                              error_msg = :err
                              WHERE file_name = '{stat['file_name']}'
                                 """, values={'err': str(err)})

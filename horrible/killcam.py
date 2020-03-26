@@ -8,7 +8,7 @@ async def get_all_kills(db) -> List:
     """Get a table of all kills."""
     data = []
     query = await db.fetch_all("""SELECT *,
-                               (weapon_last_seen - weapon_first_seen) kill_duration
+                               (weapon_last_time - weapon_first_time) kill_duration
                                FROM impact_comb""")
     for rec in query:
         tmp = {

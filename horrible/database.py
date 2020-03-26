@@ -31,11 +31,14 @@ def create_tables():
         LOG.error(err)
 
 
-def get_tz_offset(ts):
-    if ts.date > datetime.datetime(2020, 3, 20, 1, 1, 1):
-        return pytz.timezone('US/Mountain')
+def convert_to_utc(ts):
+    if ts > datetime.datetime(2020, 3, 20, 1, 1, 1):
+        tzone = pytz.timezone('US/Mountain')
     else:
-        return pytz.timezone('US/Eastern')
+        tzone = pytz.timezone('US/Eastern')
+    localized = tzone.localize(ts)
+    utc_time = localized.astimezone(pytz.utc)
+    return utc_time
 
 
 def parse_mission_stat_ts(path: str) -> Optional[datetime.datetime]:
@@ -46,7 +49,7 @@ def parse_mission_stat_ts(path: str) -> Optional[datetime.datetime]:
         parsed = mat.group().replace("at ", "")
         ts = datetime.datetime.strptime(parsed, "%b %d, %Y %H %M %S")
         ts = ts.replace(microsecond=0)
-        ts = ts.replace(tzinfo=get_tz_offset(ts))
+        ts = convert_to_utc(ts)
         return ts
     else:
         LOG.warning(f"Could not find timestamp in file path for {file_}!")
@@ -59,7 +62,7 @@ def parse_frametime_ts(path: str) -> datetime.datetime:
     file_ts = round(float(file_.replace(".log", "")), 2)
     ts =  datetime.datetime.fromtimestamp(file_ts)
     ts = ts.replace(microsecond=0)
-    ts = ts.replace(tzinfo=get_tz_offset(ts))
+    ts = convert_to_utc(ts)
     return ts
 
 
@@ -74,7 +77,7 @@ def parse_tacview_prefix(line):
         else:
             raise
     ts = ts.replace(microsecond=0)
-    ts = ts.replace(tzinfo=get_tz_offset(ts))
+    ts = ts.replace(tzinfo=pytz.utc)
     return ts
 
 
@@ -95,7 +98,8 @@ stat_files = sqlalchemy.Table(
     sqlalchemy.Column("session_last_update", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("file_size_kb", sqlalchemy.Float()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
-    sqlalchemy.Column("processed_at", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("process_start", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("process_end", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("errors", sqlalchemy.Integer),
     sqlalchemy.Column("error_msg", sqlalchemy.String()),
 )
@@ -119,7 +123,8 @@ event_files = sqlalchemy.Table(
     sqlalchemy.Column("session_last_update", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("file_size_kb", sqlalchemy.Float()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
-    sqlalchemy.Column("processed_at", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("process_start", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("process_end", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("errors", sqlalchemy.Integer),
     sqlalchemy.Column("error_msg", sqlalchemy.String()),
 )
@@ -141,7 +146,8 @@ frametime_files = sqlalchemy.Table(
     sqlalchemy.Column("session_last_update", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("file_size_kb", sqlalchemy.Float()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
-    sqlalchemy.Column("processed_at", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("process_start", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("process_end", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("errors", sqlalchemy.Integer))
 
 
@@ -152,7 +158,8 @@ tacview_files = sqlalchemy.Table(
     sqlalchemy.Column("session_last_update", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("file_size_kb", sqlalchemy.Float()),
     sqlalchemy.Column("processed", sqlalchemy.Boolean()),
-    sqlalchemy.Column("processed_at", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("process_start", sqlalchemy.TIMESTAMP()),
+    sqlalchemy.Column("process_end", sqlalchemy.TIMESTAMP()),
     sqlalchemy.Column("errors", sqlalchemy.Integer))
 
 
