@@ -4,7 +4,7 @@ metadata:
   name: app
   namespace: horrible-stats
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: app
@@ -19,9 +19,9 @@ spec:
         image: gcr.io/dcs-analytics-257714/horrible_stats:latest
         resources:
             limits:
-              cpu: "2"
+              cpu: "4"
             requests:
-              cpu: "1"
+              cpu: "1.5"
         env:
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: "/etc/keys/dcs-storage-gcs.json"
@@ -29,8 +29,12 @@ spec:
             value: postgresql://db:5432/dcs?user=prod&password=pwd
           - name: TACVIEW_DSN
             value: postgresql://db:5432/dcs?user=prod&password=pwd
+          - name: WEB_CONCURRENCY
+            value: "4"
+          - name: BIND
+            value: "0.0.0.0:8080"
         ports:
-        - containerPort: 80
+        - containerPort: 8080
         volumeMounts:
         - name: dcs-storage-gcs
           mountPath: "/etc/keys/"
@@ -118,7 +122,7 @@ metadata:
   name: tacview-updater
   namespace: horrible-stats
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: app
@@ -160,10 +164,10 @@ spec:
     loadBalancerIP: "35.226.240.39"
     ports:
       - port: 80
-        targetPort: 80
+        targetPort: 8080
         name: http
       - port: 443
-        targetPort: 80
+        targetPort: 8080
         name: https
     selector:
       app: app

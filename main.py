@@ -2,23 +2,23 @@ from pathlib import Path
 import urllib.parse
 from typing import cast
 
+import databases
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import pandas as pd
-from starlette.templating import Jinja2Templates
-from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
-from tacview_client import db as tac_db
-from horrible.database import (db, weapon_types, stat_files,
-                               frametime_files, event_files)
+
+from horrible.database import DATABASE_URL
 from horrible import read_stats, killcam
-from horrible.config import log
+from horrible.config import get_logger
 
+db = databases.Database(DATABASE_URL)
+log = get_logger('horrible')
 
-templates = Jinja2Templates(directory='horrible/templates')
 app = FastAPI(title="Stat-Server")
 app.mount("/static",
-          StaticFiles(directory="static", html=True),
+          StaticFiles(directory="static"),
           name="static")
 
 
@@ -26,8 +26,7 @@ app.mount("/static",
 async def database_connect():
     try:
         await db.connect()
-        await read_stats.sync_weapons()
-        tac_db.create_tables()
+        log.info('Startup complete...')
     except Exception as err:
         log.error(f"Could not conect to database at {db.url}!")
         raise err
@@ -43,6 +42,19 @@ def healthz():
     """Health-check endpoint.  Should return 200."""
     return "ok"
 
+
+@app.get("/")
+async def serve_index():
+    return FileResponse("./static/index.html")
+
+
+@app.get("/static/js/main.js")
+async def serve_js():
+    return FileResponse("./static/js/main.js")
+
+@app.get("/static/css/main.css")
+async def serve_css():
+    return FileResponse("./static/css/main.css")
 
 @app.get("/resync_file/")
 async def resync_file(request: Request, file_name: str):
@@ -67,25 +79,12 @@ async def resync_file(request: Request, file_name: str):
 async def get_stat_logs(request: Request):
     """Get a json dictionary of mission-stat file status data."""
     try:
-        data_recs = await db.fetch_all(query=stat_files.select())
-        data = pd.DataFrame.from_records(data_recs, index=None)
-        # Convert datetimes into strings because json cant serialize them otherwise.
-        data[[
-            'processed_at',
-            'session_start_time',
-            'session_last_update',
-        ]] = data[[
-            'processed_at',
-            'session_start_time',
-            'session_last_update',
-        ]].astype(str)  # type: ignore
-        # Make sure columns are correctly ordered.
-        # This table will render incorrectly if we dont... I don't know why.
-        data = data[[
-            "file_name", "session_start_time", 'session_last_update', 'file_size_kb',
-            "processed", "processed_at", "errors"
-        ]]
-        return data.to_dict('split') # type: ignore
+        data = await db.fetch_all("""SELECT
+        file_name, session_start_time, session_last_update, processed,
+        file_size_kb, process_start, errors
+        FROM mission_stat_files
+        """)
+        return read_stats.dict_to_js_datatable_friendly_fmt(data)
     except Exception as e:
         log.error(e)
         return {}
@@ -95,25 +94,12 @@ async def get_stat_logs(request: Request):
 async def get_event_logs(request: Request):
     """Get a json dictionary of mission-event file status data."""
     try:
-        data_recs = await db.fetch_all(query=event_files.select())
-        data = pd.DataFrame.from_records(data_recs, index=None)
-        # Convert datetimes into strings because json cant serialize them otherwise.
-        data[[
-            'processed_at',
-            'session_start_time',
-            'session_last_update',
-        ]] = data[[
-            'processed_at',
-            'session_start_time',
-            'session_last_update',
-        ]].astype(str)  # type: ignore
-        # Make sure columns are correctly ordered.
-        # This table will render incorrectly if we dont... I don't know why.
-        data = data[[
-            "file_name", "session_start_time", 'session_last_update',
-            'file_size_kb', "processed", "processed_at", "errors"
-        ]]
-        return data.to_dict('split')  # type: ignore
+        data = await db.fetch_all("""SELECT
+        file_name, session_start_time, session_last_update, processed,
+        file_size_kb, process_start, errors
+        FROM mission_event_files
+        """)
+        return read_stats.dict_to_js_datatable_friendly_fmt(data)
     except Exception as e:
         log.error(e)
         return {}
@@ -122,26 +108,13 @@ async def get_event_logs(request: Request):
 @app.get("/frametime_logs")
 async def get_frametime_logs(request: Request):
     """Get a json dictionary of mission-stat file status data."""
-    data_recs = await db.fetch_all(frametime_files.select())
-    data = pd.DataFrame.from_records(data_recs, index=None)
-    # Convert datetimes into strings because json cant serialize them otherwise.
-    data[[
-        'processed_at',
-        'session_start_time',
-        'session_last_update',
-    ]] = data[[
-        'processed_at',
-        'session_start_time',
-        'session_last_update',
-    ]].astype(str)  # type: ignore
-    # Make sure columns are correctly ordered.
-    # This table will render incorrectly if we dont... I don't know why.
-    data = data[[
-        "file_name", "session_start_time", 'session_last_update', "processed",
-        'file_size_kb', "processed_at", "errors"
-    ]]
-    return data.to_dict('split')  # type: ignore
-
+    data = await db.fetch_all("""SELECT
+        file_name, session_start_time, session_last_update, processed,
+        file_size_kb, process_start, errors
+        FROM frametime_files
+        """
+    )
+    return read_stats.dict_to_js_datatable_friendly_fmt(data)
 
 # @app.get("/frametime_charts")
 # async def get_frametime_charts(request: Request, pctile: int = 50):
@@ -157,7 +130,7 @@ async def get_frametime_logs(request: Request):
 @app.get("/weapon_db")
 async def get_weapon_db_logs(request: Request):
     """Get a json dictionary of categorized weapons used for groupings."""
-    data = await db.fetch_all(query=weapon_types.select())
+    data = await db.fetch_all('SELECT * FROM weapon_types')
     content = {"data": [], "columns": list(data[0].keys())}
     for row in data:
         content['data'].append(list(row.values()))
@@ -167,49 +140,50 @@ async def get_weapon_db_logs(request: Request):
 @app.get("/overall")
 async def get_overall_stats(request: Request):
     """Get a json dictionary of grouped statistics as key-value pairs."""
-    data = await read_stats.calculate_overall_stats(grouping_cols=['pilot'])
+    data = await read_stats.calculate_overall_stats(grouping_cols=['pilot'], db=db)
     data = data.to_dict('split')
-    return data
+    return JSONResponse(content=data)
 
 
 @app.get("/session_performance")
 async def get_session_perf_stats(request: Request):
     """Get a json dictionary of grouped statistics as key-value pairs."""
     data = await read_stats.calculate_overall_stats(
-        grouping_cols=['session_start_date', 'pilot'])
+        grouping_cols=['session_start_date', 'pilot'],
+        db=db)
     data.sort_values(by=['session_start_date', 'A/A Kills'],
                      ascending=False,
                      inplace=True)
     data = data.to_dict('split')
-    return data
+    return JSONResponse(content=data)
 
 
-@app.get("/")
-async def serve_homepage(request: Request):
-    """Serve the index.html template."""
-    with open("static/index.html", mode='r') as fp_:
-        page = fp_.read()
-    return HTMLResponse(page)
+# @app.get("/")
+# async def serve_homepage(request: Request):
+#     """Serve the index.html template."""
+#     with open("static/index.html", mode='r') as fp_:
+#         page = fp_.read()
+#     return HTMLResponse(page)
 
 
 @app.get("/weapons")
 async def weapon_stats(request: Request):
     """Return a rendered template with a table displaying per-weapon stats."""
-    data = await read_stats.get_dataframe(subset=["weapons"])
+    data = await read_stats.get_dataframe(db, subset=["weapons"])
     return data.to_dict('split')
 
 
 @app.get("/kills")
 async def kill_detail(request: Request):
     """Return a rendered template showing kill/loss statistics."""
-    data = await read_stats.get_dataframe(subset=["kills"])
+    data = await read_stats.get_dataframe(db, subset=["kills"])
     return data.to_dict("split")
 
 
 @app.get("/losses")
 async def loss_detail(request: Request):
     """Return a rendered template showing kill/loss statistics."""
-    data = await read_stats.get_dataframe(subset=["losses"])
+    data = await read_stats.get_dataframe(db, subset=["losses"])
     return data.to_dict("split")
 
 
@@ -230,24 +204,8 @@ async def process_tacview(filename: str):
 @app.get("/events")
 async def event_detail(request: Request):
     """Return SlMod event records."""
-    data = await read_stats.read_events()
-    data.to_dict("split")
-
-
-@app.get("/raw_cats/")
-async def raw_cats(request: Request, pilot: str = None):
-    """Return a rendered template showing kill/loss statistics."""
-    data = await read_stats.collect_recs_kv()
-    if pilot:
-        data = cast(pd.DataFrame,
-                    data.query(f"pilot == '{urllib.parse.unquote(pilot)}'"))
-        data.reset_index(drop=True, inplace=True)
-
-    data = data.groupby([
-        'session_start_date', 'equipment', 'stat_group', 'key_orig',
-        'category', 'metric'], as_index=False).sum()
-    data.sort_values(by=['session_start_date'], ascending=False, inplace=True)
-    return HTMLResponse(content=data.to_html())
+    data = await read_stats.read_events(db)
+    return data.to_dict("split")
 
 
 @app.get("/tacview_kills")
@@ -257,14 +215,6 @@ async def tacview_kills(request: Request):
     return data
 
 
-@app.get("/killcam")
-async def serve_killcam(request: Request):
-    """Serve the index.html template."""
-    with open("static/killcam.html", mode='r') as fp_:
-        page = fp_.read()
-    return HTMLResponse(page)
-
-
 @app.get("/kill_coords")
 async def get_kill_coords(request: Request, kill_id: int):
     """Get Points Preceeding kill."""
@@ -272,4 +222,4 @@ async def get_kill_coords(request: Request, kill_id: int):
     data = await killcam.get_kill(kill_id, db)
     if not data:
         return JSONResponse(status_code=500)
-    return data
+    return JSONResponse(content=data)

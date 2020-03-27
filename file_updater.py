@@ -1,35 +1,36 @@
 import asyncio
 from asyncio import CancelledError
-from pathlib import Path
 import os
-import subprocess
+from pathlib import Path
 import signal
-import asyncpg
-import uvloop
 import sys
-from multiprocessing import Process
+
+import asyncpg
+import databases
 from tacview_client import serve_file, client
-from horrible.database import (DATABASE_URL, db, stat_files, frametime_files,
+import uvloop
+
+from horrible.database import (DATABASE_URL, stat_files, frametime_files,
                                tacview_files, event_files)
 from horrible import read_stats, gcs
-from horrible.config import log
+from horrible.config import get_logger
+
+log = get_logger('file_updater')
 
 
-
-class SigTermWatcher:
-  exit_now = False
-  def __init__(self):
-    signal.signal(signal.SIGINT, self.managed_shutdown)
-    signal.signal(signal.SIGTERM, self.managed_shutdown)
-
-  def managed_shutdown(self,signum, frame):
-    self.exit_now = True
+TABLE_KEY = {
+    'mission-events': event_files,
+    'mission-stats': stat_files,
+    'frametime': frametime_files,
+    'tacview': tacview_files,
+}
 
 
 async def update_files(prefix, table):
     """Run specified job."""
     try:
         log.info("Connecting to database...")
+        db = databases.Database(DATABASE_URL, min_size=1, max_size=2)
         await db.connect()
         log.info(f'Starting update job for {prefix}...')
         await read_stats.sync_gs_files_with_db(prefix, table, db)
@@ -37,7 +38,7 @@ async def update_files(prefix, table):
             pass
         else:
             log.info("Processing new records...")
-            await read_stats.process_lua_records(prefix)
+            await read_stats.process_lua_records(prefix, db)
         log.info('Job complete...disconnecting...')
         await db.disconnect()
         log.info('Exiting...')
@@ -67,8 +68,8 @@ async def proc_tac():
             returning file_name
     """)
     if not rec:
+        await con.close()
         return
-    await con.close()
     bucket = gcs.get_gcs_bucket()
     log.info(f"Parsing {rec}")
     local_path = Path('horrible').joinpath(rec)
@@ -90,12 +91,13 @@ async def proc_tac():
     try:
         await asyncio.gather(reader)
         log.info('Reader complete...updating database...')
-        con = await asyncpg.connect(DATABASE_URL)
         await con.execute(f"""UPDATE tacview_files
                             SET processed = TRUE,
                             process_end = CURRENT_TIMESTAMP
                             WHERE file_name = $1""", rec)
+        await con.execute("ANALYZE object; ANALYZE event; ANALYZE impact;")
         log.info('File processed successfully!')
+
         exit_status = 0
     except CancelledError:
         reader.cancel()
@@ -132,14 +134,7 @@ if __name__=='__main__':
                         help='Number of seconds between updates.')
     args = parser.parse_args()
 
-    table_key = {
-        'mission-events': event_files,
-        'mission-stats': stat_files,
-        'frametime': frametime_files,
-        'tacview': tacview_files,
-    }
-    table = table_key[args.prefix]
-    # while not sig_watcher.exit_now:
+    table = TABLE_KEY[args.prefix]
     uvloop.install()
     loop = asyncio.get_event_loop()
     signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
@@ -150,11 +145,8 @@ if __name__=='__main__':
     while True:
         if args.prefix == 'tacview':
             task = loop.create_task(proc_tac())
-            # task = asyncio.create_task(proc_tac())
         else:
             task = loop.create_task(update_files(args.prefix, table))
-            # task = asyncio.create_task(update_files(args.prefix, table))
-            # asyncio.run(proc_tac())
         result = loop.run_until_complete(asyncio.gather(task))
         log.info(result)
         if result and result[0] == -1:

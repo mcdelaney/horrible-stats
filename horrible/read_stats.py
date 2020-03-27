@@ -8,18 +8,22 @@ from datetime import datetime, timedelta
 import traceback
 from typing import Dict, List, Optional, cast
 from multiprocessing import Process
+import os
+
+import asyncpg
 import numpy as np
 from lupa import LuaRuntime # type:ignore
 import pandas as pd
 import sqlalchemy as sa
 from tacview_client import client, serve_file
-import os
 
-from horrible.database import (db, mission_stats, stat_files,
+from horrible.database import (mission_stats, stat_files,
                                weapon_types, event_files, mission_events,
                                event_files, file_format_ref)
 from horrible.gcs import get_gcs_bucket
-from horrible.config import log
+from horrible.config import get_logger
+
+log = get_logger('statreader')
 
 
 def pctile(n):
@@ -27,7 +31,6 @@ def pctile(n):
         return np.percentile(x, n)
     percentile_.__name__ = 'percentile_%s' % n
     return percentile_
-
 
 
 async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,
@@ -82,6 +85,22 @@ async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,
     log.info("Files inserted successfully!")
 
 
+def dict_to_js_datatable_friendly_fmt(data: List) -> Dict:
+    """Convert a list of dictionaries to datattable.js friendly format."""
+    output = {'data': [],
+              'index': [],
+              'columns': []}
+    i = 0
+    for row in data:
+        record = dict(row)
+        if i == 0:
+            output['columns'].extend(list(record.keys()))
+        output['data'].append(list(record.values()))
+        output['index'].append(i)
+        i += 1
+    return output
+
+
 async def query_tacview_files(db) -> Dict:
     """Return a list of remote tacview files."""
     log.info("Reading tacview files...")
@@ -131,19 +150,24 @@ def process_tacview_file(filename) -> None:
     log.info('Reader compete...')
 
 
-async def sync_weapons() -> None:
+async def sync_weapons(db) -> None:
     """Sync contents of data/weapons-db.csv with database."""
+    log.info('Syncing weapon file with DB...')
     weapons = pd.read_csv("horrible/data/weapon-db.csv").to_dict('records')
 
     current_weapons = await db.fetch_all(query=weapon_types.select())
     current_weapons = [weapon['name'] for weapon in current_weapons]
 
+    query = weapon_types.insert()
     for record in weapons:
         if record['name'] in current_weapons:
             continue
-        query = weapon_types.insert()
-        await db.execute(query, values=record)
+        try:
+            await db.execute(query, values=record)
+        except asyncpg.UniqueViolationError:
+            pass
         log.info(f"New weapon added to database: {record['name']}...")
+    log.info('Weapon sync complete...')
 
 
 def lua_tbl_to_py(lua_tbl: Dict) -> Dict:
@@ -257,7 +281,7 @@ def read_lua_table(file_name: Path) -> Optional[List]:
     return results_out
 
 
-async def process_lua_records(file_type) -> None:
+async def process_lua_records(file_type, db) -> None:
     """Parse a directory of Sl-Mod stats files, returning a pandas dataframe."""
     Path(file_type).mkdir(parents=True, exist_ok=True)
     bucket = get_gcs_bucket()
@@ -470,7 +494,7 @@ def parse_rec_keys(field_key: str) -> Optional[Dict]:
     #         'stat_group': None, 'equipment': None}
 
 
-async def collect_recs_kv() -> pd.DataFrame:
+async def collect_recs_kv(db) -> pd.DataFrame:
     """Collect records and convert to kv."""
     weapon_recs = await db.fetch_all(weapon_types.select())
     weapons = pd.DataFrame.from_records(weapon_recs, index=None)
@@ -512,17 +536,17 @@ async def collect_recs_kv() -> pd.DataFrame:
     return data
 
 
-async def all_category_grouped() -> pd.DataFrame:
+async def all_category_grouped(db) -> pd.DataFrame:
     """Calculate percentage hit/kill per user, per weapon category."""
-    data = await collect_recs_kv()
+    data = await collect_recs_kv(db)
     data = data.groupby(["pilot", "category", 'stat_type', 'metric'],
                         as_index=False).sum()
     return data
 
 
-async def calculate_overall_stats(grouping_cols: List) -> pd.DataFrame:
+async def calculate_overall_stats(grouping_cols: List, db) -> pd.DataFrame:
     """Calculate per-user/category/sub-type metrics."""
-    df = await collect_recs_kv()
+    df = await collect_recs_kv(db)
     if df.empty:
         return pd.DataFrame(columns = ['session_start_date', 'overall_kills',
                                        'total_deaths'])
@@ -598,10 +622,10 @@ async def calculate_overall_stats(grouping_cols: List) -> pd.DataFrame:
     return df
 
 
-async def get_dataframe(subset: Optional[List] = None,
+async def get_dataframe(db, subset: Optional[List] = None,
                         user_name: Optional[str] = None) -> pd.DataFrame:
     """Get stats in dataframe format suitable for HTML display."""
-    stat_data = await collect_recs_kv()
+    stat_data = await collect_recs_kv(db)
     stat_data = cast(pd.DataFrame, stat_data)
     if stat_data.empty:
         return pd.DataFrame()
@@ -642,7 +666,7 @@ async def get_dataframe(subset: Optional[List] = None,
         raise e
 
 
-async def read_events() -> pd.DataFrame:
+async def read_events(db) -> pd.DataFrame:
     """Return a dataframe of event log data."""
     return_types = ['kill', 'hit']
     evt = await db.fetch_all(event_files.select())

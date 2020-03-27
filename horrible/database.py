@@ -5,7 +5,6 @@ import re
 from typing import Optional
 import pytz
 
-import databases
 from starlette.config import Config
 import sqlalchemy
 
@@ -18,14 +17,15 @@ config = Config('.env')
 DATABASE_URL = config(
     'DATABASE_URL',
     default="postgresql://localhost:5432/dcs?user=prod&password=pwd")
-db = databases.Database(DATABASE_URL, min_size=2, max_size=5)
 
-eng = sqlalchemy.create_engine(DATABASE_URL)
-metadata = sqlalchemy.MetaData(bind=eng)
+metadata = sqlalchemy.MetaData()
+
 
 def create_tables():
     """ensure tables are created."""
     try:
+        eng = sqlalchemy.create_engine(DATABASE_URL)
+        metadata.bind = eng
         metadata.create_all()
     except Exception as err:
         LOG.error(err)

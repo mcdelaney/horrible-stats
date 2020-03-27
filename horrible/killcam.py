@@ -1,32 +1,32 @@
 import pandas as pd
-from typing import cast, List
-from horrible.config import log
+from typing import cast, Dict
+from horrible.config import get_logger
 from datetime import timedelta
+from horrible.read_stats import dict_to_js_datatable_friendly_fmt
 
 
-async def get_all_kills(db) -> List:
+log = get_logger('killcam')
+
+
+async def get_all_kills(db) -> Dict:
     """Get a table of all kills."""
-    data = []
-    query = await db.fetch_all("""SELECT *,
-                               (weapon_last_time - weapon_first_time) kill_duration
-                               FROM impact_comb""")
-    for rec in query:
-        tmp = {
-            'kill_timestamp': (
-                rec['kill_timestamp'] + timedelta(seconds=rec['weapon_first_time'])
-                ).replace(microsecond=0),
-            'killer_name': rec['killer_name'],
-            'killer_type': rec['killer_type'],
-            'weapon_name': rec['weapon_name'],
-            'weapon_type': rec['weapon_type'],
-            'target_name': rec['target_name'],
-            'target_type': rec['target_type'],
-            'impact_dist': round(rec['impact_dist'], 2),
-            'kill_duration': round(rec['kill_duration'], 2),
-            'impact_id': rec['impact_id'],
-        }
-        data.append(tmp)
-    return pd.DataFrame.from_records(data, index=None).to_dict('split')
+    log.info('Querying for all kills...')
+    data = await db.fetch_all(
+        """SELECT
+            DATE_TRUNC('SECOND',
+                (kill_timestamp +
+                    weapon_first_time*interval '1 second')) kill_timestamp,
+            killer_name, killer_type,
+            weapon_name, weapon_type, target_name, target_type,
+            round(cast(impact_dist as numeric), 2) impact_dist,
+            ROUND(cast(weapon_last_time - weapon_first_time as numeric), 2) kill_duration,
+            impact_id
+            FROM impact_comb
+            WHERE weapon_type IS NOT NULL AND
+                impact_dist <= 5 and cast(impact_dist as numeric) > 2
+            ORDER BY kill_timestamp DESC""")
+    log.info('Formatting and returning kills...')
+    return dict_to_js_datatable_friendly_fmt(data)
 
 
 async def get_kill(kill_id: int, db):
@@ -36,28 +36,25 @@ async def get_kill(kill_id: int, db):
             filter_clause = " WHERE weapon_type = 'Air-to-Air' ORDER BY random() "
         else:
             filter_clause = f"WHERE impact_id = {kill_id}"
-
+        log.info(f'Looking up specs for kill: {kill_id}...')
         resp = await db.fetch_one(f"SELECT * FROM impact_comb {filter_clause} limit 1")
         resp = dict(resp)
 
         # TODO Make sure that the entire lifespan of the weapon is captured.
         # Otherwise it will look like the weapon appears some distance from the killer.
+        log.info("Collecting kill points...")
         points = await db.fetch_all(
             f"""
-            WITH lagged AS (
-                SELECT lon, lat, alt, last_seen, u_coord, v_coord,
-                    velocity_kts/0.514444 AS velocity_ms, yaw, pitch, roll, id
-                FROM obj_events
-                WHERE id in ({resp['weapon_id']}, {resp['target_id']}, {resp['killer_id']})
-                    AND  last_seen >= {resp['weapon_first_time']} AND
-                    last_seen <= {resp['weapon_last_time']}
-                    --AND alive = TRUE
-                ORDER BY updates
-            )
-            SELECT
-                lat, lon, v_coord, alt, u_coord, last_seen AS time_offset, yaw, pitch, roll, id
-            FROM lagged
+            SELECT lon, lat, alt, last_seen as time_offset,
+                u_coord, v_coord, yaw, pitch, roll, id, heading
+            FROM obj_events
+            WHERE id in ({resp['weapon_id']}, {resp['target_id']}, {resp['killer_id']})
+                AND  last_seen >= {resp['weapon_first_time']} AND
+                last_seen <= {resp['weapon_last_time']}
+                --AND alive = TRUE
+            ORDER BY updates
             """)
+        log.info('Formatting data....')
         points = [dict(p) for p in points]
         points = pd.DataFrame.from_records(points, index=None)
         log.info(f"Total points returned: {points.shape[0]}...id: {resp['impact_id']}...") # type: ignore
@@ -86,7 +83,8 @@ async def get_kill(kill_id: int, db):
             if subset.shape[0] <= 1:
                 return
             subset.reset_index(inplace=True)
-            subset = subset[['v_coord', 'alt', 'u_coord', 'pitch', 'roll', 'yaw', 'time_offset']]
+            subset = subset[['v_coord', 'alt', 'u_coord', 'roll', 'pitch', 'yaw',
+                             'heading', 'time_offset']]
             subset = cast(pd.DataFrame, subset)
             subset.dropna(inplace=True)
             data[name] = subset.to_dict('split')

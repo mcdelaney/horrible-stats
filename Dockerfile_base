@@ -1,15 +1,15 @@
-FROM tiangolo/uvicorn-gunicorn-fastapi:python3.7
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.7-2020-03-01
 
 RUN apt-get update && \
-  apt-get install gcc curl wget -y && \
+  apt-get install curl nginx -y && \
   mkdir -p /app/log/ && \
-  mkdir -p /app/cache/mission-stats && \
-  mkdir -p /app/cache/mission-events && \
-  wget https://storage.googleapis.com/pub/gsutil.tar.gz && \
+  curl https://storage.googleapis.com/pub/gsutil.tar.gz --output gsutil.tar.gz && \
   tar xfz gsutil.tar.gz -C $HOME && \
   rm gsutil.tar.gz && \
   echo "PATH=${PATH}:$HOME/gsutil" >> /root/.bashrc
 
 COPY requirements.txt /tmp/
-RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
+
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r /tmp/requirements.txt && \
     rm /tmp/requirements.txt

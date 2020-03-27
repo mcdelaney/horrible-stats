@@ -17,7 +17,6 @@ echo "Pushing commit hash image to GCR..."
 docker push gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG
 
 echo "Deploying new image to prod..."
-kubectl apply -f deployment.yaml
 kubectl set image deployment stat-updater stat-updater=gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG -n horrible-stats
 kubectl set image deployment event-updater event-updater=gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG -n horrible-stats
 kubectl set image deployment tacview-updater tacview-updater=gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG -n horrible-stats
