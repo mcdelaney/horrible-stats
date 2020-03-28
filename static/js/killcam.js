@@ -444,8 +444,8 @@ function load_kill(kill_id) {
 
         var pause_btn = make_button();
         info.appendChild(pause_btn);
-        var zoom_slider = make_zoom_slider();
-        info.appendChild(zoom_slider);
+        // var zoom_slider = make_zoom_slider();
+        // info.appendChild(zoom_slider);
         canv.appendChild(info);
 
         progress = document.createElement('div');
