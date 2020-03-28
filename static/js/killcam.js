@@ -2,14 +2,21 @@
 
 var renderer, scene, camera, controls, killer_obj, coords,time,
      something, prog, render, animate, light, max_pt, progress;
-var tubes = [];
+var tubes = {
+    killer: null,
+    weapon: null,
+    target: null,
+    // other: null
+};
+
 var pause = false;
 var elem = document.getElementById('killcam_div');
 var look = "weapon";
 var follow = 'killer';
 var CONTROLS = false;
-var obj_loader = new THREE.OBJLoader(loadingManager);
+
 var POINT_MULT = 3;
+var dir = new THREE.Vector3();
 // 73432
 
 
@@ -28,9 +35,12 @@ function make_button(){
     var btn = document.createElement("a");
     btn.setAttribute('id', 'pause_btn');
     btn.style.border = "2px solid black";
-    btn.style.paddingTop = "5px";
-    btn.style.paddingBottom = "5px";
-    btn.style.width="82px";
+    btn.style.paddingTop = "2px";
+    btn.style.paddingBottom = "2px";
+    btn.style.paddingLeft = "2px";
+    btn.style.paddingRight = "2px";
+    btn.style.fontSize = "12px";
+    btn.style.width="55px";
     btn.style.textAlign = "center";
 
     btn.className = "nav-link";
@@ -107,8 +117,28 @@ function tube_prep(data, color, name, max_pt) {
         params.opacity = 1.0;
     }
 
-    var geometry = new THREE.SphereGeometry(5, 32, 32 );
-    var material = new THREE.MeshBasicMaterial( {color: color });
+    var model_path = get_model_path(out.name);
+
+    var obj_mater = new THREE.MeshStandardMaterial({'color': color});
+    var obj_loader = new THREE.OBJLoader();
+    obj_loader.load(
+        model_path,
+        onLoad = function (object) {
+            object.traverse(function (child) {
+                if (child instanceof THREE.Mesh) {
+                    child.material = obj_mater;
+                }
+            });
+
+            object.scale.x = params.obj_scale;
+            object.scale.y = params.obj_scale;
+            object.scale.z = params.obj_scale;
+            // object.position.set(out.line_points[0].x, out.line_points[0].y, out.line_points[0].z);
+            out.object = object;
+            scene.add(out.object);
+        }
+    );
+
 
     var points = [];
     var dup = Math.ceil(max_pt / data.length) + 1;
@@ -116,10 +146,6 @@ function tube_prep(data, color, name, max_pt) {
         // points.push(new THREE.Vector3(...calcPosFromLatLonRad(data[i][0], data[i][1], data[i][2])));
         let pt = new THREE.Vector3(data[i][0], data[i][1], data[i][2]);
         points.push(pt);
-
-        // var sphere = new THREE.Mesh( geometry, material );
-        // sphere.position.set(pt.x, pt.y, pt.z);
-        // scene.add( sphere );
 
         for (var n = 0, w = dup; n < w; n++) {
             let pitch = to_rad(data[i][4]);
@@ -135,11 +161,10 @@ function tube_prep(data, color, name, max_pt) {
     }
 
     var curve = new THREE.CatmullRomCurve3(points, false);
-    // , 'catmullrom', 0.005);
     out.line_points = curve.getPoints(max_pt);
 
-    var dir = new THREE.Vector3(); // create once an reuse it
-    for (var i = 0, l=out.line_points.length; i < l; i++) {
+    // var dir = new THREE.Vector3(); // create once an reuse it
+    for (let i = 0, l=out.line_points.length; i < l; i++) {
 
         if (i >= out.line_points.length-1) {
             out.look_points.push(out.look_points[i-1].clone());
@@ -150,14 +175,12 @@ function tube_prep(data, color, name, max_pt) {
         }
     }
 
-    for (var i = 1, l=out.line_points.length; i <= l; i++) {
+    for (let i = 1, l=out.line_points.length; i <= l; i++) {
         if (i === out.line_points.length) {
             out.cam_points.splice(0, 0, out.cam_points[0].clone());
         }else{
-            var angle_back = dir.subVectors( out.line_points[i-1], out.line_points[i] ).normalize();
-            var dist_pt_back = out.line_points[i].clone().addScaledVector(angle_back, 1000);
-            // dist_pt_back.y += 50;
-            // dist_pt_back.x += 50;
+            var angle_back = dir.subVectors( out.line_points[i], out.line_points[i-1] ).normalize();
+            var dist_pt_back = out.line_points[i].clone().addScaledVector(angle_back, -1000);
             out.cam_points.push(dist_pt_back);
         }
     }
@@ -189,34 +212,14 @@ function tube_prep(data, color, name, max_pt) {
     ribbonGeom.computeVertexNormals();
 
     var ribbon = new THREE.Mesh(ribbonGeom,
-        // new THREE.MeshBasicMaterial({side: THREE.DoubleSide, color: color })
         new THREE.MeshLambertMaterial({side: THREE.DoubleSide, color: color,
+                                       emissive: color, emissiveIntensity: 5,
                                        transparent: true, opacity: params.opacity})
         );
 
     ribbon.geometry.setDrawRange(0, out.drawCount);
     scene.add(ribbon);
     out.ribbon = ribbon;
-
-    var model_path = get_model_path(out.name);
-
-    var obj_mater = new THREE.MeshStandardMaterial({'color': color});
-    obj_loader.load(
-        model_path,
-        success = function (object) {
-            object.traverse(function (child) {
-                if (child instanceof THREE.Mesh) {
-                    child.material = obj_mater;
-                }
-            });
-
-            object.scale.x = params.obj_scale;
-            object.scale.y = params.obj_scale;
-            object.scale.z = params.obj_scale;
-            out.object = object;
-            scene.add(out.object);
-        }
-    );
 
     out.draw_max = out.line_points.length*3*2;
 
@@ -300,24 +303,40 @@ function getCenterPoint(obj) {
     return center;
 }
 
-function set_camera(tube, look, follow){
-    if (tube.name === look) {
-        let pt = tube.look_points[tube.pos_idx];
-        camera.lookAt(pt.x, pt.y, pt.z);
-        camera.updateProjectionMatrix();
+function set_camera(){
+    // 62682
+    var look_pos = tubes[look].object.position;
+    var follow_pos = tubes[follow].object.position;
+    var obj_dist =  Math.abs(follow_pos.distanceTo(look_pos));
+    var cam_pos;
+
+    // console.debug("OBject dist: " + obj_dist.toString());
+    // cam_pos = tubes[follow].cam_points[tubes[follow][tubes[follow].pos_idx]];
+    // look_pos = tubes[follow].look_points[tubes[follow][tubes[follow].pos_idx]];
+
+    var angle_back = dir.subVectors( look_pos, follow_pos ).normalize();
+    cam_pos = follow_pos.clone().addScaledVector(angle_back, -1000);
+    look_pos = follow_pos.clone().addScaledVector(angle_back, 200);
+
+    try {
+        camera.position.set(cam_pos.x, cam_pos.y, cam_pos.z);
+        camera.translateY(200);
+    } catch(error){
+        console.debug(error);
+        console.debug('No cam position');
+    }
+    try {
+        camera.lookAt(look_pos.x, look_pos.y, look_pos.z);
+    } catch (error) {
+        console.debug(error);
+        console.debug('No look pos');
     }
 
-    if (tube.name == follow) {
-        // let pt = tube.object.position;
-        let pt = tube.cam_points[tube.pos_idx];
-        camera.position.set(pt.x, pt.y, pt.z);
-        camera.updateMatrix();
-        camera.updateProjectionMatrix();
-        // camera.translateY(15);
-        // camera.translateY(200);
-        // camera.translateZ(700);
+
+
+    if (CONTROLS === true) {
+        controls.update();
     }
-    // controls.update();
 }
 
 function make_zoom_slider(){
@@ -336,53 +355,51 @@ function make_zoom_slider(){
 }
 
 function update_objects(){
-    for (var n = 0, t = tubes.length; n < t; n++) {
-        tube = tubes[n];
+    if (tubes.killer.object === null | tubes.target.object === null | tubes.weapon.object === null) {
+        console.log('Some objects are still null!');
+        return;
+    }else{
 
-        var _pt = tube.line_points[tube.pos_idx];
-        var _look = tube.look_points[tube.pos_idx];
-        var _cam = tube.cam_points[tube.pos_idx];
+        for (var n = 0, t = Object.keys(tubes).length; n < t; n++) {
+            var keyname = Object.keys(tubes)[n];
+            tube = tubes[keyname];
+            if (tube === null) {
+                continue;
+            }
 
-        if (tube.object != null ){
-            tube.object.position.set(_pt.x,_pt.y, _pt.z);
+            var _pt = tube.line_points[tube.pos_idx];
+            var _look = tube.look_points[tube.pos_idx];
 
-            tube.object.lookAt(_look.x, _look.y, _look.z);
-            // tube.object.setRotationFromEuler(tube.rotation[tube.pos_idx]);
-            set_camera(tube, look, follow);
+            if (tube.object != null ){
+                tube.object.position.set(_pt.x,_pt.y, _pt.z);
+                tube.object.lookAt(_look.x, _look.y, _look.z);
+                // tube.object.setRotationFromEuler(tube.rotation[tube.pos_idx]);
+                tube.ribbon.geometry.setDrawRange(0, tube.drawCount);
+            }
+            // tube.ribbon.geometry.computeVertexNormals();
+            // tube.ribbon.rojectionMatrix()
+
+            if (n === 0) {
+                progress.innerHTML = Math.round((tube.pos_idx / max_pt) * 100).toString() + "%";
+            }
+
+            tube.drawCount += 6;
+            tube.pos_idx += 1;
+
+            if (tube.drawCount >= tube.draw_max) {
+                tube.drawCount = 6;
+            }
+
+            if (tube.pos_idx >= tube.line_points.length - 1) {
+                tube.pos_idx = 0;
+            }
         }
-
-        tube.ribbon.geometry.setDrawRange(0, tube.drawCount);
-        // tube.ribbon.geometry.computeVertexNormals();
-        // tube.ribbon.rojectionMatrix()
-
-        if (n === 0) {
-            progress.innerHTML = Math.round((tube.pos_idx / max_pt) * 100).toString() + "%";
-        }
-
-        tube.drawCount += 6;
-        tube.pos_idx += 1;
-
-        if (tube.drawCount >= tube.draw_max) {
-            tube.drawCount = 6;
-        }
-
-        if (tube.pos_idx >= tube.line_points.length - 1) {
-            tube.pos_idx = 0;
-        }
-        // tube.object.updateProjectionMatrix();
+        set_camera();
     }
 }
 
 
 function animate() {
-
-    // setTimeout( function() {
-
-    //     requestAnimationFrame( animate );
-
-    // }, 1000 / 30 );
-
-    // renderer.render();
 
     requestAnimationFrame(animate);
     if (pause === false) {
@@ -399,19 +416,15 @@ function load_kill(kill_id) {
     if (typeof kill_id === 'undefined') {
         kill_id = -1;
     }
-    // kill_id = 14;
+
     console.log("Requesting kill id: " + kill_id.toString());
     loader.load("/kill_coords?kill_id=" + kill_id, function (resp) {
         var data = JSON.parse(resp);
 
-        // function render() {
-        //     renderer.render(scene, camera);
-        // }
         document.getElementById('load_spin').hidden = true;
         window.addEventListener('resize', onWindowResize, false);
         renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
         var dim = get_window_size();
-
 
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(dim.width, dim.height);
@@ -472,24 +485,23 @@ function load_kill(kill_id) {
         scene.add(ambientlight);
 
         max_pt = Math.max(data.killer.data.length, data.target.data.length, data.weapon.data.length) * POINT_MULT;
-        var killer = tube_prep(data.killer.data, 0x0000ff, 'killer', max_pt);
-        tubes.push(killer);
+        tubes.killer = tube_prep(data.killer.data, 0x0000ff, 'killer', max_pt);
+        tubes.weapon = tube_prep(data.weapon.data, 'black', 'weapon', max_pt);
+        tubes.target = tube_prep(data.target.data, 0xff0000, 'target', max_pt);
 
-        var weapon = tube_prep(data.weapon.data, 'black', 'weapon', max_pt);
-        tubes.push(weapon);
-
-        var target = tube_prep(data.target.data, 0xff0000, 'target', max_pt);
-        tubes.push(target);
-
-        make_circle_floor(target);
+        make_circle_floor(tubes.target);
         makeCameraAndControls(add_controls=CONTROLS);
+        // camera.position.set(tubes.killer.cam_points[0].x, tubes.killer.cam_points[0].y,
+        //     tubes.killer.cam_points[0].z);
+        // // camera.lookAt(tubes.killer.look_points[0].x, tubes.killer.look_points[0].y,
+        // //         tubes.killer.look_points[0].z);
+        // camera.updateProjectionMatrix();
 
         clock = new THREE.Clock();
         min_ts = data.min_ts;
         delta = data.min_ts;
         restart = 0;
-        stat();
-        // renderer.render(scene, camera);
+        // stat();
         renderer.compile(scene, camera);
         animate();
     });
@@ -501,17 +513,16 @@ function stat() {
     var script = document.createElement('script');
     script.onload = function () {
         var stats = new Stats();
-        document.getElementById('killcam_div').appendChild(stats.dom);
-        // document.body.appendChild(stats.dom);
+        document.getElementById('killcam_info').appendChild(stats.dom);
         requestAnimationFrame(function loop() {
             stats.update();
             requestAnimationFrame(loop);
         });
     };
     script.src = '//mrdoob.github.io/stats.js/build/stats.min.js';
-
     document.head.appendChild(script);
 }
+
 
 $(document).onkeypress = function (e) {
     e = e || window.event;

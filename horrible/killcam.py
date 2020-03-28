@@ -11,17 +11,16 @@ async def get_all_kills(db) -> Dict:
     log.info('Querying for all kills...')
     data = await db.fetch_all(
         """SELECT
-            DATE_TRUNC('SECOND',
-                (kill_timestamp +
-                    weapon_first_time*interval '1 second')) kill_timestamp,
+            kill_timestamp,
             killer_name, killer_type,
             weapon_name, weapon_type, target_name, target_type,
-            round(cast(impact_dist as numeric), 2) impact_dist,
-            ROUND(cast(weapon_last_time - weapon_first_time as numeric), 2) kill_duration,
+            impact_dist,
+            kill_duration,
             impact_id
             FROM impact_comb
             WHERE weapon_type IS NOT NULL AND
-                impact_dist <= 5
+                impact_dist <= 5 AND kill_duration > 1 AND
+                kill_duration < 120
             ORDER BY kill_timestamp DESC""")
     log.info('Formatting and returning kills...')
     return dict_to_js_datatable_friendly_fmt(data)
@@ -31,7 +30,9 @@ async def get_kill(kill_id: int, db):
     """Return coordinates for a single kill-id."""
     try:
         if kill_id == -1:
-            filter_clause = " WHERE weapon_type = 'Air-to-Air' AND impact_dist < 10 ORDER BY random() "
+            filter_clause = """ WHERE weapon_type = 'Air-to-Air' AND
+            impact_dist < 10 AND kill_duration > 10 AND kill_duration < 120
+            ORDER BY random() """
         else:
             filter_clause = f"WHERE impact_id = {kill_id}"
         log.info(f'Looking up specs for kill: {kill_id}...')
@@ -43,7 +44,8 @@ async def get_kill(kill_id: int, db):
         log.info("Collecting kill points...")
         points = await db.fetch_all(
             f"""
-            SELECT lon, lat, alt, last_seen as time_offset,
+            SELECT
+                lon, lat, alt, last_seen as time_offset,
                 u_coord, v_coord, yaw, pitch, roll, id, heading
             FROM obj_events
             WHERE id in ({resp['weapon_id']}, {resp['target_id']}, {resp['killer_id']})
@@ -70,7 +72,10 @@ async def get_kill(kill_id: int, db):
             'target_name': resp['target_name'],
             'target_type': resp['target_type'],
             'impact_id': resp['impact_id'],
-            'impact_dist': str(round(resp['impact_dist'],2)) + 'm'
+            'impact_dist': str(round(resp['impact_dist'],2)) + 'm',
+            'killer': None,
+            'target': None,
+            'weapon': None,
         }
 
         for id_val, name in zip([resp['target_id'], resp['weapon_id'], resp['killer_id']],
@@ -85,6 +90,7 @@ async def get_kill(kill_id: int, db):
                              'heading', 'time_offset']]
             subset = cast(pd.DataFrame, subset)
             subset.dropna(inplace=True)
+
             data[name] = subset.to_dict('split')
 
         log.info(f"Killer: {resp['killer_id']} -- Target: {resp['target_id']} -- "

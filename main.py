@@ -116,16 +116,6 @@ async def get_frametime_logs(request: Request):
     )
     return read_stats.dict_to_js_datatable_friendly_fmt(data)
 
-# @app.get("/frametime_charts")
-# async def get_frametime_charts(request: Request, pctile: int = 50):
-#     """Get a dataframe of frametime records."""
-#     files = await db.fetch_one(frametime_files.select().order_by(
-#         sa.desc(sa.text("session_start_time"))))
-#     log.info("Looking up most recent log file...")
-#     data = read_stats.read_frametime(filename=files['file_name'],
-#                                      pctile=pctile)
-#     return JSONResponse(content=data)
-
 
 @app.get("/weapon_db")
 async def get_weapon_db_logs(request: Request):
@@ -142,7 +132,7 @@ async def get_overall_stats(request: Request):
     """Get a json dictionary of grouped statistics as key-value pairs."""
     data = await read_stats.calculate_overall_stats(grouping_cols=['pilot'], db=db)
     data = data.to_dict('split')
-    return JSONResponse(content=data)
+    return data
 
 
 @app.get("/session_performance")
@@ -155,15 +145,7 @@ async def get_session_perf_stats(request: Request):
                      ascending=False,
                      inplace=True)
     data = data.to_dict('split')
-    return JSONResponse(content=data)
-
-
-# @app.get("/")
-# async def serve_homepage(request: Request):
-#     """Serve the index.html template."""
-#     with open("static/index.html", mode='r') as fp_:
-#         page = fp_.read()
-#     return HTMLResponse(page)
+    return data
 
 
 @app.get("/weapons")
