@@ -1,10 +1,16 @@
-FROM horrible_base
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.7-2020-03-01
 
 COPY requirements.txt /tmp/
-RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
-    rm /tmp/requirements.txt
-ADD static/ /app/static/
+
+RUN pip install --no-cache-dir --user -r /tmp/requirements.txt && \
+    rm /tmp/requirements.txt && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ADD static/mesh /app/static/mesh
+ADD static/images /app/static/images
+ADD static/css /app/static/css
+COPY static/index.html /app/static/
+ADD static/js /app/static/js
+
 ADD horrible/ /app/horrible/
 COPY main.py prestart.sh file_updater.py /app/
-
-# WORKDIR "/app"

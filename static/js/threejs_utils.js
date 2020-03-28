@@ -42,7 +42,7 @@ THREE.OBJLoader.prototype = {
 
         var scope = this;
 
-        var loader = new THREE.XHRLoader(scope.manager);
+        var loader = new THREE.FileLoader(scope.manager);
         loader.setPath(this.path);
         loader.load(url, function (text) {
 
@@ -404,7 +404,7 @@ THREE.OBJLoader.prototype = {
 
     parse: function (text) {
 
-        console.time('OBJLoader');
+        // console.time('OBJLoader');
 
         var state = this._createParserState();
 
@@ -704,7 +704,7 @@ THREE.OBJLoader.prototype = {
 
         }
 
-        console.timeEnd('OBJLoader');
+        // console.timeEnd('OBJLoader');
 
         return container;
 
@@ -1862,3 +1862,39 @@ THREE.MapControls = function ( object, domElement ) {
 
 THREE.MapControls.prototype = Object.create( THREE.EventDispatcher.prototype );
 THREE.MapControls.prototype.constructor = THREE.MapControls;
+
+
+function get_window_size() {
+    var width = window.innerWidth * 0.935;
+    var height = window.innerHeight * 0.88;
+    var dim = {
+        height: height,
+        width: width
+    };
+    return dim;
+}
+
+
+function ToQuaternion(yaw, pitch, roll) // yaw (Z), pitch (Y), roll (X)
+{
+    // Abbreviations for the various angular functions
+    cy = Math.cos(yaw * 0.5);
+    sy = Math.sin(yaw * 0.5);
+    cp = Math.cos(pitch * 0.5);
+    sp = Math.sin(pitch * 0.5);
+    cr = Math.cos(roll * 0.5);
+    sr = Math.sin(roll * 0.5);
+
+    w = cy * cp * cr + sy * sp * sr;
+    x = cy * cp * sr - sy * sp * cr;
+    y = sy * cp * sr + cy * sp * cr;
+    z = sy * cp * cr - cy * sp * sr;
+
+    return [x, y, z, w];
+}
+
+
+function to_rad(degrees) {
+    var pi = Math.PI;
+    return degrees * (pi / 180);
+}

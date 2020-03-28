@@ -11,8 +11,8 @@ from multiprocessing import Process
 import os
 
 import asyncpg
-import numpy as np
 from lupa import LuaRuntime # type:ignore
+import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 from tacview_client import client, serve_file
@@ -24,13 +24,6 @@ from horrible.gcs import get_gcs_bucket
 from horrible.config import get_logger
 
 log = get_logger('statreader')
-
-
-def pctile(n):
-    def percentile_(x):
-        return np.percentile(x, n)
-    percentile_.__name__ = 'percentile_%s' % n
-    return percentile_
 
 
 async def sync_gs_files_with_db(bucket_prefix: str, table: sa.Table,

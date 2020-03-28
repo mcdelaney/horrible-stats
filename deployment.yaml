@@ -7,11 +7,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: app
+      name: app
   template:
     metadata:
       labels:
-        app: app
+        name: app
         run: stats-app
     spec:
       containers:
@@ -53,11 +53,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: app
+      name: stat-updater
   template:
     metadata:
       labels:
-        app: app
+        name: stat-updater
     spec:
       containers:
       - name: stat-updater
@@ -89,11 +89,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: app
+      name: event-updater
   template:
     metadata:
       labels:
-        app: app
+        name: event-updater
     spec:
       containers:
       - name: event-updater
@@ -125,11 +125,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: app
+      name: tacview-updater
   template:
     metadata:
       labels:
-        app: app
+        name: tacview-updater
     spec:
       containers:
       - name: tacview-updater
@@ -156,9 +156,9 @@ spec:
   kind: Service
   metadata:
     namespace: horrible-stats
-    name: app
+    name: app-svc
     labels:
-      app: app
+      name: app-svc
   spec:
     type: LoadBalancer
     loadBalancerIP: "35.226.240.39"
@@ -170,4 +170,4 @@ spec:
         targetPort: 8080
         name: https
     selector:
-      app: app
+      name: app

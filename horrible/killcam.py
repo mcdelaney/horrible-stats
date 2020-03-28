@@ -1,9 +1,7 @@
 import pandas as pd
 from typing import cast, Dict
 from horrible.config import get_logger
-from datetime import timedelta
 from horrible.read_stats import dict_to_js_datatable_friendly_fmt
-
 
 log = get_logger('killcam')
 
@@ -23,7 +21,7 @@ async def get_all_kills(db) -> Dict:
             impact_id
             FROM impact_comb
             WHERE weapon_type IS NOT NULL AND
-                impact_dist <= 5 and cast(impact_dist as numeric) > 2
+                impact_dist <= 5
             ORDER BY kill_timestamp DESC""")
     log.info('Formatting and returning kills...')
     return dict_to_js_datatable_friendly_fmt(data)
@@ -33,7 +31,7 @@ async def get_kill(kill_id: int, db):
     """Return coordinates for a single kill-id."""
     try:
         if kill_id == -1:
-            filter_clause = " WHERE weapon_type = 'Air-to-Air' ORDER BY random() "
+            filter_clause = " WHERE weapon_type = 'Air-to-Air' AND impact_dist < 10 ORDER BY random() "
         else:
             filter_clause = f"WHERE impact_id = {kill_id}"
         log.info(f'Looking up specs for kill: {kill_id}...')
@@ -51,7 +49,6 @@ async def get_kill(kill_id: int, db):
             WHERE id in ({resp['weapon_id']}, {resp['target_id']}, {resp['killer_id']})
                 AND  last_seen >= {resp['weapon_first_time']} AND
                 last_seen <= {resp['weapon_last_time']}
-                --AND alive = TRUE
             ORDER BY updates
             """)
         log.info('Formatting data....')
@@ -72,7 +69,8 @@ async def get_kill(kill_id: int, db):
             'target_id': resp['target_id'],
             'target_name': resp['target_name'],
             'target_type': resp['target_type'],
-            'impact_id': resp['impact_id']
+            'impact_id': resp['impact_id'],
+            'impact_dist': str(round(resp['impact_dist'],2)) + 'm'
         }
 
         for id_val, name in zip([resp['target_id'], resp['weapon_id'], resp['killer_id']],
