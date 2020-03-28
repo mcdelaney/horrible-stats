@@ -20,21 +20,42 @@ var dir = new THREE.Vector3();
 // 73432
 
 
-function pauseClick() {
-    var elem = document.getElementById('pause_btn');
+function pauseClick(elem) {
     if (pause === false) {
-        elem.innerHTML = "Play";
+        elem.className = "nav-link active";
         pause = true;
     }else{
-        elem.innerHTML = "Pause";
+        elem.className = "nav-link";
         pause = false;
     }
 }
 
-function make_button(){
+
+function followClick(elem) {
+    var arr = ['weapon_btn', 'target_btn', 'killer_btn'];
+    for (let index = 0; index < arr.length; index++) {
+        var element = document.getElementById(arr[index]);
+        if (element.getAttribute('value') === elem.getAttribute('value')){
+            element.className = "nav-link active";
+            follow = elem.getAttribute('value');
+            if (follow === 'weapon') {
+                look = 'target';
+            }else{
+                look = 'weapon';
+            }
+        }else{
+            element.className = "nav-link";
+        }
+    }
+}
+
+
+function make_button(id, html) {
     var btn = document.createElement("a");
-    btn.setAttribute('id', 'pause_btn');
-    btn.style.border = "2px solid black";
+    btn.setAttribute('id', id);
+    btn.style.border = "1px solid black";
+    btn.style.marginTop = "5px";
+    btn.style.marginRight = "5px";
     btn.style.paddingTop = "2px";
     btn.style.paddingBottom = "2px";
     btn.style.paddingLeft = "2px";
@@ -42,19 +63,46 @@ function make_button(){
     btn.style.fontSize = "12px";
     btn.style.width="55px";
     btn.style.textAlign = "center";
-
     btn.className = "nav-link";
-    btn.innerHTML = "Pause";
-    btn.setAttribute('onclick',  'pauseClick()');
+    btn.innerHTML = html;
+    return btn;
+}
 
-    var li =  document.createElement("li");
-    li.className = "nav-item";
-    li.appendChild(btn);
-
+function make_buttons(){
     var navset = document.createElement('ul');
     navset.style.marginTop = "5px";
     navset.className = "nav nav-pills";
+    var li =  document.createElement("li");
+    li.className = "nav-item";
     navset.appendChild(li);
+
+    var target_row = document.createElement("div");
+    target_row.className = "btn-group";
+    target_row.setAttribute('role', 'group');
+
+
+    var target_btn = make_button('target_btn', 'Target');
+    target_btn.setAttribute('value', 'target');
+    target_btn.setAttribute('onclick',  'followClick(this)');
+    target_row.appendChild(target_btn);
+
+    var weapon_btn = make_button('weapon_btn', 'Weapon');
+    weapon_btn.setAttribute('value', 'weapon');
+    weapon_btn.setAttribute('onclick',  'followClick(this)');
+    target_row.appendChild(weapon_btn);
+
+    var killer_btn = make_button('killer_btn', 'Killer');
+    killer_btn.className = 'nav-link active';
+    killer_btn.setAttribute('value', 'killer');
+    killer_btn.setAttribute('onclick',  'followClick(this)');
+    target_row.appendChild(killer_btn);
+
+    li.appendChild(target_row);
+
+    var pause_btn = make_button('pause_btn', 'Pause');
+    pause_btn.setAttribute('onclick',  'pauseClick(this)');
+    li.appendChild(pause_btn);
+
     return navset;
 }
 
@@ -332,8 +380,6 @@ function set_camera(){
         console.debug('No look pos');
     }
 
-
-
     if (CONTROLS === true) {
         controls.update();
     }
@@ -404,6 +450,8 @@ function animate() {
     requestAnimationFrame(animate);
     if (pause === false) {
         update_objects();
+    }else{
+        set_camera();
     }
     camera.updateProjectionMatrix();
     renderer.render(scene, camera);
@@ -455,7 +503,7 @@ function load_kill(kill_id) {
             'Target Type: ' + data.target_type + "<br>" +
             'Collision Dist: ' + data.impact_dist + "<br>";
 
-        var pause_btn = make_button();
+        var pause_btn = make_buttons();
         info.appendChild(pause_btn);
         // var zoom_slider = make_zoom_slider();
         // info.appendChild(zoom_slider);
