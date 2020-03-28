@@ -66,10 +66,13 @@ async def get_kill(kill_id: int, db):
             'killer_id': resp['killer_id'],
             'killer_name': resp['killer_name'],
             'killer_type': resp['killer_type'],
+            # 'killer_color': resp['killer_color'],
             'weapon_id': resp['weapon_id'],
             'weapon_name': resp['weapon_name'],
+            # 'weapon_color': resp['weapon_color'],
             'target_id': resp['target_id'],
             'target_name': resp['target_name'],
+            # 'target_color': resp['target_color'],
             'target_type': resp['target_type'],
             'impact_id': resp['impact_id'],
             'impact_dist': str(round(resp['impact_dist'],2)) + 'm',
@@ -92,6 +95,7 @@ async def get_kill(kill_id: int, db):
             subset.dropna(inplace=True)
 
             data[name] = subset.to_dict('split')
+            data[name]['color'] = resp[name + "_color"]
 
         log.info(f"Killer: {resp['killer_id']} -- Target: {resp['target_id']} -- "
                 f"Weapon: {resp['weapon_id']} -- Min ts: {data['min_ts']}"

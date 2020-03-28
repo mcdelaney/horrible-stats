@@ -166,8 +166,7 @@ function tube_prep(data, color, name, max_pt) {
     }
 
     var model_path = get_model_path(out.name);
-
-    var obj_mater = new THREE.MeshStandardMaterial({'color': color});
+    var obj_mater = new THREE.MeshStandardMaterial({'color': data.color.toLowerCase()});
     var obj_loader = new THREE.OBJLoader();
     obj_loader.load(
         model_path,
@@ -189,22 +188,22 @@ function tube_prep(data, color, name, max_pt) {
 
 
     var points = [];
-    var dup = Math.ceil(max_pt / data.length) + 1;
-    for (var i = 0, l = data.length; i < l; i++) {
+    var dup = Math.ceil(max_pt / data.data.length) + 1;
+    for (var i = 0, l = data.data.length; i < l; i++) {
         // points.push(new THREE.Vector3(...calcPosFromLatLonRad(data[i][0], data[i][1], data[i][2])));
-        let pt = new THREE.Vector3(data[i][0], data[i][1], data[i][2]);
+        let pt = new THREE.Vector3(data.data[i][0], data.data[i][1], data.data[i][2]);
         points.push(pt);
 
         for (var n = 0, w = dup; n < w; n++) {
-            let pitch = to_rad(data[i][4]);
-            let roll = to_rad(data[i][3]);
-            let yaw = to_rad(data[i][5]);
+            let pitch = to_rad(data.data[i][4]);
+            let roll = to_rad(data.data[i][3]);
+            let yaw = to_rad(data.data[i][5]);
             out.rotation.push(new THREE.Euler(pitch, roll, yaw));
             out.pitch.push(pitch);
             out.roll.push(roll);
             out.yaw.push(yaw);
-            out.heading.push(to_rad(data[i][6]));
-            out.time_step.push(to_rad(data[i][7]));
+            out.heading.push(to_rad(data.data[i][6]));
+            out.time_step.push(to_rad(data.data[i][7]));
         }
     }
 
@@ -260,9 +259,12 @@ function tube_prep(data, color, name, max_pt) {
     ribbonGeom.computeVertexNormals();
 
     var ribbon = new THREE.Mesh(ribbonGeom,
-        new THREE.MeshLambertMaterial({side: THREE.DoubleSide, color: color,
-                                       emissive: color, emissiveIntensity: 5,
-                                       transparent: true, opacity: params.opacity})
+        new THREE.MeshLambertMaterial(
+            {side: THREE.DoubleSide,
+            color: data.color.toLowerCase(),
+            emissive: data.color.toLowerCase(),
+            emissiveIntensity: 5,
+            transparent: true, opacity: params.opacity})
         );
 
     ribbon.geometry.setDrawRange(0, out.drawCount);
@@ -505,8 +507,6 @@ function load_kill(kill_id) {
 
         var pause_btn = make_buttons();
         info.appendChild(pause_btn);
-        // var zoom_slider = make_zoom_slider();
-        // info.appendChild(zoom_slider);
         canv.appendChild(info);
 
         progress = document.createElement('div');
@@ -533,18 +533,12 @@ function load_kill(kill_id) {
         scene.add(ambientlight);
 
         max_pt = Math.max(data.killer.data.length, data.target.data.length, data.weapon.data.length) * POINT_MULT;
-        tubes.killer = tube_prep(data.killer.data, 0x0000ff, 'killer', max_pt);
-        tubes.weapon = tube_prep(data.weapon.data, 'black', 'weapon', max_pt);
-        tubes.target = tube_prep(data.target.data, 0xff0000, 'target', max_pt);
+        tubes.killer = tube_prep(data.killer, 0x0000ff, 'killer', max_pt);
+        tubes.weapon = tube_prep(data.weapon, 'black', 'weapon', max_pt);
+        tubes.target = tube_prep(data.target, 0xff0000, 'target', max_pt);
 
         make_circle_floor(tubes.target);
         makeCameraAndControls(add_controls=CONTROLS);
-        // camera.position.set(tubes.killer.cam_points[0].x, tubes.killer.cam_points[0].y,
-        //     tubes.killer.cam_points[0].z);
-        // // camera.lookAt(tubes.killer.look_points[0].x, tubes.killer.look_points[0].y,
-        // //         tubes.killer.look_points[0].z);
-        // camera.updateProjectionMatrix();
-
         clock = new THREE.Clock();
         min_ts = data.min_ts;
         delta = data.min_ts;
