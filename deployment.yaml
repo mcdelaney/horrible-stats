@@ -4,7 +4,7 @@ metadata:
   name: app
   namespace: horrible-stats
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       name: app
@@ -21,7 +21,7 @@ spec:
             limits:
               cpu: "4"
             requests:
-              cpu: "1.5"
+              cpu: "1"
         env:
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: "/etc/keys/dcs-storage-gcs.json"
@@ -29,8 +29,6 @@ spec:
             value: postgresql://db:5432/dcs?user=prod&password=pwd
           - name: TACVIEW_DSN
             value: postgresql://db:5432/dcs?user=prod&password=pwd
-          - name: WEB_CONCURRENCY
-            value: "4"
           - name: BIND
             value: "0.0.0.0:8080"
         ports:
