@@ -1,7 +1,11 @@
 /*jshint esversion: 6 */
 
-var renderer, scene, camera, controls, killer_obj, coords,time,
-     something, prog, render, animate, light, max_pt, progress;
+import * as THREE from "three";
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+
+
+var renderer, scene, camera, controls, max_pt, progress, clock, anim_id;
 var tubes = {
     killer: null,
     weapon: null,
@@ -80,27 +84,42 @@ function make_buttons(){
     target_row.className = "btn-group";
     target_row.setAttribute('role', 'group');
 
-
     var target_btn = make_button('target_btn', 'Target');
     target_btn.setAttribute('value', 'target');
-    target_btn.setAttribute('onclick',  'followClick(this)');
+    target_btn.addEventListener ("click", function(event) {
+        var targetElement = event.target || event.srcElement;
+        followClick(targetElement);
+    }, false);
+
     target_row.appendChild(target_btn);
 
     var weapon_btn = make_button('weapon_btn', 'Weapon');
     weapon_btn.setAttribute('value', 'weapon');
-    weapon_btn.setAttribute('onclick',  'followClick(this)');
+    weapon_btn.addEventListener ("click", function(event) {
+        var targetElement = event.target || event.srcElement;
+        followClick(targetElement);
+    }, false);
+
     target_row.appendChild(weapon_btn);
 
     var killer_btn = make_button('killer_btn', 'Killer');
     killer_btn.className = 'nav-link active';
     killer_btn.setAttribute('value', 'killer');
-    killer_btn.setAttribute('onclick',  'followClick(this)');
+    killer_btn.addEventListener ("click", function(event) {
+        var targetElement = event.target || event.srcElement;
+        followClick(targetElement);
+    }, false);
+
     target_row.appendChild(killer_btn);
 
     li.appendChild(target_row);
 
     var pause_btn = make_button('pause_btn', 'Pause');
-    pause_btn.setAttribute('onclick',  'pauseClick(this)');
+    pause_btn.addEventListener ("click", function(event) {
+        var targetElement = event.target || event.srcElement;
+        pauseClick(targetElement);
+    }, false);
+
     li.appendChild(pause_btn);
 
     return navset;
@@ -158,6 +177,7 @@ function tube_prep(data, color, name, max_pt) {
         time_step: [],
         look_points: [],
         cam_points: [],
+        counter: null,
     };
 
     if (name === 'weapon'){
@@ -167,10 +187,10 @@ function tube_prep(data, color, name, max_pt) {
 
     var model_path = get_model_path(out.name);
     var obj_mater = new THREE.MeshStandardMaterial({'color': data.color.toLowerCase()});
-    var obj_loader = new THREE.OBJLoader();
+    var obj_loader = new OBJLoader();
     obj_loader.load(
         model_path,
-        onLoad = function (object) {
+        function (object) {
             object.traverse(function (child) {
                 if (child instanceof THREE.Mesh) {
                     child.material = obj_mater;
@@ -206,6 +226,7 @@ function tube_prep(data, color, name, max_pt) {
             out.time_step.push(to_rad(data.data[i][7]));
         }
     }
+    out.counter = out.time_step[0];
 
     var curve = new THREE.CatmullRomCurve3(points, false);
     out.line_points = curve.getPoints(max_pt);
@@ -244,8 +265,8 @@ function tube_prep(data, color, name, max_pt) {
     var ribbonGeom = new THREE.BufferGeometry().setFromPoints(pts);
 
     var indices = [];
-    for (iy = 0; iy < widthSteps; iy++) {
-        for (ix = 0; ix < max_pt; ix++) {
+    for (var iy = 0; iy < widthSteps; iy++) {
+        for (var ix = 0; ix < max_pt; ix++) {
             var a = ix + max_pt1 * iy;
             var b = ix + max_pt1 * (iy + 1);
             var c = (ix + 1) + max_pt1 * (iy + 1);
@@ -313,7 +334,7 @@ function makeCameraAndControls(add_controls) {
     camera = new THREE.PerspectiveCamera(55, dim.width / dim.height, 0.01, 1000000);
 
     if (add_controls) {
-        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.07;
         controls.rotateSpeed = 0.05;
@@ -402,15 +423,19 @@ function make_zoom_slider(){
     return container;
 }
 
-function update_objects(){
+function update_objects(delta){
     if (tubes.killer.object === null | tubes.target.object === null | tubes.weapon.object === null) {
         console.log('Some objects are still null!');
         return;
-    }else{
+    }
 
         for (var n = 0, t = Object.keys(tubes).length; n < t; n++) {
             var keyname = Object.keys(tubes)[n];
-            tube = tubes[keyname];
+            var tube = tubes[keyname];
+        tube.counter += delta;
+        if (n===0) {
+            console.log(tube.counter);
+        }
             if (tube === null) {
                 continue;
             }
@@ -443,15 +468,16 @@ function update_objects(){
             }
         }
         set_camera();
-    }
+
 }
 
 
 function animate() {
 
-    requestAnimationFrame(animate);
+    anim_id = requestAnimationFrame(animate);
+    var delta = clock.getDelta()*1000;
     if (pause === false) {
-        update_objects();
+        update_objects(delta);
     }else{
         set_camera();
     }
@@ -459,7 +485,35 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-function load_kill(kill_id) {
+
+export function remove_scene() {
+
+    cancelAnimationFrame( anim_id );
+
+    if (scene != null) {
+        scene.dispose();
+        console.log('Clearing scene...');
+        while (scene.children.length > 0) {
+            scene.remove(scene.children[0]);
+        }
+        var killcam_canv = document.getElementById('killcam_canv');
+        if (killcam_canv != null) {
+            killcam_canv.parentNode.removeChild(killcam_canv);
+        }
+    }
+
+    var prev_info = document.getElementById('killcam_info');
+    if (prev_info != null) {
+        prev_info.parentNode.removeChild(prev_info);
+    }
+
+    clock = null;
+
+}
+
+export function load_kill(kill_id) {
+
+    remove_scene();
 
     pause = false;
     const loader = new THREE.FileLoader(loadingManager);
@@ -538,11 +592,8 @@ function load_kill(kill_id) {
         tubes.target = tube_prep(data.target, 0xff0000, 'target', max_pt);
 
         make_circle_floor(tubes.target);
-        makeCameraAndControls(add_controls=CONTROLS);
+        makeCameraAndControls(CONTROLS);
         clock = new THREE.Clock();
-        min_ts = data.min_ts;
-        delta = data.min_ts;
-        restart = 0;
         // stat();
         renderer.compile(scene, camera);
         animate();
@@ -566,12 +617,40 @@ function stat() {
 }
 
 
-$(document).onkeypress = function (e) {
-    e = e || window.event;
-    console.log(e);
-    if (paused === true) {
-        paused = false;
-    }else{
-        paused = true;
-    }
-};
+function get_window_size() {
+    var width = window.innerWidth * 0.935;
+    var height = window.innerHeight * 0.88;
+    var dim = {
+        height: height,
+        width: width
+    };
+    return dim;
+}
+
+
+function ToQuaternion(yaw, pitch, roll) // yaw (Z), pitch (Y), roll (X)
+{
+    // Abbreviations for the various angular functions
+    cy = Math.cos(yaw * 0.5);
+    sy = Math.sin(yaw * 0.5);
+    cp = Math.cos(pitch * 0.5);
+    sp = Math.sin(pitch * 0.5);
+    cr = Math.cos(roll * 0.5);
+    sr = Math.sin(roll * 0.5);
+
+    w = cy * cp * cr + sy * sp * sr;
+    x = cy * cp * sr - sy * sp * cr;
+    y = sy * cp * sr + cy * sp * cr;
+    z = sy * cp * cr - cy * sp * sr;
+
+    return [x, y, z, w];
+}
+
+
+function to_rad(degrees) {
+    var pi = Math.PI;
+    return degrees * (pi / 180);
+}
+
+// export default [load_kill, remove_scene];
+// export default remove_scene;

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+npx webpack --config webpack.config.js --mode=development
+
 IMAGE_NAME="horrible_stats"
 REPOS_ID="localhost:5000"
 TAG=$(date +"%s")

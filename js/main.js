@@ -1,4 +1,10 @@
 /*jshint esversion: 6 */
+import $ from 'jquery';
+import 'datatables.net';
+import 'datatables.net-bs4';
+
+import {moment} from "moment";
+import {load_kill, remove_scene} from "./killcam";
 
 var sortKeys = {
     "overall": [
@@ -38,7 +44,7 @@ function load_chart(path, pctile) {
     console.log("Loading chart for: " + path);
     var timeFormat = "YYYY-MM-DD HH:mm:ss";
     var chart_nm = path + "_chart";
-    jQuery.getJSON("/" + path + "?pctile=" + pctile,
+    $.getJSON("/" + path + "?pctile=" + pctile,
         function (data) {
 
             var ctx = document.getElementById(chart_nm).getContext('2d');
@@ -112,10 +118,10 @@ function load_dt(path) {
         console.log(e.stack);
     }
 
-    jQuery.getJSON("/" + path, function (data) {
+    $.getJSON("/" + path, function (data) {
 
         var cols = [];
-        for (i = 0; i < data.columns.length; i++) {
+        for (var i = 0; i < data.columns.length; i++) {
             var col_nm = data.columns[i].split("_");
             for (var n = 0; n < col_nm.length; n++) {
                 col_nm[n] = col_nm[n].charAt(0).toUpperCase() + col_nm[n].slice(1);
@@ -140,8 +146,8 @@ function load_dt(path) {
             rowId: "index",
             fixedColumns: false,
             autoWidth: true,
-            lengthChange: false,
-            width:"1200px",
+            // lengthChange: false,
+            // width:"1200px",
             scrollY: 600,
             info: false,
             scrollX: true,
@@ -155,6 +161,18 @@ function load_dt(path) {
 }
 
 
+function set_click_attr (){
+    var navs = document.getElementById('nav_set');
+    for (let index = 0; index < navs.children.length; index++) {
+        var btn = navs.children[index].children[0];
+        btn.addEventListener ("click", function(event) {
+            var targetElement = event.target || event.srcElement;
+            set_onclick(targetElement);
+        }, false);
+    }
+}
+
+
 function set_onclick(elem, kill_id) {
     set_tab_active(elem.id);
 
@@ -163,23 +181,9 @@ function set_onclick(elem, kill_id) {
         document.getElementById('load_spin').hidden = true;
         document.getElementById('overall_container').hidden = true;
         document.getElementById('killcam_div').hidden = false;
-
-        if (scene != null) {
-            console.log('Clearing scene...');
-            while (scene.children.length > 0) {
-                scene.remove(scene.children[0]);
-            }
-            var killcam_canv = document.getElementById('killcam_canv');
-            killcam_canv.parentNode.removeChild(killcam_canv);
-        }
-
-        var prev_info = document.getElementById('killcam_info');
-        if (prev_info != null) {
-            prev_info.parentNode.removeChild(prev_info);
-        }
-
         load_kill(kill_id);
     } else {
+        remove_scene();
         load_dt(elem.id);
     }
 }
@@ -202,6 +206,7 @@ function set_tab_active(elem_id) {
 
 
 $(document).ready(function () {
+    set_click_attr();
     var param = window.location.href.split("#");
     if (param.length === 1) {
         let elem = document.getElementById("overall");
@@ -215,15 +220,13 @@ $(document).ready(function () {
 // var selected_row;
 $('#overall_tbl').on('click', 'tbody tr', function () {
     var current = document.getElementsByClassName("active");
-    var row_idx = null;
-    var endpoint = null;
 
     var table = $('#overall_tbl').DataTable();
-    selected_row = table.row(this).data();
+    var selected_row = table.row(this).data();
 
     if (current[0].id == 'tacview') {
-        endpoint = 'process_tacview?filename=';
-        row_id = 0;
+        var endpoint = 'process_tacview?filename=';
+        var row_id = 0;
     }else if (current[0].id == 'tacview_kills') {
         var kill_id = selected_row[selected_row.length - 1].toString();
         console.log(kill_id);
@@ -250,3 +253,4 @@ $('#overall_tbl').on('click', 'tbody tr', function () {
     });
 
 });
+

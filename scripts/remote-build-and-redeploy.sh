@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+npx webpack --config webpack.config.js --mode=production
+
 IMAGE_NAME="horrible_stats"
 GCP_PROJECT_ID="dcs-analytics-257714"
 TAG=$(date +"%s")

@@ -15,3 +15,4 @@ horrible/tacview/**
 **/**/__pycache__/**/**
 log/**/**
 tests/data/**/**
+node_modules/**/**

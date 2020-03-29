@@ -49,7 +49,7 @@ async def get_kill(kill_id: int, db):
                 u_coord, v_coord, yaw, pitch, roll, id, heading
             FROM obj_events
             WHERE id in ({resp['weapon_id']}, {resp['target_id']}, {resp['killer_id']})
-                AND  last_seen >= {resp['weapon_first_time']} AND
+                AND  last_seen >= {resp['weapon_first_time']-30} AND
                 last_seen <= {resp['weapon_last_time']}
             ORDER BY updates
             """)
@@ -96,7 +96,33 @@ async def get_kill(kill_id: int, db):
 
             data[name] = subset.to_dict('split')
             data[name]['color'] = resp[name + "_color"]
+            data[name]['added'] = 0
 
+        log.info(f"Original data sizes -  weapon: {len(data['weapon']['data'])}"
+                 f" target: {len(data['target']['data'])}"
+                 f" killer: {len(data['killer']['data'])}")
+
+        log.info(data['weapon']['columns'])
+        ts_idx = data['weapon']['columns'].index('time_offset')
+        first_weapon = float(data['weapon']['data'][0][ts_idx])
+        first_killer = float(data['killer']['data'][0][ts_idx])
+        log.info(f'First weapon ts: {first_weapon} -- first Killer ts: {first_killer}')
+        new_data = []
+        for row in data['killer']['data']:
+            log.info(f'Timestamp: {row[ts_idx]}....')
+            if float(row[ts_idx]) < first_weapon:
+                new_data.append(row)
+            else:
+                log.info('Datapoint is later...')
+                break
+
+        if new_data:
+            added_rows = len(new_data)
+            log.info(f"Add {added_rows} lines to weapon...")
+            new_data.extend(data['weapon']['data'])
+            log.info(f"New weapon data size: {len(new_data)}")
+            data['weapon']['data'] = new_data
+            data['weapon']['added'] = added_rows
         log.info(f"Killer: {resp['killer_id']} -- Target: {resp['target_id']} -- "
                 f"Weapon: {resp['weapon_id']} -- Min ts: {data['min_ts']}"
                 f" Impact id: {resp['impact_id']}")

@@ -17,3 +17,5 @@ horrible/mission-events/**
 **/**/dcs.db*
 **/**/*.log
 **/**/*.gz
+node_modules/**/**
+static/main-bundle.js
