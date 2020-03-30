@@ -66,7 +66,7 @@ async def get_kill(kill_id: int, db):
                     session_id = {resp['session_id']} AND
             		type in ('Weapon+Missile', 'Air+FixedWing') AND
                     last_seen >= {resp['weapon_first_time']-30} AND
-                    last_seen <= {resp['weapon_last_time']}
+                    last_seen <= {resp['weapon_last_time']+10}
                 ORDER BY updates
                 ) upd
             GROUP BY id, session_id
