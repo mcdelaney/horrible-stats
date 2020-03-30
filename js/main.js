@@ -215,7 +215,7 @@ $(document).ready(function () {
         set_onclick(elem);
     }else{
         let elem = document.getElementById(param[1]);
-        set_onclick(elem);
+        set_onclick(elem, param[2]);
     }
 });
 
