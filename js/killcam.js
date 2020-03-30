@@ -466,16 +466,12 @@ function make_zoom_slider(){
 
 function update_objects(delta){
 
-    if (tubes.killer.object === null | tubes.target.object === null | tubes.weapon.object === null) {
-        console.log('Some objects are still null!');
-        return;
+    for (var n = 0, t = Object.keys(tubes).length; n < t; n++) {
+        if (tubes[Object.keys(tubes)[n]].object === null){
+            console.log('Some objects are still null!');
+            return;
+        }
     }
-    // for (var n = 0, t = Object.keys(tubes).length; n < t; n++) {
-    //     if (tubes[n].object === null){
-    //         console.log('Some objects are still null!');
-    //         return;
-    //     }
-    // }
 
     for (var n = 0, t = Object.keys(tubes).length; n < t; n++) {
         var keyname = Object.keys(tubes)[n];
@@ -636,7 +632,6 @@ export function load_kill(kill_id) {
         tubes.killer = tube_prep(data.killer, data.min_ts, data.max_ts);
         tubes.target = tube_prep(data.target, data.min_ts, data.max_ts);
         tubes.weapon = tube_prep(data.weapon, data.min_ts, data.max_ts);
-
 
         make_circle_floor(tubes.target);
         makeCameraAndControls(CONTROLS);
