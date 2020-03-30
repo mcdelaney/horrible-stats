@@ -246,10 +246,11 @@ function tube_prep(data, min_ts, max_ts) {
     );
 
     var points = [];
+    var times = [];
 
     for (var i = 0, l = data.coord.length; i < l; i++) {
-        let pt = new THREE.Vector3(...data.coord[i]);
-        points.push(pt);
+        points.push(new THREE.Vector3(...data.coord[i]));
+        times.push(new THREE.Vector2(out.time_step[i], 1));
 
         let roll = to_rad(data.rot[i][0]);
         let pitch = to_rad(data.rot[i][1]);
@@ -257,10 +258,17 @@ function tube_prep(data, min_ts, max_ts) {
         out.rotation.push(new THREE.Euler(pitch, roll, yaw));
     }
 
-    console.log('First time for ' + out.name + ' is ' + out.time_step[0].toString());
-
     var curve = new THREE.CatmullRomCurve3(points, false);
-    out.line_points = curve.getPoints(points.length);
+    out.line_points = curve.getPoints(points.length*3);
+
+    var time_curve = new THREE.SplineCurve(times);
+    times = time_curve.getPoints(out.line_points.length-1);
+    var interp_time_steps = [];
+    for (let i = 0, l = times.length; i < l; i++) {
+        interp_time_steps.push(times[i].x);
+    }
+    out.time_step = interp_time_steps;
+    console.log('First time for ' + out.name + ' is ' + out.time_step[0].toString());
 
     // var dir = new THREE.Vector3(); // create once an reuse it
     for (let i = 0, l=out.line_points.length; i < l; i++) {
@@ -278,7 +286,7 @@ function tube_prep(data, min_ts, max_ts) {
     var max_pt1 = max_pt0+1;
     var widthSteps = 1;
 
-    let pts2 = curve.getPoints(points.length);
+    let pts2 = curve.getPoints(out.line_points.length);
 
     pts2.forEach(p => {
         p.z += params.width;
