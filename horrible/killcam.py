@@ -3,15 +3,13 @@ from typing import cast, Dict
 from horrible.config import get_logger
 from horrible.read_stats import dict_to_js_datatable_friendly_fmt
 
-
 log = get_logger('killcam')
 
 
 async def get_all_kills(db) -> Dict:
     """Get a table of all kills."""
     log.info('Querying for all kills...')
-    data = await db.fetch_all(
-        """SELECT
+    data = await db.fetch_all("""SELECT
             TO_CHAR(kill_timestamp, 'YYYY-MM-DD HH24:MI:SS') as kill_timestamp,
             killer_name, killer_type,
             weapon_name, weapon_type, target_name, target_type,
@@ -40,13 +38,19 @@ async def get_kill(kill_id: int, db):
         filter_clause = f"""WHERE impact_id = {kill_id}"""
 
     log.info(f'Looking up specs for kill: {kill_id}...')
-    resp = await db.fetch_one(f"SELECT * FROM impact_comb {filter_clause} limit 1")
-    key_dict = {k: v for k, v in zip([resp['target_id'], resp['weapon_id'], resp['killer_id']],
-                                        ['target', 'weapon', 'killer'])}
+    resp = await db.fetch_one(
+        f"SELECT * FROM impact_comb {filter_clause} limit 1")
+    key_dict = {
+        k: v
+        for k, v in
+        zip([resp['target_id'], resp['weapon_id'], resp['killer_id']],
+            ['target', 'weapon', 'killer'])
+    }
 
-    log.info(f"Collecting kill points from id: {resp['impact_id']} and session: {resp['session_id']}...")
-    points = await db.fetch_all(
-        f"""
+    log.info(
+        f"Collecting kill points from id: {resp['impact_id']} and session: {resp['session_id']}..."
+    )
+    points = await db.fetch_all(f"""
         SELECT
             id, color, v_coord, alt, u_coord, roll, pitch, yaw, heading, last_seen as time_step
         FROM obj_events
@@ -80,7 +84,8 @@ async def get_kill(kill_id: int, db):
 
         try:
             group = key_dict[rec['id']]
-            rec['type'] = resp[group + "_type"] if group != 'weapon' else resp['weapon_name']
+            rec['type'] = resp[
+                group + "_type"] if group != 'weapon' else resp['weapon_name']
             rec['name'] = resp[group + "_name"]
             rec['cat'] = 'plane' if group != 'weapon' else 'weapon'
         except KeyError:
@@ -100,8 +105,9 @@ async def get_kill(kill_id: int, db):
                 for key in ['coord', 'rot', 'time_step', 'heading']:
                     data[group][key].append(rec[key])
 
-    log.info(f"Killer: {data['killer']['id']} -- Target: {data['target']['id']} -- "
-             f"Weapon: {data['weapon']['id']} -- Min ts: {data['min_ts']}"
-             f" Impact id: {data['impact_id']} "
-             f" Total other: {len(data['other'])}")
+    log.info(
+        f"Killer: {data['killer']['id']} -- Target: {data['target']['id']} -- "
+        f"Weapon: {data['weapon']['id']} -- Min ts: {data['min_ts']}"
+        f" Impact id: {data['impact_id']} "
+        f" Total other: {len(data['other'])}")
     return data
