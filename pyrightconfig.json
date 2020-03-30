@@ -2,7 +2,8 @@
     "exclude": [
       "**/**/__pycache__/**/**",
       "database/pgdata/**/**",
-      "horrible/static/**/**"
+      "horrible/static/**/**",
+      "node_modules/**/**"
     ],
     "include": ["horrible"]
   }
