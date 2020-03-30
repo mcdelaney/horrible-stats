@@ -11,17 +11,20 @@ async def get_all_kills(db) -> Dict:
     log.info('Querying for all kills...')
     data = await db.fetch_all("""SELECT
             TO_CHAR(kill_timestamp, 'YYYY-MM-DD HH24:MI:SS') as kill_timestamp,
-            killer_name, killer_type,
-            weapon_name, weapon_type, target_name, target_type,
-            impact_dist,
-            kill_duration,
-            impact_id as id
-            FROM impact_comb
-            WHERE weapon_type IS NOT NULL AND
-                impact_dist <= 5 AND kill_duration > 1 AND
-                kill_duration < 120
-            ORDER BY kill_timestamp DESC
-            LIMIT 2000""")
+        killer_name, killer_type,
+        weapon_name, weapon_type, target_name, target_type,
+        impact_dist,
+        kill_duration,
+        impact_id as id
+        FROM impact_comb
+        WHERE weapon_type IS NOT NULL AND
+            impact_dist <= 5 AND kill_duration > 1 AND
+            kill_duration < 120 AND
+            ((killer_name in (SELECT DISTINCT pilot FROM mission_stats)) OR
+            (target_name in (SELECT DISTINCT pilot FROM mission_stats)))
+        ORDER BY kill_timestamp DESC
+        LIMIT 2000
+    """)
     log.info('Formatting and returning kills...')
     return dict_to_js_datatable_friendly_fmt(data)
 
