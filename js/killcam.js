@@ -1,5 +1,5 @@
 /*jshint esversion: 6 */
-
+// 87885
 import * as THREE from "three";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
@@ -22,6 +22,8 @@ var CONTROLS = false;
 var obj_loader = new OBJLoader();
 
 var POINT_MULT = 1;
+const loader = new THREE.FileLoader(loadingManager);
+
 var dir = new THREE.Vector3();
 // 73432
 
@@ -572,21 +574,26 @@ export function remove_scene() {
         target: null,
         // other: null
     };
-
 }
 
-export function load_kill(kill_id) {
+export function load_kill() {
 
+    var kill_id = window.location.href.split("#")[2];
     remove_scene();
 
-    const loader = new THREE.FileLoader(loadingManager);
     if (typeof kill_id === 'undefined') {
-        kill_id = -1;
+        kill_id = "-1";
     }
 
-    console.log("Requesting kill id: " + kill_id.toString());
+    console.log("Requesting kill id: " + kill_id);
     loader.load("/kill_coords?kill_id=" + kill_id, function (resp) {
         var data = JSON.parse(resp);
+
+        var kill_id = window.location.href.split("#")[2];
+        if (typeof kill_id === 'undefined') {
+            console.log("Kill id is null...Setting to: " + data.impact_id );
+            window.location.href = window.location.href + "#" + data.impact_id.toString();
+        }
 
         document.getElementById('load_spin').hidden = true;
         window.addEventListener('resize', onWindowResize, false);

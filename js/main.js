@@ -180,7 +180,10 @@ function set_onclick(elem, kill_id) {
         document.getElementById('load_spin').hidden = true;
         document.getElementById('overall_container').hidden = true;
         document.getElementById('killcam_div').hidden = false;
-        load_kill(kill_id);
+        if (typeof kill_id != 'undefined') {
+            window.location.href += "#" + kill_id;
+        }
+        load_kill();
     } else {
         remove_scene();
         load_dt(elem.id);
