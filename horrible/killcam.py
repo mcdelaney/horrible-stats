@@ -73,7 +73,7 @@ async def get_kill(kill_id: int, db):
             )
         SELECT *
         FROM tmp t
-        INNER JOIN (SELECT id, name, color, session_id, type as cat
+        INNER JOIN (SELECT id, name, name as type, color, session_id, type as cat
                     FROM object) obj
         USING (id, session_id)
         """
