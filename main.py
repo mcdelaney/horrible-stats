@@ -54,6 +54,11 @@ async def serve_mesh(obj_name: str):
         return FileResponse('./static/mesh/Missile.AIM-120C.obj')
 
 
+@app.get("/static/images/{img_name}")
+async def serve_mesh(img_name: str):
+    return FileResponse(f"./static/images/{img_name}")
+
+
 @app.get("/static/main-bundle.js")
 async def serve_js():
     return FileResponse("./static/main-bundle.js")
