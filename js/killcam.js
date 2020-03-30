@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 
-var renderer, scene, camera, controls, progress, clock, anim_id;
+var renderer, scene, camera, controls, anim_id, clock, progress;
 var tubes = {
     killer: null,
     weapon: null,
@@ -192,7 +192,7 @@ function addFloor() {
 
 function get_model_path(obj){
     var model_path;
-    if (obj.cat === 'weapon') {
+    if (obj.cat === 'Weapon+Missile') {
         model_path = `/static/mesh/Missile.${obj.type}.obj`;
     } else {
         var obj_name = obj.type.split("_");
@@ -236,7 +236,7 @@ function tube_prep(data, min_ts, max_ts) {
         max_ts: max_ts,
     };
 
-    if (out.cat === 'weapon'){
+    if (out.cat === 'Weapon+Missile'){
         params.width = Math.round(params.width/4);
         params.opacity = 1.0;
         params.obj_scale = Math.round(params.obj_scale * 1.5);
@@ -562,8 +562,20 @@ export function remove_scene() {
     if (prev_info != null) {
         prev_info.parentNode.removeChild(prev_info);
     }
+    var prev_progress = document.getElementById('kill_progress');
+    if (prev_progress != null) {
+        prev_progress.parentNode.removeChild(prev_progress);
+    }
 
-    clock = null;
+    pause = false;
+    follow = "killer";
+    look = "target";
+    tubes = {
+        killer: null,
+        weapon: null,
+        target: null,
+        // other: null
+    };
 
 }
 
@@ -571,7 +583,6 @@ export function load_kill(kill_id) {
 
     remove_scene();
 
-    pause = false;
     const loader = new THREE.FileLoader(loadingManager);
     if (typeof kill_id === 'undefined') {
         kill_id = -1;
@@ -599,7 +610,7 @@ export function load_kill(kill_id) {
         var pause_btn = make_buttons();
         info.appendChild(pause_btn);
 
-        var progress = make_progress_tracker();
+        progress = make_progress_tracker();
         canv.appendChild(progress);
 
         scene = new THREE.Scene();
@@ -622,9 +633,9 @@ export function load_kill(kill_id) {
         make_circle_floor(tubes.target);
         makeCameraAndControls(CONTROLS);
         clock = new THREE.Clock();
-        stat();
+        // stat();
         renderer.compile(scene, camera);
-        animate();
+        animate(progress);
     });
 
     onWindowResize();

@@ -7,17 +7,18 @@ def get_logger(name='horrible') -> logging.Logger:
     logFormatter = logging.Formatter(
         "%(asctime)s [%(name)s] [%(levelname)-5.5s]  %(message)s")
     file_path = Path(f"log/{log.name}.log")
+
     if not file_path.parent.exists():
         file_path.parent.mkdir()
 
-    if (log.hasHandlers()):
+    if (len(log.handlers) == 2):
         return log
 
+    consoleHandler = logging.StreamHandler()
+    consoleHandler.setFormatter(logFormatter)
     fileHandler = logging.FileHandler(file_path, 'w')
     fileHandler.setFormatter(logFormatter)
     log.addHandler(fileHandler)
-    consoleHandler = logging.StreamHandler()
-    consoleHandler.setFormatter(logFormatter)
     log.addHandler(consoleHandler)
     log.propagate = False
     return log

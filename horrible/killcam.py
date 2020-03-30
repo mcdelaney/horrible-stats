@@ -50,22 +50,38 @@ async def get_kill(kill_id: int, db):
     log.info(
         f"Collecting kill points from id: {resp['impact_id']} and session: {resp['session_id']}..."
     )
-    points = await db.fetch_all(f"""
-        SELECT
-            id, color, v_coord, alt, u_coord, roll, pitch, yaw, heading, last_seen as time_step
-        FROM obj_events
-        WHERE
-            session_id = {resp['session_id']} AND
-            last_seen >= {resp['weapon_first_time']-30} AND
-            last_seen <= {resp['weapon_last_time']}
-        ORDER BY updates
-        """)
 
-    log.info(f"Formatting {len(points)} points....")
+    points_query = f"""
+        WITH TMP AS (
+            SELECT
+                id, session_id,
+                ARRAY_AGG(ARRAY[v_coord, alt, u_coord] ORDER BY last_seen) coord,
+                ARRAY_AGG(ARRAY[roll, pitch, yaw] ORDER BY last_seen) rot,
+                ARRAY_AGG(heading ORDER BY last_seen) heading,
+                ARRAY_AGG(last_seen ORDER BY last_seen) time_step
+            FROM (
+                SELECT *
+                FROM obj_events
+                WHERE
+                    session_id = {resp['session_id']} AND
+            		type in ('Weapon+Missile', 'Air+FixedWing') AND
+                    last_seen >= {resp['weapon_first_time']-30} AND
+                    last_seen <= {resp['weapon_last_time']}
+                ORDER BY updates
+                ) upd
+            GROUP BY id, session_id
+            )
+        SELECT *
+        FROM tmp t
+        INNER JOIN (SELECT id, name, color, session_id, type as cat
+                    FROM object) obj
+        USING (id, session_id)
+        """
 
+    points = await db.fetch_all(points_query)
     data = {
-        'min_ts': points[0]['time_step'],
-        'max_ts': points[-1]['time_step'],
+        'min_ts': None,
+        'max_ts': None,
         'impact_id': resp['impact_id'],
         'impact_dist': f"{round(resp['impact_dist'],2)}m",
         'killer': None,
@@ -76,34 +92,20 @@ async def get_kill(kill_id: int, db):
 
     for pt in points:
         rec = dict(pt)
-        if rec['time_step'] < data['min_ts']:
-            data['min_ts'] = rec['time_step']
+        if not data['min_ts'] or rec['time_step'][0] < data['min_ts']:
+            data['min_ts'] = rec['time_step'][0]
 
-        if rec['time_step'] > data['max_ts']:
-            data['max_ts'] = rec['time_step']
+        if not data['max_ts'] or rec['time_step'][-1] > data['max_ts']:
+            data['max_ts'] = rec['time_step'][-1]
 
         try:
             group = key_dict[rec['id']]
             rec['type'] = resp[
                 group + "_type"] if group != 'weapon' else resp['weapon_name']
             rec['name'] = resp[group + "_name"]
-            rec['cat'] = 'plane' if group != 'weapon' else 'weapon'
+            data[group] = rec
         except KeyError:
-            group = "other"
-
-        rec['coord'] = [rec.pop('v_coord'), rec.pop('alt'), rec.pop('u_coord')]
-        rec['rot'] = [rec.pop('roll'), rec.pop('pitch'), rec.pop('yaw')]
-
-        if group == 'other':
             data['other'].append(rec)
-        else:
-            if data[group] == None:
-                for key in ['coord', 'rot', 'time_step', 'heading']:
-                    rec[key] = [rec[key]]
-                data[group] = rec
-            else:
-                for key in ['coord', 'rot', 'time_step', 'heading']:
-                    data[group][key].append(rec[key])
 
     log.info(
         f"Killer: {data['killer']['id']} -- Target: {data['target']['id']} -- "
