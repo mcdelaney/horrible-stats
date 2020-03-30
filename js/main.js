@@ -1,7 +1,7 @@
 /*jshint esversion: 6 */
 import $ from 'jquery';
 import 'datatables.net';
-import 'datatables.net-bs4';
+// import 'datatables.net-bs4';
 
 import {moment} from "moment";
 import {load_kill, remove_scene} from "./killcam";
@@ -101,8 +101,7 @@ function load_chart(path, pctile) {
 }
 
 function load_dt(path) {
-    // console.log(path.toString());
-    // window.location.href = "/#"+ path;
+
     console.log("Loading table: " + path);
     var tbl_nm = "#overall_tbl";
 

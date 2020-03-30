@@ -1,12 +1,9 @@
 from pathlib import Path
 import urllib.parse
-from typing import cast
 
 import databases
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-import pandas as pd
 from starlette.requests import Request
 
 from horrible.database import DATABASE_URL
@@ -15,11 +12,8 @@ from horrible.config import get_logger
 
 db = databases.Database(DATABASE_URL)
 log = get_logger('horrible')
-
+MESHES = [str(p.name) for p in list(Path("static/mesh/").glob("*.obj"))]
 app = FastAPI(title="Stat-Server")
-app.mount("/static",
-          StaticFiles(directory="static"),
-          name="static")
 
 
 @app.on_event("startup")
@@ -47,14 +41,28 @@ def healthz():
 async def serve_index():
     return FileResponse("./static/index.html")
 
+@app.get("/static/mesh/{obj_name}")
+async def serve_mesh(obj_name: str):
+    obj_name = obj_name.replace("F-14B", "F-14")
+    obj_name = obj_name.replace("F-16C", "F-16")
+    if obj_name in MESHES:
+        return FileResponse(f"./static/mesh/{obj_name}")
+    log.info(f"Direct match not found for {obj_name}")
+    if 'FixedWing' in obj_name:
+        return FileResponse('./static/mesh/FixedWing.F-18C.obj')
+    if 'Missile' in obj_name:
+        return FileResponse('./static/mesh/Missile.AIM-120C.obj')
 
-@app.get("/static/js/main.js")
+
+@app.get("/static/main-bundle.js")
 async def serve_js():
-    return FileResponse("./static/js/main.js")
+    return FileResponse("./static/main-bundle.js")
+
 
 @app.get("/static/css/main.css")
 async def serve_css():
     return FileResponse("./static/css/main.css")
+
 
 @app.get("/resync_file/")
 async def resync_file(request: Request, file_name: str):
