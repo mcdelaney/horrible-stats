@@ -137,30 +137,15 @@ function make_buttons(){
 
     var target_btn = make_button('target_btn', 'Target');
     target_btn.setAttribute('value', 'target');
-    // target_btn.addEventListener ("click", function(event) {
-    //     var targetElement = event.target || event.srcElement;
-    //     followClick(targetElement);
-    // }, false);
-
     target_row.appendChild(target_btn);
 
     var weapon_btn = make_button('weapon_btn', 'Weapon');
     weapon_btn.setAttribute('value', 'weapon');
-    // weapon_btn.addEventListener ("click", function(event) {
-    //     var targetElement = event.target || event.srcElement;
-    //     followClick(targetElement);
-    // }, false);
-
     target_row.appendChild(weapon_btn);
 
     var killer_btn = make_button('killer_btn', 'Killer');
     killer_btn.className = 'nav-link active';
     killer_btn.setAttribute('value', 'killer');
-    // killer_btn.addEventListener ("click", function(event) {
-    //     var targetElement = event.target || event.srcElement;
-    //     followClick(targetElement);
-    // }, false);
-
     target_row.appendChild(killer_btn);
 
     li.appendChild(target_row);
