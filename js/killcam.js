@@ -598,6 +598,7 @@ export function load_kill() {
         // document.getElementById('load_spin').hidden = true;
         window.addEventListener('resize', onWindowResize, false);
         renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+            // , powerPreference: "high-performance"});
         var dim = get_window_size();
 
         renderer.setPixelRatio(window.devicePixelRatio);
