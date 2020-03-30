@@ -595,7 +595,7 @@ export function load_kill() {
             window.location.href = window.location.href + "#" + data.impact_id.toString();
         }
 
-        document.getElementById('load_spin').hidden = true;
+        // document.getElementById('load_spin').hidden = true;
         window.addEventListener('resize', onWindowResize, false);
         renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
         var dim = get_window_size();
@@ -638,6 +638,7 @@ export function load_kill() {
         clock = new THREE.Clock();
         // stat();
         renderer.compile(scene, camera);
+        document.getElementById('load_spin').hidden = true;
         animate(progress);
     });
 

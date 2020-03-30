@@ -177,7 +177,7 @@ function set_onclick(elem, kill_id) {
 
     if (elem.id === "killcam") {
         console.log('Killcam render starting...');
-        document.getElementById('load_spin').hidden = true;
+        document.getElementById('load_spin').hidden = false;
         document.getElementById('overall_container').hidden = true;
         document.getElementById('killcam_div').hidden = false;
         if (typeof kill_id != 'undefined') {
