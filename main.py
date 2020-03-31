@@ -192,9 +192,8 @@ async def tacview_detail(request: Request):
 @app.get("/process_tacview/")
 async def process_tacview(filename: str):
     """Trigger processing of a tacview file."""
-    # tasks.add_task(read_stats.process_tacview_file,
-    #                      urllib.parse.unquote(filename))
     return "ok"
+
 
 @app.get("/events")
 async def event_detail(request: Request):

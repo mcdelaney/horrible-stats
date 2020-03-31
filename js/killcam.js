@@ -319,7 +319,8 @@ function tube_prep(data, min_ts, max_ts) {
             color: data.color.toLowerCase(),
             emissive: data.color.toLowerCase(),
             emissiveIntensity: 5,
-            transparent: true, opacity: params.opacity})
+            transparent: true, opacity: params.opacity
+        })
         );
 
     ribbon.geometry.setDrawRange(0, out.drawCount);
@@ -346,9 +347,9 @@ function calcPosFromLatLonRad(lat, lon, radius) {
 
 function make_circle_floor(target){
     var plane_geo = new THREE.CircleBufferGeometry( 150000, 10 );
-    var plane_mat = new THREE.MeshBasicMaterial( {color: 'black', side: THREE.DoubleSide, transparent:true, opacity: 0.25} );
+    var plane_mat = new THREE.MeshBasicMaterial( {color: '#C1C1C1', })
     var plane_1 = new THREE.Mesh( plane_geo, plane_mat );
-    var plane_wire = new THREE.MeshBasicMaterial( {color: 'black', wireframe: true, transparent:true, opacity:0.25 } );
+    var plane_wire = new THREE.MeshBasicMaterial( {color: 'black', wireframe: true, } );
     var plane_2 = new THREE.Mesh( plane_geo, plane_wire );
     var plane = new THREE.Object3D();
     plane.add(plane_1);
