@@ -13,6 +13,7 @@ from horrible.config import get_logger
 db = databases.Database(DATABASE_URL)
 log = get_logger('horrible')
 MESHES = [str(p.name) for p in list(Path("static/mesh/").glob("*.obj"))]
+# MESHES = [str(p.name) for p in list(Path("static/mesh/").glob("*.glb"))]
 app = FastAPI(title="Stat-Server")
 
 
@@ -41,17 +42,21 @@ def healthz():
 async def serve_index():
     return FileResponse("./static/index.html")
 
-@app.get("/static/mesh/{obj_name}")
-async def serve_mesh(obj_name: str):
+@app.get("/static/mesh")
+async def serve_mesh(request: Request, obj_name: str):
+    log.info(f"Looking up mesh for: {obj_name}")
     obj_name = obj_name.replace("F-14B", "F-14")
     obj_name = obj_name.replace("F-16C", "F-16")
+    obj_name = obj_name.replace("F-4E", "F-4")
+    obj_name = obj_name.replace("F-15C", "F-15")
+
     if obj_name in MESHES:
         return FileResponse(f"./static/mesh/{obj_name}")
     log.info(f"Direct match not found for {obj_name}")
-    if 'FixedWing' in obj_name:
-        return FileResponse('./static/mesh/FixedWing.F-18C.obj')
-    if 'Missile' in obj_name:
+    if not 'FixedWing' in obj_name:
         return FileResponse('./static/mesh/Missile.AIM-120C.obj')
+    else:
+        return FileResponse('./static/mesh/FixedWing.F-18C.obj')
 
 
 @app.get("/static/images/{img_name}")

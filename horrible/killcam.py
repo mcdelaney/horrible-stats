@@ -23,7 +23,6 @@ async def get_all_kills(db) -> Dict:
             ((killer_name in (SELECT DISTINCT pilot FROM mission_stats)) OR
             (target_name in (SELECT DISTINCT pilot FROM mission_stats)))
         ORDER BY kill_timestamp DESC
-        LIMIT 2000
     """)
     log.info('Formatting and returning kills...')
     return dict_to_js_datatable_friendly_fmt(data)
@@ -115,4 +114,5 @@ async def get_kill(kill_id: int, db):
         f"Weapon: {data['weapon']['id']} -- Min ts: {data['min_ts']}"
         f" Impact id: {data['impact_id']} "
         f" Total other: {len(data['other'])}")
+
     return data
