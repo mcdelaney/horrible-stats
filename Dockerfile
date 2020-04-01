@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir --user -r /tmp/requirements.txt && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ADD static/mesh/ /app/static/mesh
+ADD static/textures/ /app/static/textures
 ADD static/images/ /app/static/images/
 ADD static/css/ /app/static/css/
 COPY static/index.html static/main-bundle.js /app/static/

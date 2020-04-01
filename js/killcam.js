@@ -1,11 +1,12 @@
 /*jshint esversion: 6 */
-// 87885
 import * as THREE from "three";
-// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { Water } from 'three/examples/jsm/objects/Water.js';
+import { Sky } from 'three/examples/jsm/objects/Sky.js';
+import { GUI } from 'three/examples/jsm/libs/dat.gui.module.js';
 
-var renderer, scene, camera, anim_id, clock, progress, directionalLight;
+
+var renderer, scene, camera, anim_id, clock, progress, light, water, sky;
 var tubes = {
     killer: null,
     weapon: null,
@@ -16,20 +17,25 @@ var tubes = {
 window.tubes = tubes;
 window.speed_mult = 3;
 window.cam = camera;
-window.directionalLight = directionalLight;
+window.light = light;
 
 var pause = false;
 var look = "target";
 var follow = 'killer';
-var obj_loader = new OBJLoader();
-var gltf_loader = new GLTFLoader();
 
 var POINT_MULT = 3;
 const loader = new THREE.FileLoader(loadingManager);
 
 var dir = new THREE.Vector3();
-// 73432
 
+var parameters = {
+    distance: 200,
+    inclination: 0.1732,
+    azimuth: 0.4015
+};
+
+
+// 73432
 
 function pauseClick(elem) {
     if (pause === false) {
@@ -235,14 +241,12 @@ function tube_prep(data, min_ts, max_ts) {
     var model_path = get_model_path(out);
     var obj_mater = new THREE.MeshPhysicalMaterial({
         // 0xffffff
-        metalness: 0.75, roughness: 0.75, color: new THREE.Color('#C1C1C1'), side: THREE.DoubleSide,
+        reflectivity: 0.75,
+        metalness: 0.75, roughness: 0.25, color: new THREE.Color('#C1C1C1'), side: THREE.DoubleSide,
         // ambientIntensity: 0.2, aoMapIntensity: 1,
         // envMapIntensity:1, normalScale: 1,
     });
-	// obj_mater.side = THREE.DoubleSide;
-    // obj_mater.metalness = 0.75;
-    // obj_mater.roughness = 0.75;
-    // obj_mater.color.copy( data.color ).multiplyScalar( 1 / 255 );
+
     var obj_loader = new OBJLoader();
 
     obj_loader.load(
@@ -430,9 +434,11 @@ function set_camera(){
 
     var angle_back = dir.subVectors( look_pos, follow_pos ).normalize();
     cam_pos = follow_pos.clone().addScaledVector(angle_back, -1000);
+    cam_pos.y = Math.max(5.0, cam_pos.y);
     look_pos = follow_pos.clone().addScaledVector(angle_back, 200);
 
     try {
+
         camera.position.set(cam_pos.x, cam_pos.y, cam_pos.z);
         camera.translateY(200);
     } catch(error){
@@ -479,7 +485,7 @@ function update_objects(delta){
         tube.counter = tube.counter + delta;
         if (tube.counter > tube.max_ts){
             // tube.time_step[tube.time_step.length-1]) {
-            console.log('Resetting idx...');
+            console.debug('Resetting idx...');
             tube.counter = tube.min_ts;
             tube.pos_idx = 0;
             tube.drawCount = 0;
@@ -504,12 +510,7 @@ function update_objects(delta){
         tube.object.position.set(_pt.x,_pt.y, _pt.z);
         tube.object.lookAt(_look.x, _look.y, _look.z);
         // tube.object.setRotationFromEuler(tube.rotation[tube.pos_idx]);
-        // }catch (err){
-            // console.log(err);
-        // }
-        // var min_rg = Math.max(0, tube.drawCount - 400);
         tube.ribbon.geometry.setDrawRange(0, tube.drawCount);
-
         if (n === 0) {
             progress.innerHTML = ((tube.pos_idx / tube.line_points.length) * 100).toFixed(1) + "%";
         }
@@ -528,6 +529,7 @@ function animate() {
     }else{
         set_camera();
     }
+    // updateSun();
     camera.updateProjectionMatrix();
     renderer.render(scene, camera);
 }
@@ -569,6 +571,7 @@ export function remove_scene() {
     };
 }
 
+
 export function load_kill() {
 
     var kill_id = window.location.href.split("#")[2];
@@ -590,9 +593,9 @@ export function load_kill() {
 
         // document.getElementById('load_spin').hidden = true;
         window.addEventListener('resize', onWindowResize, false);
-        renderer = new THREE.WebGLRenderer({antialias: true, alpha: false, powerPreference: "high-performance"});
+        renderer = new THREE.WebGLRenderer({antialias: true, alpha: true, powerPreference: "high-performance"});
         renderer.shadowMap.enabled = true;
-        renderer.toneMappingExposure = 2;
+        renderer.toneMappingExposure = 1;
 
         var dim = get_window_size();
 
@@ -613,38 +616,115 @@ export function load_kill() {
         canv.appendChild(progress);
 
         scene = new THREE.Scene();
-        scene.background = new THREE.Color('white');
+        // scene.background = new THREE.Color('white');
+        var max_fog = 1250000;
+        scene.fog = new THREE.Fog('white', 100000, max_fog);
 
-        var max_fog = 125000;
-        scene.fog = new THREE.Fog('white', 0.0, max_fog);
+        for (let idx = 0; idx < data.other.length; idx++) {
+            tubes["other_" + idx.toString()] = tube_prep(data.other[idx], data.min_ts, data.max_ts);
+        }
+        tubes.killer = tube_prep(data.killer, data.min_ts, data.max_ts);
+        tubes.target = tube_prep(data.target, data.min_ts, data.max_ts);
+        tubes.weapon = tube_prep(data.weapon, data.min_ts, data.max_ts);
 
-        directionalLight = new THREE.DirectionalLight( 0xffffff, .5 );
-        window.directionalLight = directionalLight;
-        directionalLight.position.set( 0, 10, 0 );
-        directionalLight.castShadow = true;
-        directionalLight.add(
+        light = new THREE.DirectionalLight( 0xffffff, 0.2 );
+        // light.position.set( tubes.target.line_points[tubes.target.line_points.length - 1].x-10000,
+        //     10000,
+        //     tubes.target.line_points[tubes.target.line_points.length - 1].z+10000);
+        window.light = light;
+        light.castShadow = true;
+        light.add(
             new THREE.Mesh(
                 new THREE.SphereBufferGeometry( .5 ),
                 new THREE.MeshBasicMaterial( { color: 0xffffff } )
             )
         );
 
-        scene.add( directionalLight );
+        var ambient = new THREE.AmbientLight( 0x404040 ); // soft white light
+        scene.add( ambient );
 
+        scene.add( light );
+
+        var waterGeometry = new THREE.PlaneBufferGeometry( 1500000, 1500000 );
+        water = new Water(
+            waterGeometry,
+            {
+                textureWidth: 512,
+                textureHeight: 512,
+                waterNormals: new THREE.TextureLoader().load( 'static/textures/waternormals.jpg', function ( texture ) {
+                    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                } ),
+                alpha: 1.0,
+                sunDirection: light.position.clone().normalize(),
+                sunColor: 0xffffff,
+                // waterColor: 0x001e0f,
+                waterColor: 0x000F1E,
+                distortionScale: 3.7,
+                fog: scene.fog !== undefined
+            }
+        );
+        water.rotation.x = - Math.PI / 2;
+        water.position.set(
+            tubes.target.line_points[tubes.target.line_points.length - 1].x, 0,
+            tubes.target.line_points[tubes.target.line_points.length - 1].z);
+        scene.add( water );
+
+        var sky = new Sky();
+        var uniforms = sky.material.uniforms;
+        uniforms[ 'turbidity' ].value = 5;
+        uniforms[ 'rayleigh' ].value = 2;
+        uniforms[ 'luminance' ].value = 1.06;
+        uniforms[ 'mieCoefficient' ].value = 0.004;
+        uniforms[ 'mieDirectionalG' ].value = 0.5;
+
+        var cubeCamera = new THREE.CubeCamera( 0.1, 100000, 512 );
+        cubeCamera.renderTarget.texture.generateMipmaps = true;
+        cubeCamera.renderTarget.texture.minFilter = THREE.LinearMipmapLinearFilter;
+        scene.background = cubeCamera.renderTarget;
+
+        function updateSun() {
+
+            var theta = Math.PI * ( parameters.inclination - 0.5 );
+            var phi = 2 * Math.PI * ( parameters.azimuth - 0.5 );
+
+            light.position.x = parameters.distance * Math.cos( phi );
+            light.position.y = parameters.distance * Math.sin( phi ) * Math.sin( theta );
+            light.position.z = parameters.distance * Math.sin( phi ) * Math.cos( theta );
+
+            sky.material.uniforms[ 'sunPosition' ].value = light.position.copy( light.position );
+            water.material.uniforms[ 'sunDirection' ].value.copy( light.position ).normalize();
+
+            cubeCamera.update( renderer, sky );
+
+        }
+
+        updateSun();
         // var ambientlight = new THREE.AmbientLight(0xffffff, 10000);
         // scene.add(ambientlight);
 
-        for (let idx = 0; idx < data.other.length; idx++) {
-            tubes["other_" + idx.toString()] = tube_prep(data.other[idx], data.min_ts, data.max_ts);
-        }
+        // make_circle_floor(tubes.target);
 
-        tubes.killer = tube_prep(data.killer, data.min_ts, data.max_ts);
-        tubes.target = tube_prep(data.target, data.min_ts, data.max_ts);
-        tubes.weapon = tube_prep(data.weapon, data.min_ts, data.max_ts);
+        // var cubeCamera = new THREE.CubeCamera( 1, 100000, 128 );
+        // scene.add( cubeCamera );
 
-        make_circle_floor(tubes.target);
+        // var gui = new GUI();
+        // var folder = gui.addFolder( 'Sky' );
+        // folder.add( parameters, 'inclination', 0, 0.5, 0.0001 ).onChange( updateSun );
+        // folder.add( parameters, 'azimuth', 0, 1, 0.0001 ).onChange( updateSun );
+        // folder.add( parameters, 'distance', 0, 15000, 1 ).onChange( updateSun );
+        // folder.open();
+
+        // var uniforms = water.material.uniforms;
+
+        // var folder = gui.addFolder( 'Water' );
+        // folder.add( uniforms.distortionScale, 'value', 0, 8, 0.1 ).name( 'distortionScale' );
+        // folder.add( uniforms.size, 'value', 0.1, 10, 0.1 ).name( 'size' );
+        // folder.add( uniforms.alpha, 'value', 0.9, 1, .001 ).name( 'alpha' );
+        // folder.open();
+
         dim = get_window_size();
         camera = new THREE.PerspectiveCamera(55, dim.width / dim.height, 100, 150000);
+
         window.camera = camera;
         scene.camera = camera;
 
@@ -682,26 +762,6 @@ function get_window_size() {
     };
     return dim;
 }
-
-
-function ToQuaternion(yaw, pitch, roll) // yaw (Z), pitch (Y), roll (X)
-{
-    // Abbreviations for the various angular functions
-    cy = Math.cos(yaw * 0.5);
-    sy = Math.sin(yaw * 0.5);
-    cp = Math.cos(pitch * 0.5);
-    sp = Math.sin(pitch * 0.5);
-    cr = Math.cos(roll * 0.5);
-    sr = Math.sin(roll * 0.5);
-
-    w = cy * cp * cr + sy * sp * sr;
-    x = cy * cp * sr - sy * sp * cr;
-    y = sy * cp * sr + cy * sp * cr;
-    z = sy * cp * cr - cy * sp * sr;
-
-    return [x, y, z, w];
-}
-
 
 function to_rad(degrees) {
     var pi = Math.PI;

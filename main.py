@@ -63,6 +63,10 @@ async def serve_mesh(request: Request, obj_name: str):
 async def serve_mesh(img_name: str):
     return FileResponse(f"./static/images/{img_name}")
 
+@app.get("/static/textures/{img_name}")
+async def serve_texture(img_name: str):
+    return FileResponse(f"./static/textures/{img_name}")
+
 
 @app.get("/static/main-bundle.js")
 async def serve_js():
