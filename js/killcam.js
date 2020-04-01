@@ -6,7 +6,7 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module.js';
 
 
-var renderer, scene, camera, anim_id, clock, progress, light, water, sky;
+var renderer, scene, camera, anim_id, clock, progress, light, water, sky, zoom;
 var tubes = {
     killer: null,
     weapon: null,
@@ -133,6 +133,7 @@ function make_button(id, html) {
     }
     return btn;
 }
+
 
 function make_buttons(){
     var navset = document.createElement('ul');
@@ -428,6 +429,7 @@ function getCenterPoint(obj) {
 
 function set_camera(){
     // 62682
+    camera.fov = Math.max(5, (zoom.getAttribute('max') - zoom.value));
     var look_pos = tubes[look].object.position;
     var follow_pos = tubes[follow].object.position;
     var cam_pos;
@@ -456,15 +458,32 @@ function set_camera(){
 
 function make_zoom_slider(){
     var container = document.createElement("div");
-    var input = document.createElement('input');
-    input.setAttribute("type", " range");
-    input.className = "custom-range";
-    input.setAttribute('id', 'zoom_slider');
-    input.setAttribute('value', 5);
-    input.setAttribute('min', 1);
-    input.setAttribute('max', '10');
-    container.appendChild(input);
-    container.style.width = '80px';
+    container.className = "slidercontainer";
+    container.style.marginTop = "5px";
+    container.style.marginRight = "5px";
+    container.style.paddingTop = "2px";
+
+    var label = document.createElement("label");
+    label.setAttribute('for', 'zoom_slider');
+    label.style.color = 'black';
+    label.style.textAlign = 'center';
+    label.style.paddingRight = "5px";
+    label.style.fontSize = '13';
+    label.style.fontWeight = 'light';
+    label.style.zIndex = '100';
+    label.style.fontFamily = 'Monospace';
+    label.innerHTML = "Zoom ";
+    container.appendChild(label);
+
+    zoom = document.createElement('input');
+    zoom.setAttribute("type", "range");
+    zoom.className = "slider";
+    zoom.setAttribute('id', 'zoom_slider');
+    zoom.setAttribute('value', 100); // This is actual 50/deg fov (150-100)
+    zoom.setAttribute('min',10);
+    zoom.setAttribute('max',  150);
+    // container.appendChild(label);
+    container.appendChild(zoom);
     return container;
 }
 
@@ -611,9 +630,13 @@ export function load_kill() {
         canv.appendChild(info);
         var pause_btn = make_buttons();
         info.appendChild(pause_btn);
+        var zoom_slider = make_zoom_slider();
+        info.appendChild(zoom_slider);
 
         progress = make_progress_tracker();
         canv.appendChild(progress);
+
+
 
         scene = new THREE.Scene();
         // scene.background = new THREE.Color('white');
@@ -723,7 +746,7 @@ export function load_kill() {
         // folder.open();
 
         dim = get_window_size();
-        camera = new THREE.PerspectiveCamera(55, dim.width / dim.height, 100, 150000);
+        camera = new THREE.PerspectiveCamera(50, dim.width / dim.height, 100, 150000);
 
         window.camera = camera;
         scene.camera = camera;
