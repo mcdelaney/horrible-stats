@@ -10,7 +10,7 @@ from horrible.database import DATABASE_URL
 from horrible import read_stats, killcam
 from horrible.config import get_logger
 
-db = databases.Database(DATABASE_URL)
+db = databases.Database(DATABASE_URL, min_size=1, max_size=3)
 log = get_logger('horrible')
 MESHES = [str(p.name) for p in list(Path("static/mesh/").glob("*.obj"))]
 # MESHES = [str(p.name) for p in list(Path("static/mesh/").glob("*.glb"))]
