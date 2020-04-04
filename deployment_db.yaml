@@ -25,7 +25,7 @@ spec:
             limits:
               cpu: "3"
             requests:
-              cpu: "1.5"
+              cpu: "1"
         env:
           - name: POSTGRES_DB
             value: "dcs"
