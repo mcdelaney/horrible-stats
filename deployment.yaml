@@ -159,13 +159,12 @@ spec:
       name: app-svc
   spec:
     type: LoadBalancer
-    loadBalancerIP: "35.226.240.39"
     ports:
-      - port: 80
+      - port: 8080
         targetPort: 8080
-        name: http
-      - port: 443
-        targetPort: 8080
-        name: https
+    #     name: http
+    #   - port: 443
+    #     targetPort: 8080
+    #     name: https
     selector:
       name: app

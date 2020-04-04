@@ -1,23 +1,85 @@
-# apiVersion: v1
-# kind: Namespace
+# apiVersion: cert-manager.io/v1alpha2
+# kind: Issuer
 # metadata:
-#   name: cert-manager-test
+#   name: letsencrypt-staging
+# spec:
+#   acme:
+#     server: https://acme-staging-v02.api.letsencrypt.org/directory
+#     email: 'mcdelaney@gmail.com'
+#     privateKeySecretRef:
+#       name: letsencrypt-staging
+#     # http01: {}
 # ---
 # apiVersion: cert-manager.io/v1alpha2
 # kind: Issuer
 # metadata:
-#   name: test-selfsigned
-#   namespace: cert-manager-test
+#   name: letsencrypt-prod
 # spec:
-#   selfSigned: {}
-# ---
-# apiVersion: cert-manager.io/v1alpha2
-# kind: Certificate
-# metadata:
-#   name: selfsigned-cert
-#   namespace: cert-manager-test
-# spec:
-#   commonName: ahorribleserver.com
-#   secretName: selfsigned-cert-tls
-#   issuerRef:
-#     name: test-selfsigned
+#   acme:
+#     server: https://acme-v02.api.letsencrypt.org/directory
+#     email: 'mcdelaney@gmail.com'
+#     privateKeySecretRef:
+#       name: letsencrypt-prod
+#     # http01: {}
+
+# # apiVersion: cert-manager.io/v1alpha2
+# # kind: ClusterIssuer
+# # metadata:
+# #   name: letsencrypt-prod
+# # spec:
+# #   acme:
+# #     ...
+# #     solvers:
+# #     - http01:
+# #         ingress:
+# #           class: nginx
+# #       selector:
+# #         matchLabels:
+# #           "user-http01-solver": "true"
+# #     - dns01:
+# #         cloudflare:
+# #           email: m@example.com
+# #           apiKeySecretRef:
+# #             name: cloudflare-apikey-secret
+# #             key: apikey
+# #       selector:
+# #         dnsNames:
+# #         - 'a.example.com'
+# #         - 'b.example.com'
+# #         dnsZones:
+# #         - 'test.example.com'
+
+
+apiVersion: cert-manager.io/v1alpha2
+kind: ClusterIssuer
+metadata:
+  name: horrible-issuer
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: 'mcdelaney@gmail.com'
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - dns01:
+        clouddns:
+          # The ID of the GCP project
+          project: dcs-analytics-257714
+          # This is the secret used to access the service account
+          serviceAccountSecretRef:
+            name: clouddns-dns01-solver-svc-acct
+            key: key.json
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: ahorribleserver-com
+  namespace: horrible-stats
+spec:
+  secretName: horribleserver-tls
+  issuerRef:
+    # The issuer created previously
+    name: horrible-issuer
+  dnsNames:
+  - ahorribleserver.com
+  - www.ahorribleserver.com

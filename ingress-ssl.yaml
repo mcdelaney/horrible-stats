@@ -1,0 +1,59 @@
+# apiVersion: extensions/v1beta1
+# kind: Ingress
+# metadata:
+#   annotations:
+#     kubernetes.io/ingress.global-static-ip-name: horrible-stats-ip
+#     cert-manager.io/issuer: horrible-issuer
+#   name: horrible-ingress
+#   namespace: horrible-stats
+# spec:
+#   rules:
+#   - host: ahorribleserver.com
+#     http:
+#       paths:
+#       - backend:
+#           serviceName: app-svc
+#           servicePort: 8080
+#         path: /
+#   tls: # < placing a host in the TLS config will indicate a certificate should be created
+#   - hosts:
+#     - ahorribleserver.com
+#     secretName: horribleserver-tls
+
+
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: horrible-ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: horrible-stats-ip
+    cert-manager.io/issuer: horrible-issuer
+  labels:
+    name: horrible-stats
+spec:
+  rules:
+  - host: ahorribleserver.com
+    http:
+      paths:
+      - backend:
+          serviceName: app-backend
+          servicePort: 8080
+  tls: # < placing a host in the TLS config will indicate a certificate should be created
+  - hosts:
+    - ahorribleserver.com
+    secretName: horribleserver-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-backend
+  labels:
+    name: horrible-stats
+spec:
+  type: NodePort
+  selector:
+    name: app
+  ports:
+  - port: 8080
+    targetPort: 8080

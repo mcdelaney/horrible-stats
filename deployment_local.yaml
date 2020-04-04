@@ -17,11 +17,6 @@ spec:
       containers:
       - name: app
         image: gcr.io/dcs-analytics-257714/horrible_stats:latest
-        resources:
-            limits:
-              cpu: "4"
-            requests:
-              cpu: "1.5"
         env:
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: "/etc/keys/dcs-storage-gcs.json"
