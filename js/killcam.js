@@ -241,9 +241,10 @@ function tube_prep(data, min_ts, max_ts) {
 
     var model_path = get_model_path(out);
     var obj_mater = new THREE.MeshPhysicalMaterial({
-        // 0xffffff
         reflectivity: 0.75,
-        metalness: 0.75, roughness: 0.25, color: new THREE.Color('#C1C1C1'), side: THREE.DoubleSide,
+        metalness: 0.75, roughness: 0.25,
+        color: new THREE.Color('#C1C1C1'),
+        side: THREE.DoubleSide,
         // ambientIntensity: 0.2, aoMapIntensity: 1,
         // envMapIntensity:1, normalScale: 1,
     });
@@ -332,16 +333,17 @@ function tube_prep(data, min_ts, max_ts) {
     ribbonGeom.computeVertexNormals();
 
     var ribbon = new THREE.Mesh(ribbonGeom,
-        new THREE.MeshLambertMaterial(
-            {side: THREE.DoubleSide,
-            color: data.color.toLowerCase(),
-            emissive: data.color.toLowerCase(),
-            emissiveIntensity: 5,
-        })
+        new THREE.MeshLambertMaterial({
+            side: THREE.DoubleSide, color: data.color.toLowerCase(),
+            emissive: data.color.toLowerCase(), emissiveIntensity: 5 })
         );
+
 
     ribbon.geometry.setDrawRange(0, out.drawCount);
     ribbon.visible = false;
+    // ribbon.castShadow = false;
+    // ribbon.receiveShadow = false;
+
     scene.add(ribbon);
     out.ribbon = ribbon;
 
@@ -504,7 +506,6 @@ function update_objects(delta){
         tube.counter = tube.counter + delta;
         if (tube.counter > tube.max_ts){
             // tube.time_step[tube.time_step.length-1]) {
-            console.debug('Resetting idx...');
             tube.counter = tube.min_ts;
             tube.pos_idx = 0;
             tube.drawCount = 0;
@@ -614,6 +615,7 @@ export function load_kill() {
         window.addEventListener('resize', onWindowResize, false);
         renderer = new THREE.WebGLRenderer({antialias: true, alpha: true, powerPreference: "high-performance"});
         renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         renderer.toneMappingExposure = 1;
 
         var dim = get_window_size();
@@ -650,10 +652,8 @@ export function load_kill() {
         tubes.target = tube_prep(data.target, data.min_ts, data.max_ts);
         tubes.weapon = tube_prep(data.weapon, data.min_ts, data.max_ts);
 
-        light = new THREE.DirectionalLight( 0xffffff, 0.2 );
-        // light.position.set( tubes.target.line_points[tubes.target.line_points.length - 1].x-10000,
-        //     10000,
-        //     tubes.target.line_points[tubes.target.line_points.length - 1].z+10000);
+        light = new THREE.DirectionalLight( 0xffffff, 0.5 );
+
         window.light = light;
         light.castShadow = true;
         light.add(

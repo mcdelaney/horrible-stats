@@ -2,6 +2,7 @@ import collections
 import json
 from pathlib import Path
 import re
+import gzip
 from functools import partial
 import threading
 from datetime import datetime, timedelta
@@ -211,31 +212,51 @@ def result_to_flat_dict(record: collections.MutableMapping,
     return dict(items)
 
 
+def get_filehandle_maybe_gzip(file_name: Path):
+    """Get an open filehandle from a filename that maybe is gziped."""
+    try:
+        log.info("Attempting to open as gzip...")
+        fp_ = gzip.GzipFile(file_name, 'rb')
+        fp_.read(1)
+        fp_.seek(0)
+        log.info("File is gzipped...proceeding...")
+    except Exception as err:
+        log.error(err)
+        log.warning("File not gzipped...attempting to read as uncompressed...")
+        fp_ = file_name.open('rb')
+    return fp_
+
+
 def read_event_table(file_name: Path) -> Optional[List]:
     """Read a single event file."""
     results = []
-    with file_name.open('r') as fp_:
-        for line in fp_.readlines():
-            if line .strip() == 'slmod.events = {}':
-                continue
-            try:
-                line = re.sub("slmod.events\\[[0-9]{1,}\\] = ", "", line)
-                rec = eval(line.replace('[', "").replace('] =', ':'))
-                results.append({
-                    'file_name': str(file_name),
-                    'record': rec
-                })
-            except Exception as err:
-                log.error(err)
-                raise err
+    fp_ = get_filehandle_maybe_gzip(file_name)
+
+    for line in fp_.readlines():
+        line = line.decode('utf-8')
+        if line.strip() == 'slmod.events = {}':
+            continue
+        try:
+            line = re.sub("slmod.events\\[[0-9]{1,}\\] = ", "", line)
+            rec = eval(line.replace('[', "").replace('] =', ':'))
+            results.append({
+                'file_name': str(file_name),
+                'record': rec
+            })
+        except Exception as err:
+            log.error(err)
+            log.error(line)
+            fp_.close()
+            raise err
 
     return results
 
 
 def read_lua_table(file_name: Path) -> Optional[List]:
     """Read a single lua stat file, returning a dict."""
-    with file_name.open('r') as fp_:
-        file_contents = " ".join([f for f in fp_.readlines()])
+    fp_ = get_filehandle_maybe_gzip(file_name)
+    file_contents = " ".join([f.decode('UTF-8') for f in fp_.readlines()])
+    fp_.close()
     if file_contents == "placeholder":
         return None
 
@@ -503,6 +524,20 @@ async def collect_recs_kv(db) -> pd.DataFrame:
                 LEFT JOIN mission_stat_files files
                 USING (file_name)
             """
+
+
+    # rec = await db.fetch_all("""
+            # SELECT
+            # file_name,
+            # s.pilot,
+            # t.key,
+            # CAST((CASE WHEN t.value = 'true' then '1' when t.value in ('false', '') then '0' else t.value end) as REAL)
+
+            # FROM
+            # mission_stats s
+            # CROSS JOIN LATERAL
+            # json_each_text(s.record) as t
+    # """)
 
     data_row_dicts: List[Dict] = []
     async for rec in db.iterate(query=query):

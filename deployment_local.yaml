@@ -58,7 +58,7 @@ spec:
       - name: stat-updater
         image: gcr.io/dcs-analytics-257714/horrible_stats:latest
         command: ["python", "file_updater.py"]
-        args: ["--prefix", "mission-stats", "--interval", "120"]
+        args: ["--prefix", "mission-stats", "--interval", "10"]
         env:
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: "/etc/keys/dcs-storage-gcs.json"
@@ -94,7 +94,7 @@ spec:
       - name: event-updater
         image: gcr.io/dcs-analytics-257714/horrible_stats:latest
         command: ["python", "file_updater.py"]
-        args: ["--prefix", "mission-events", "--interval", "120"]
+        args: ["--prefix", "mission-events", "--interval", "10"]
         env:
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: "/etc/keys/dcs-storage-gcs.json"
@@ -130,7 +130,7 @@ spec:
       - name: tacview-updater
         image: gcr.io/dcs-analytics-257714/horrible_stats:latest
         command: ["python", "file_updater.py"]
-        args: ["--prefix", "tacview", "--interval", "30"]
+        args: ["--prefix", "tacview", "--interval", "5"]
         env:
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: "/etc/keys/dcs-storage-gcs.json"

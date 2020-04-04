@@ -32,6 +32,7 @@ async def update_files(prefix, table):
         log.info("Connecting to database...")
         db = databases.Database(DATABASE_URL, min_size=1, max_size=2)
         await db.connect()
+        await db.execute(f"SET application_name to {prefix.replace('-', '_')}")
         log.info(f'Starting update job for {prefix}...')
         await read_stats.sync_gs_files_with_db(prefix, table, db)
         if prefix == "tacview":
@@ -51,6 +52,7 @@ async def update_files(prefix, table):
 async def proc_tac():
     await update_files("tacview", tacview_files)
     con = await asyncpg.connect(DATABASE_URL)
+    await con.execute("SET application_name = tacview_reader;")
     rec  = await con.fetchval(
                 """WITH tmp as (
                     SELECT file_name
@@ -61,10 +63,12 @@ async def proc_tac():
                             SELECT start_time
                             FROM session
                             WHERE status IN ('In Progress', 'Success'))
-                    LIMIT 1
             )
             UPDATE tacview_files SET process_start = CURRENT_TIMESTAMP
-            WHERE file_name = (SELECT file_name FROM tmp)
+            WHERE file_name = (SELECT file_name
+                                FROM tmp
+                                ORDER BY session_start_time DESC
+                                LIMIT 1)
             returning file_name
     """)
     if not rec:
@@ -102,6 +106,14 @@ async def proc_tac():
     except CancelledError:
         reader.cancel()
         exit_status = -1
+    except Exception as err:
+        log.error(err)
+        await con.execute(f"""UPDATE tacview_files
+                    SET processed = FALSE,
+                    process_end = CURRENT_TIMESTAMP,
+                    errors = 1
+                    WHERE file_name = $1""", rec)
+        exit_status = 0
     finally:
         log.info('Canceling fileserver...')
         server.cancel()

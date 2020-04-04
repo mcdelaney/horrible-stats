@@ -109,6 +109,21 @@ async def get_kill(kill_id: int, db):
         except KeyError:
             data['other'].append(rec)
 
+    # min_killer = data['killer']['coord'][0]
+    # for obj in ['killer', 'target', 'weapon']:
+    #     for i in range(len(data[obj]['coord'])):
+    #         data[obj]['coord'][i][0] -= min_killer[0]
+    #         data[obj]['coord'][i][1] -= min_killer[1]
+    #         data[obj]['coord'][i][2] -= min_killer[2]
+    #     log.info(data[obj]['coord'][-1])
+
+    # for i in range(len(data['other']['coord'])):
+    #     data['other']['coord'][i][0] -= min_killer[0]
+    #     data['other']['coord'][i][1] -= min_killer[1]
+    #     data['other']['coord'][i][2] -= min_killer[2]
+
+    # log.info(min_killer)
+
     log.info(
         f"Killer: {data['killer']['id']} -- Target: {data['target']['id']} -- "
         f"Weapon: {data['weapon']['id']} -- Min ts: {data['min_ts']}"

@@ -19,3 +19,4 @@ horrible/mission-events/**
 **/**/*.gz
 node_modules/**/**
 static/main-bundle.js
+key.json

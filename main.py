@@ -21,6 +21,7 @@ app = FastAPI(title="Stat-Server")
 async def database_connect():
     try:
         await db.connect()
+        await db.execute("SET application_name to app_server")
         log.info('Startup complete...')
     except Exception as err:
         log.error(f"Could not conect to database at {db.url}!")
@@ -29,7 +30,11 @@ async def database_connect():
 
 @app.on_event("shutdown")
 async def database_disconnect():
-    await db.disconnect()
+    try:
+        log.info("Attempting database disconnect...")
+        await db.disconnect()
+    except Exception:
+        log.error("Disconnect fail! Probably had no connection to start with!")
 
 
 @app.get("/healthz")
