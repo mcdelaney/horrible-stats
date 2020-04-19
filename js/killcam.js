@@ -752,7 +752,7 @@ export function load_kill() {
         scene.camera = camera;
 
         clock = new THREE.Clock();
-        stat();
+        // stat();
         renderer.compile(scene, camera);
         document.getElementById('load_spin').hidden = true;
         animate(progress);
