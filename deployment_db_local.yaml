@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+    name: horrible-stats
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  namespace: horrible-stats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+      - name: db
+        image: localhost:5000/horrible_stats_db:latest
+        resources:
+            limits:
+              cpu: "3"
+            requests:
+              cpu: "1"
+        env:
+          - name: POSTGRES_DB
+            value: "dcs"
+          - name: POSTGRES_USER
+            value: prod
+          - name: POSTGRES_PASSWORD
+            value: pwd
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: db-disk
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: db-disk
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: horrible-stats
+  name: db
+  labels:
+    app: db
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: db
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ssd
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-disk
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: pd-ssd
+  resources:
+    requests:
+      storage: 50Gi
