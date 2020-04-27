@@ -7,7 +7,7 @@ REPOS_ID="localhost:32000"
 TAG=$(date +"%s")
 
 echo "Building $IMAGE_NAME at hash $TAG..."
-docker buildx build -t $REPOS_ID/$IMAGE_NAME:latest .
+docker build -t $REPOS_ID/$IMAGE_NAME:latest .
 
 echo "Setting commit hash tag on latest image..."
 docker tag $REPOS_ID/$IMAGE_NAME:latest $REPOS_ID/$IMAGE_NAME:$TAG
