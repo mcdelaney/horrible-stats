@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: db
-        image: localhost:5000/horrible_stats_db:latest
+        image: localhost:32000/horrible_stats_db:latest
         resources:
             limits:
               cpu: "3"

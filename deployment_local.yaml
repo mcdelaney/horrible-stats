@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: localhost:5000/horrible_stats:latest
+        image: localhost:32000/horrible_stats:latest
         env:
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: "/etc/keys/dcs-storage-gcs.json"
@@ -56,7 +56,7 @@ spec:
     spec:
       containers:
       - name: stat-updater
-        image: localhost:5000/horrible_stats:latest
+        image: localhost:32000/horrible_stats:latest
         command: ["python", "file_updater.py"]
         args: ["--prefix", "mission-stats", "--interval", "10"]
         env:
@@ -92,7 +92,7 @@ spec:
     spec:
       containers:
       - name: event-updater
-        image: localhost:5000/horrible_stats:latest
+        image: localhost:32000/horrible_stats:latest
         command: ["python", "file_updater.py"]
         args: ["--prefix", "mission-events", "--interval", "10"]
         env:
@@ -128,7 +128,7 @@ spec:
     spec:
       containers:
       - name: tacview-updater
-        image: localhost:5000/horrible_stats:latest
+        image: localhost:32000/horrible_stats:latest
         command: ["python", "file_updater.py"]
         args: ["--prefix", "tacview", "--interval", "5"]
         env:
