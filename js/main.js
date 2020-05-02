@@ -207,6 +207,21 @@ function set_tab_active(elem_id) {
 }
 
 
+//SW: function get_tacview_file(elem,filename){
+// Test popup for onclick of TVw table
+function get_tacview_file(tv_filename){
+
+    var userPreference;
+
+    if (confirm(`Do you want to download file? ${tv_filename}`) == true) {
+        userPreference = 1;
+        //get file
+    } else {
+        userPreference = -1;
+        // do nothing
+    }
+}
+
 $(document).ready(function () {
     set_click_attr();
     var param = window.location.href.split("#");
@@ -221,14 +236,27 @@ $(document).ready(function () {
 
 // var selected_row;
 $('#overall_tbl').on('click', 'tbody tr', function () {
-    var current = document.getElementsByClassName("active");
+    var current = document.getElementsByClassName("active"); //current active element
 
-    var table = $('#overall_tbl').DataTable();
-    var selected_row = table.row(this).data();
+    var table = $('#overall_tbl').DataTable(); // the table
+    var selected_row = table.row(this).data(); // the selected row data
+    var tac_filename = selected_row.split(",")[0];
+
+
+/*
+    var tac_filename = str.substring(0, str.indexOf(","));
+
+    The second is a trick with split:
+
+    var tac_filename = selected_row.split(",")[0];
+*/
 
     if (current[0].id == 'tacview') {
-        var endpoint = 'process_tacview?filename=';
+        var endpoint = 'process_tacview?filename=';// asks for TV filename
         var row_id = 0;
+        //SW
+        selected_row.onclick(get_tacview_file(tac_filename));
+        
     }else if (current[0].id == 'tacview_kills') {
         var kill_id = selected_row[selected_row.length - 1].toString();
         console.log(kill_id);
@@ -239,7 +267,7 @@ $('#overall_tbl').on('click', 'tbody tr', function () {
     }else{
         return;
     }
-
+//SW this handles the database request for the Tvw Files
     $.ajax({
         // data: data[0],
         url: "/process_tacview?filename=" + selected_row[0],
