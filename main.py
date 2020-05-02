@@ -195,7 +195,7 @@ async def loss_detail(request: Request):
     data = await read_stats.get_dataframe(db, subset=["losses"])
     return data.to_dict("split")
 
-
+# SW
 @app.get("/tacview")
 async def tacview_detail(request: Request):
     """Return tacview download links."""

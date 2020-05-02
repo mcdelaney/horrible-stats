@@ -37,6 +37,7 @@ async def update_files(prefix, table):
         await read_stats.sync_gs_files_with_db(prefix, table, db)
         if prefix == "tacview":
             pass
+        # SW
         else:
             log.info("Processing new records...")
             await read_stats.process_lua_records(prefix, db)
