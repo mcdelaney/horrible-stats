@@ -9,6 +9,11 @@ from starlette.requests import Request
 from horrible.database import DATABASE_URL
 from horrible import read_stats, killcam
 from horrible.config import get_logger
+from horrible.read_stats import process_tacview_file
+
+# SW
+from horrible.get_tacview_file import fetch_tacview_file
+from horrible.mapping import create_map
 
 db = databases.Database(DATABASE_URL, min_size=1, max_size=3)
 log = get_logger('horrible')
@@ -195,15 +200,14 @@ async def loss_detail(request: Request):
     data = await read_stats.get_dataframe(db, subset=["losses"])
     return data.to_dict("split")
 
-# SW
+#  SW
 @app.get("/tacview")
 async def tacview_detail(request: Request):
     """Return tacview download links."""
     data = await read_stats.query_tacview_files(db)
     return data
 
-
-@app.get("/process_tacview/")
+@app.get("/process_tacview")
 async def process_tacview(filename: str):
     """Trigger processing of a tacview file."""
     return "ok"
@@ -231,3 +235,18 @@ async def get_kill_coords(request: Request, kill_id: int):
     if not data:
         return JSONResponse(status_code=500)
     return JSONResponse(content=data)
+
+@app.get("/mapping")
+#async def mission_map(coordinates: list): # coordinates arg ?
+async def mission_map(): # coordinates arg ?
+    """Show theater map"""
+    data = await create_map()
+    return FileResponse("./horrible/maps/map.html")
+    #return JSONResponse(content=data) #??
+
+#  SW
+@app.get("/get_tacview_file")
+async def fetch_tview_file(filename: str):
+    """ Ask the cloud server for a file or shareable link """
+    data = await fetch_tacview_file(filename)
+    return data # return filename

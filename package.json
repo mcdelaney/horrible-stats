@@ -26,6 +26,7 @@
     "webpack-cli": "^3.3.11"
   },
   "dependencies": {
+    "@google-cloud/storage": "^4.7.0",
     "datatables": "^1.10.18",
     "datatables.net": "^1.10.20",
     "datatables.net-bs4": "^1.10.20",

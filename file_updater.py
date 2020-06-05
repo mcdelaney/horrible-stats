@@ -17,7 +17,7 @@ from horrible.config import get_logger
 
 log = get_logger('file_updater')
 
-
+#SW Table names
 TABLE_KEY = {
     'mission-events': event_files,
     'mission-stats': stat_files,

@@ -100,6 +100,11 @@ function load_chart(path, pctile) {
         });
 }
 
+/** 
+*   SW: loads data tables
+*   @param {*} path
+*/
+
 function load_dt(path) {
 
     console.log("Loading table: " + path);
@@ -174,7 +179,7 @@ function set_click_attr (){
 
 function set_onclick(elem, kill_id) {
     set_tab_active(elem.id);
-
+//show killcam
     if (elem.id === "killcam") {
         console.log('Killcam render starting...');
         document.getElementById('load_spin').hidden = false;
@@ -184,14 +189,35 @@ function set_onclick(elem, kill_id) {
             window.location.href += "#" + kill_id;
         }
         load_kill();
+        //else load table with elem.id
     } else {
         remove_scene();
         load_dt(elem.id);
     }
+
+//    if (elem.id === "maps") {
+//        console.log('Loading maps...');
+ //       onclick_maps();
+ //   }
 }
 
+function onclick_maps() {
+    // "/mapping"
+    $.ajax({
+        url: '/mapping',
+        type: "GET",
+        data: JSON.stringify(request),
+        processData: false,
+        contentType: 'application/json'
+    });
+
+    //window.location.href = "horrible/maps/map.html";
+
+}
+
+/** SW: Sets active table via button click */
 function set_tab_active(elem_id) {
-    window.location.href = "#" + elem_id;
+    window.location.href = "#" + elem_id; // e.g. #overall
     var btnContainer = document.getElementById("nav_set");
     // Get all buttons with class="btn" inside the container
     var btns = btnContainer.getElementsByClassName("nav-link");
@@ -206,16 +232,63 @@ function set_tab_active(elem_id) {
     }
 }
 
+/** 
+*   SW: Download a file
+*   @param {*} uri e.g. "data:text/html,HelloWorld!" @param {*} name - filename
+*/
 
-//SW: function get_tacview_file(elem,filename){
-// Test popup for onclick of TVw table
-function get_tacview_file(tv_filename){
+function downloadURI(uri, name) {
+    var link = document.createElement("a");
+    link.download = name;
+    link.href = uri;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    //delete link;
+  }
+
+/** 
+*   SW: Test function to popup download dialog
+*   @param {*} tv_filename string/any
+*/
+function get_tacview_file(filename){
 
     var userPreference;
 
+    var fields = filename.split(','); //get everything before "XXX.acmi", <--comma
+    var tv_filename = fields[0]; // /tacview/filename.acmi
+
+
     if (confirm(`Do you want to download file? ${tv_filename}`) == true) {
         userPreference = 1;
-        //get file
+        
+        function on_request_success(response) {
+            console.debug('response', response);
+        } 
+
+        function on_request_error(r, text_status, error_thrown) {
+            console.debug('error', text_status + ", " + error_thrown + ":\n" + r.responseText);
+        }
+
+        var request = {tv_filename};
+        
+        $.ajax({
+            url: '/get_tacview_file?filename=' + tv_filename,
+            type: "GET",
+            data: JSON.stringify(request),
+            processData: false,
+            contentType: 'application/json'
+        });
+
+        //var local_filename = "horrible/" + tv_filename // "horrible/tacview/filename.acmi"
+        fields = tv_filename.split('/');
+        tv_filename = fields[1]; // /tacview/filename.acmi
+
+
+        //downloadURI("data:text/html,HelloWorld!", "helloWorld.txt");
+        downloadURI("data:text/html, TacviewAcmi", tv_filename);
+        //downloadURI("data:application/zip", tv_filename);
+
     } else {
         userPreference = -1;
         // do nothing
@@ -234,29 +307,21 @@ $(document).ready(function () {
     }
 });
 
-// var selected_row;
+// here is defined VAR selected_row. data for the row clicked on
 $('#overall_tbl').on('click', 'tbody tr', function () {
     var current = document.getElementsByClassName("active"); //current active element
 
     var table = $('#overall_tbl').DataTable(); // the table
-    var selected_row = table.row(this).data(); // the selected row data
-    var tac_filename = selected_row.split(",")[0];
+    var selected_row = table.row(this).data(); // all the selected row data
+    var tac_filename = selected_row;
 
-
-/*
-    var tac_filename = str.substring(0, str.indexOf(","));
-
-    The second is a trick with split:
-
-    var tac_filename = selected_row.split(",")[0];
-*/
-
+//  SW
     if (current[0].id == 'tacview') {
-        var endpoint = 'process_tacview?filename=';// asks for TV filename
+        var endpoint = 'process_tacview?filename='; // SW: whats this?
         var row_id = 0;
-        //SW
-        selected_row.onclick(get_tacview_file(tac_filename));
-        
+
+        selected_row.onclick(get_tacview_file(String(tac_filename))); // SW: Send to function to trigger popup
+
     }else if (current[0].id == 'tacview_kills') {
         var kill_id = selected_row[selected_row.length - 1].toString();
         console.log(kill_id);
@@ -264,10 +329,17 @@ $('#overall_tbl').on('click', 'tbody tr', function () {
         var elem = document.getElementById('killcam');
         set_onclick(elem, kill_id);
         return;
-    }else{
+
+    }else if (current[0].id == 'maps') {
+        console.log('Loading maps...');
+        onclick_maps();
+        return;
+
+    }else {
         return;
     }
-//SW this handles the database request for the Tvw Files
+
+// SW this handles the database request for the Tvw Files?
     $.ajax({
         // data: data[0],
         url: "/process_tacview?filename=" + selected_row[0],

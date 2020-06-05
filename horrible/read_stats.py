@@ -118,11 +118,11 @@ async def query_tacview_files(db) -> Dict:
         i += 1
     return output
 
-
+#  SW
 def process_tacview_file(filename) -> None:
     """process a single tacview file."""
     bucket = get_gcs_bucket()
-    local_path = Path('horrible').joinpath(filename)
+    local_path = Path('horrible').joinpath(filename) #?? tacview/Tacview-20200503-182324-DCS-Horrible War Georgia v1.txt.acmi
     local_path.parent.mkdir(exist_ok=True, parents=True)
     blob = bucket.get_blob(filename)
     log.info(f"Downloading blob object to file: {filename}....")
@@ -141,7 +141,7 @@ def process_tacview_file(filename) -> None:
                 batch_size=50000,
                 dsn=dsn)
     server_proc.terminate()
-    log.info('Reader compete...')
+    log.info('Reader complete...')
 
 
 async def sync_weapons(db) -> None:
