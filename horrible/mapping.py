@@ -6,6 +6,8 @@
 # mapbox_token = "pk.eyJ1IjoibW9uZ29vc2U1NTYiLCJhIjoiY2thOW1iazRxMG85cTM2cXc4enNpZWFyMCJ9.JwDXWU1JSjO5iPAiVfmrgA"
 # 
 # MAPBOX_ACCESS_TOKEN = mapbox_token python -m pytest --doctest-glob='*.md' docs/*.md
+
+#https://github.com/mapbox/mapbox-sdk-js/blob/master/docs/services.md#listdatasets
  
 
 # get position and types of enemy Air Defence units
@@ -22,6 +24,7 @@ import os
 from logging import log
 from horrible.config import get_logger
 from fastapi import File, UploadFile
+import errno
 
 log = get_logger('statreader')
 
@@ -51,11 +54,27 @@ async def create_map():
     m = folium.Map(map_centre, tiles="Stamen Terrain", zoom_start = map_zoom) # folium map object
     folium.Marker(location=map_centre, popup="Krymsk", tooltip=map_centre).add_to(m) # add marker
     
-    local_path = Path('horrible').joinpath('/maps')
-    local_path.parent.mkdir(exist_ok=True, parents=True) # create a directory on the app server
+    local_path = 'static/'
+
+    try:
+        os.mkdir(local_path)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST:
+            raise
+        pass
+    
+    #local_path = Path('horrible').joinpath('/maps')
+    #local_path.parent.mkdir(exist_ok=True, parents=True) # create a directory on the app server
     log.info(f"Created folder: {local_path}") # should make a "maps" folder
 
-    m.save(local_path + "map.html") # create file
+    filename = local_path + 'map.html'
+
+    m.save(filename)
+
+    #await create_file(m.save(filename)) # create file
+    #await create_upload_file(m.save(filename))
+
+    return filename
 
 async def SAM_locations():
     pass

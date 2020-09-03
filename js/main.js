@@ -204,13 +204,15 @@ function set_onclick(elem, kill_id) {
 function onclick_maps() {
     // "/mapping"
     $.ajax({
-        url: '/mapping',
+        url: '/maps',
         type: "GET",
         data: JSON.stringify(request),
         processData: false,
         contentType: 'application/json'
     });
 
+    downloadURI("data:text/html, MapFile", "./map.html");
+    window.open("/map.html");
     //window.location.href = "horrible/maps/map.html";
 
 }
@@ -332,7 +334,9 @@ $('#overall_tbl').on('click', 'tbody tr', function () {
 
     }else if (current[0].id == 'maps') {
         console.log('Loading maps...');
+        window.location.href = '#maps';
         onclick_maps();
+        //window.open("/static/maps/map.html");
         return;
 
     }else {

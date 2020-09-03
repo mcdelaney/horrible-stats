@@ -236,13 +236,12 @@ async def get_kill_coords(request: Request, kill_id: int):
         return JSONResponse(status_code=500)
     return JSONResponse(content=data)
 
-@app.get("/mapping")
+@app.get("/maps")
 #async def mission_map(coordinates: list): # coordinates arg ?
 async def mission_map(): # coordinates arg ?
     """Show theater map"""
     data = await create_map()
-    return FileResponse("./horrible/maps/map.html")
-    #return JSONResponse(content=data) #??
+    return data
 
 #  SW
 @app.get("/get_tacview_file")
