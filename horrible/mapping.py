@@ -8,7 +8,7 @@
 # MAPBOX_ACCESS_TOKEN = mapbox_token python -m pytest --doctest-glob='*.md' docs/*.md
 
 #https://github.com/mapbox/mapbox-sdk-js/blob/master/docs/services.md#listdatasets
- 
+
 
 # get position and types of enemy Air Defence units
 # place on map
