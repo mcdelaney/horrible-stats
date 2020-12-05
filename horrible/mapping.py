@@ -74,7 +74,7 @@ async def create_map():
     #await create_file(m.save(filename)) # create file
     #await create_upload_file(m.save(filename))
 
-    return filename
+    return m._repr_html_() # returns the Folium HTML representation of the map
 
 async def SAM_locations():
     pass
@@ -141,4 +141,5 @@ def create_markers(map_object): # TO DO make so it accepts JSON or data? or a se
         tooltip=tooltip, 
         icon=folium.Icon(color=side, icon='plane')).add_to(m)
 
-    return m # return map object
+    #return m # return map object
+    return m._repr_html_() # return map object html representation 

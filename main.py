@@ -13,7 +13,7 @@ from horrible.read_stats import process_tacview_file
 
 # SW
 from horrible.get_tacview_file import fetch_tacview_file
-from horrible.mapping import create_map
+from horrible.mapping import create_map # create_map funtion from mapping.py
 
 db = databases.Database(DATABASE_URL, min_size=1, max_size=3)
 log = get_logger('horrible')
@@ -193,7 +193,6 @@ async def kill_detail(request: Request):
     data = await read_stats.get_dataframe(db, subset=["kills"])
     return data.to_dict("split")
 
-
 @app.get("/losses")
 async def loss_detail(request: Request):
     """Return a rendered template showing kill/loss statistics."""
@@ -236,12 +235,15 @@ async def get_kill_coords(request: Request, kill_id: int):
         return JSONResponse(status_code=500)
     return JSONResponse(content=data)
 
+# SW
+
 @app.get("/maps")
 #async def mission_map(coordinates: list): # coordinates arg ?
 async def mission_map(): # coordinates arg ?
     """Show theater map"""
-    data = await create_map()
-    return data
+    data = await create_map() 
+    #return data
+    return HTMLResponse(content=data, status_code=200)
 
 #  SW
 @app.get("/get_tacview_file")

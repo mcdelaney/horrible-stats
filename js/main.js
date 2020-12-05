@@ -201,6 +201,13 @@ function set_onclick(elem, kill_id) {
  //   }
 }
 
+/** @app.get("/maps")
+#async def mission_map(coordinates: list): # coordinates arg ?
+async def mission_map(): # coordinates arg ?
+    """Show theater map"""
+    data = await create_map()
+    return data */
+
 function onclick_maps() {
     // "/mapping"
     $.ajax({
@@ -210,10 +217,10 @@ function onclick_maps() {
         processData: false,
         contentType: 'application/json'
     });
-
-    downloadURI("data:text/html, MapFile", "./map.html");
-    window.open("/map.html");
-    //window.location.href = "horrible/maps/map.html";
+    console.log(data)
+    download_URI("data:text/html, MapFile", "./static/maps/map.html");
+    window.open(data);
+    window.location.href = "horrible/maps/map.html";
 
 }
 
@@ -227,7 +234,7 @@ function set_tab_active(elem_id) {
     for (var i = 0; i < btns.length; i++) {
         // console.log('Checking btn: ' + btns[i].id + " with path: " + path);
         if (elem_id === btns[i].id) {
-            btns[i].className = "nav-link active";
+            btns[i].className = "nav-link active"; // changes colour of button to selected
         }else{
             btns[i].className = "nav-link";
         }
@@ -239,7 +246,7 @@ function set_tab_active(elem_id) {
 *   @param {*} uri e.g. "data:text/html,HelloWorld!" @param {*} name - filename
 */
 
-function downloadURI(uri, name) {
+function download_URI(uri, name) {
     var link = document.createElement("a");
     link.download = name;
     link.href = uri;
@@ -287,9 +294,9 @@ function get_tacview_file(filename){
         tv_filename = fields[1]; // /tacview/filename.acmi
 
 
-        //downloadURI("data:text/html,HelloWorld!", "helloWorld.txt");
-        downloadURI("data:text/html, TacviewAcmi", tv_filename);
-        //downloadURI("data:application/zip", tv_filename);
+        //download_URI("data:text/html,HelloWorld!", "helloWorld.txt");
+        download_URI("data:text/html, TacviewAcmi", tv_filename);
+        //download_URI("data:application/zip", tv_filename);
 
     } else {
         userPreference = -1;
