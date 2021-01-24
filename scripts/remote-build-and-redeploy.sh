@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+set -e
 npx webpack --config webpack.config.js --mode=production
 
 IMAGE_NAME="horrible_stats"
