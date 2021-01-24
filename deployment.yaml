@@ -22,7 +22,7 @@ spec:
             value: "/etc/keys/dcs-storage-gcs.json"
           - name: DATABASE_URL
             value: postgresql://db:5432/dcs?user=prod&password=pwd
-          - name: TACVIEW_DSN
+          - name: TACVIEW_DATABASE_URL
             value: postgresql://db:5432/dcs?user=prod&password=pwd
           - name: BIND
             value: "0.0.0.0:8080"
@@ -62,7 +62,7 @@ spec:
             value: "/etc/keys/dcs-storage-gcs.json"
           - name: DATABASE_URL
             value: postgresql://db:5432/dcs?user=prod&password=pwd
-          - name: TACVIEW_DSN
+          - name: TACVIEW_DATABASE_URL
             value: postgresql://db:5432/dcs?user=prod&password=pwd
         volumeMounts:
         - name: dcs-storage-gcs
@@ -98,7 +98,7 @@ spec:
             value: "/etc/keys/dcs-storage-gcs.json"
           - name: DATABASE_URL
             value: postgresql://db:5432/dcs?user=prod&password=pwd
-          - name: TACVIEW_DSN
+          - name: TACVIEW_DATABASE_URL
             value: postgresql://db:5432/dcs?user=prod&password=pwd
         volumeMounts:
         - name: dcs-storage-gcs
@@ -134,7 +134,7 @@ spec:
             value: "/etc/keys/dcs-storage-gcs.json"
           - name: DATABASE_URL
             value: postgresql://db:5432/dcs?user=prod&password=pwd
-          - name: TACVIEW_DSN
+          - name: TACVIEW_DATABASE_URL
             value: postgresql://db:5432/dcs?user=prod&password=pwd
         volumeMounts:
         - name: dcs-storage-gcs
