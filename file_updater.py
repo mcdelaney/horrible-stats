@@ -91,7 +91,9 @@ async def proc_tac():
     reader = asyncio.create_task(
         client.consumer(host='127.0.0.1', port=5555,
                         max_iters=None,
-                        dsn=os.getenv("TACVIEW_DSN"),
+                        client_password="tacview-client",
+                        client_username="0",
+                        overwrite=False,
                         batch_size=100000))
     try:
         await asyncio.gather(reader)
