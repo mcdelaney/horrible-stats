@@ -510,62 +510,47 @@ def parse_rec_keys(field_key: str) -> Optional[Dict]:
 
 async def collect_recs_kv(db) -> pd.DataFrame:
     """Collect records and convert to kv."""
-    try:
-        weapon_recs = await db.fetch_all(weapon_types.select())
-        weapons = pd.DataFrame.from_records(weapon_recs, index=None)
-        weapons.rename({
-            'name': 'equipment',
-            'category': 'weapon_cat'
-        },
-                    axis=1,
-                    inplace=True)
 
-        query = """SELECT pilot, record, files.session_start_time
-                    FROM mission_stats
-                    LEFT JOIN mission_stat_files files
-                    USING (file_name)
-                """
+    weapon_recs = await db.fetch_all(weapon_types.select())
+    weapons = pd.DataFrame.from_records(weapon_recs, index=None)
+    weapons.rename({
+        'name': 'equipment',
+        'category': 'weapon_cat'
+    },
+                axis=1,
+                inplace=True)
 
+    query = """SELECT pilot, record, files.session_start_time
+                FROM mission_stats
+                LEFT JOIN mission_stat_files files
+                USING (file_name)
+                WHERE files.session_start_time > (now() - INTERVAL '180 DAYS')
+            """
 
-        # rec = await db.fetch_all("""
-                # SELECT
-                # file_name,
-                # s.pilot,
-                # t.key,
-                # CAST((CASE WHEN t.value = 'true' then '1' when t.value in ('false', '') then '0' else t.value end) as REAL)
+    data_row_dicts: List[Dict] = []
+    async for rec in db.iterate(query=query):
+        rec_elements = json.loads(rec['record'])
+        LOG.debug(rec_elements)
+        for key, value in rec_elements.items():
+            parsed_rec = parse_rec_keys(key)
+            if parsed_rec and value != "" and parsed_rec['category'] != "crash":
+                parsed_rec['value'] = int(value)
+                parsed_rec['key_orig'] = key
+                parsed_rec['pilot'] = rec['pilot']
+                parsed_rec['session_start_time'] = rec['session_start_time']
+                data_row_dicts.append(parsed_rec)
 
-                # FROM
-                # mission_stats s
-                # CROSS JOIN LATERAL
-                # json_each_text(s.record) as t
-        # """)
-
-        data_row_dicts: List[Dict] = []
-        async for rec in db.iterate(query=query):
-            rec_elements = json.loads(rec['record'])
-            LOG.debug(rec_elements)
-            for key, value in rec_elements.items():
-                parsed_rec = parse_rec_keys(key)
-                if parsed_rec and value != "" and parsed_rec['category'] != "crash":
-                    parsed_rec['value'] = int(value)
-                    parsed_rec['key_orig'] = key
-                    parsed_rec['pilot'] = rec['pilot']
-                    parsed_rec['session_start_time'] = rec['session_start_time']
-                    data_row_dicts.append(parsed_rec)
-
-        data = pd.DataFrame.from_records(data_row_dicts, index=None)
-        if data.shape[0] == 0:
-            return data
-        data['session_start_date'] = data['session_start_time'].dt.date # type: ignore
-        data = data.merge(weapons, how='left', on='equipment')
-        data["category"] = data.category.combine_first(data.weapon_cat)
-        data.value = data.apply(
-            lambda x: 0
-            if x['category'] == 'Gun' and x['metric'] == 'kills' else x['value'],
-            axis=1)
-    except Exception as err:
-        LOG.info(data)
-        raise err
+    data = pd.DataFrame.from_records(data_row_dicts, index=None)
+    if data.shape[0] == 0:
+        return data
+    data['session_start_date'] = data['session_start_time'].dt.date # type: ignore
+    data = data.merge(weapons, how='left', on='equipment')
+    data["category"] = data.category.combine_first(data.weapon_cat)
+    data.value = data.apply(
+        lambda x: 0
+        if x['category'] == 'Gun' and x['metric'] == 'kills' else x['value'],
+        axis=1)
+    
     return data
 
 
