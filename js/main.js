@@ -149,7 +149,7 @@ function set_tab_active(elem_id) {
 //         userPreference = -1;
 //         // do nothing
 //     }
-}
+// }
 
 $(document).ready(function () {
     set_click_attr();
