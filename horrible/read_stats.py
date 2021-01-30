@@ -543,7 +543,7 @@ async def collect_recs_kv(db) -> pd.DataFrame:
         data_row_dicts: List[Dict] = []
         async for rec in db.iterate(query=query):
             rec_elements = json.loads(rec['record'])
-            LOG.info(rec_elements)
+            LOG.debug(rec_elements)
             for key, value in rec_elements.items():
                 parsed_rec = parse_rec_keys(key)
                 if parsed_rec and value != "" and parsed_rec['category'] != "crash":

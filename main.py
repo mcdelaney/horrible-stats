@@ -148,7 +148,7 @@ async def get_frametime_logs(request: Request):
 async def get_weapon_db_logs(request: Request):
     """Get a json dictionary of categorized weapons used for groupings."""
     data = await db.fetch_all('SELECT * FROM weapon_types')
-    content = {"data": [], "columns": list(data[0].keys())}
+    content = {"data": [], "columns": [{'title': c.title()} for c in data[0].keys()]}
     for row in data:
         content['data'].append(list(row.values()))
     return content
@@ -159,6 +159,7 @@ async def get_overall_stats(request: Request):
     """Get a json dictionary of grouped statistics as key-value pairs."""
     data = await read_stats.calculate_overall_stats(grouping_cols=['pilot'], db=db)
     data = data.to_dict('split')
+    data['columns'] = [{'title': c.title()} for c in data['columns']]
     return data
 
 
@@ -172,6 +173,7 @@ async def get_session_perf_stats(request: Request):
                      ascending=False,
                      inplace=True)
     data = data.to_dict('split')
+    data['columns'] = [{'title': c.title()} for c in data['columns']]
     return data
 
 
@@ -179,21 +181,27 @@ async def get_session_perf_stats(request: Request):
 async def weapon_stats(request: Request):
     """Return a rendered template with a table displaying per-weapon stats."""
     data = await read_stats.get_dataframe(db, subset=["weapons"])
-    return data.to_dict('split')
+    data = data.to_dict('split')
+    data['columns'] = [{'title': c.title()} for c in data['columns']]
+    return data
 
 
 @app.get("/kills")
 async def kill_detail(request: Request):
     """Return a rendered template showing kill/loss statistics."""
     data = await read_stats.get_dataframe(db, subset=["kills"])
-    return data.to_dict("split")
+    data = data.to_dict('split')
+    data['columns'] = [{'title': c.title()} for c in data['columns']]
+    return data
 
 
 @app.get("/losses")
 async def loss_detail(request: Request):
     """Return a rendered template showing kill/loss statistics."""
     data = await read_stats.get_dataframe(db, subset=["losses"])
-    return data.to_dict("split")
+    data = data.to_dict('split')
+    data['columns'] = [{'title': c.title()} for c in data['columns']]
+    return data
 
 # SW
 @app.get("/tacview")
@@ -213,7 +221,9 @@ async def process_tacview(filename: str):
 async def event_detail(request: Request):
     """Return SlMod event records."""
     data = await read_stats.read_events(db)
-    return data.to_dict("split")
+    data = data.to_dict('split')
+    data['columns'] = [{'title': c.title()} for c in data['columns']]
+    return data
 
 
 @app.get("/tacview_kills")

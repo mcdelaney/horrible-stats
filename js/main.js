@@ -10,7 +10,9 @@ var sortKeys = {
     "overall": [
         [2, "desc"]
     ],
-    "session_performance": [],
+    "session_performance": [
+        0, "desc"
+    ],
     "stat_logs": [
         [1, "desc"]
     ],
@@ -40,65 +42,7 @@ var sortKeys = {
 };
 
 
-function load_chart(path, pctile) {
-    console.log("Loading chart for: " + path);
-    var timeFormat = "YYYY-MM-DD HH:mm:ss";
-    var chart_nm = path + "_chart";
-    $.getJSON("/" + path + "?pctile=" + pctile,
-        function (data) {
 
-            var ctx = document.getElementById(chart_nm).getContext('2d');
-            var chart = new Chart(ctx, {
-                type: 'line',
-                // labels: ['Percentile 10 FPS'],
-                data: {
-                    labels: data.labels,
-                    datasets: [{
-                        data: data.data,
-                        label: 'Percentile 10 FPS'
-                    }],
-                },
-                options: {
-                    // showLine: true,
-                    scales: {
-                        xAxes: [{
-                            type: 'time',
-                            time: {
-                                parser: timeFormat,
-                                unit: 'second',
-                                // round: 'day'
-                                tooltipFormat: 'YYYY-MM-DD HH:mm:ss',
-                                // displayFormats: {
-                                //   second: 'h:mm:ss a',
-                                //     minute: 'HH:mm',
-                                //     hour: 'HH'
-                                // }
-                            }
-                            // display: true,
-                            // scaleLabel: {
-                            //     display: true,
-                            //     labelString: 'Time'
-                            // }
-                        }]
-
-                        //       xAxes: [{
-                        //         type: 'time',
-                        //         scaleLabel: {
-                        //                   display:     true,
-                        //                   labelString: 'Date'
-                        //               },
-                        //         time:       {
-                        //           unit: 'second',
-                        //           parser: timeFormat,
-                        //           tooltipFormat: 'll'
-                        //         },
-                        //       }]
-                    }
-                }
-            });
-
-        });
-}
 
 function load_dt(path) {
 
@@ -108,55 +52,39 @@ function load_dt(path) {
     document.getElementById('killcam_div').hidden = true;
     document.getElementById('load_spin').hidden = false;
 
-    try {
-        if ($.fn.dataTable.isDataTable(tbl_nm)) {
-            $(tbl_nm).DataTable().destroy();
-            $(tbl_nm).empty();
-        }
-    } catch (e) {
-        console.log(e.stack);
-    }
-
     $.getJSON("/" + path, function (data) {
 
-        var cols = [];
-        for (var i = 0; i < data.columns.length; i++) {
-            var col_nm = data.columns[i].split("_");
-            for (var n = 0; n < col_nm.length; n++) {
-                col_nm[n] = col_nm[n].charAt(0).toUpperCase() + col_nm[n].slice(1);
+        try {
+            if ($.fn.dataTable.isDataTable(tbl_nm)) {
+                $(tbl_nm).DataTable().destroy();
+                $(tbl_nm).empty();
             }
-            col_nm = {
-                "title": col_nm.join(" ")
-            };
-            if (col_nm.title === 'Session Date') {
-                col_nm.render = function (data, type) { // jshint ignore:line
-                    return type === 'sort' ? data : moment(data).format('L');
-                };
-            }
-            cols.push(col_nm);
+        }catch (err) {
+            console.log(err)
         }
 
-        $(tbl_nm).DataTable({
+        var tbl = $(tbl_nm).DataTable({
             data: data.data,
-            columns: cols,
-            // order: sortKeys[path],
+            columns: data.columns,
+            order: sortKeys[path],
             paging: false,
             pageLength: 50,
             rowId: "index",
             fixedColumns: false,
             autoWidth: true,
-            // lengthChange: false,
-            // width:"1200px",
             scrollY: 600,
             info: false,
             scrollX: true,
-            // sScrollX: "100%",
             initComplete: function() {
+                
+                this.api().columns.adjust();
+
                 document.getElementById('load_spin').hidden = true;
                 document.getElementById('overall_container').hidden = false;
-                $(tbl_nm).DataTable().columns.adjust();
             }
         });
+        
+        
     });
 }
 
@@ -249,21 +177,80 @@ $('#overall_tbl').on('click', 'tbody tr', function () {
         var elem = document.getElementById('killcam');
         set_onclick(elem, kill_id);
         return;
-    }
-//SW this handles the database request for the Tvw Files
-    $.ajax({
-        // data: data[0],
-        url: "/process_tacview?filename=" + selected_row[0],
-        beforeSend: function(){
-            console.log('Sending request to process file: ' + selected_row[0]);
-        },
-        success: function (response) {
-            console.log(response);
-        },
-        error: function(response){
-            console.log(response);
-        }
-    });
-
+    } else if (current[0].id == 'tacview') {
+        $.ajax({
+            // data: data[0],
+            url: "/process_tacview?filename=" + selected_row[0],
+            beforeSend: function(){
+                console.log('Sending request to process file: ' + selected_row[0]);
+            },
+            success: function (response) {
+                console.log(response);
+            },
+            error: function(response){
+                console.log(response);
+            }
+        });
+    };
 });
 
+
+function load_chart(path, pctile) {
+    console.log("Loading chart for: " + path);
+    var timeFormat = "YYYY-MM-DD HH:mm:ss";
+    var chart_nm = path + "_chart";
+    $.getJSON("/" + path + "?pctile=" + pctile,
+        function (data) {
+
+            var ctx = document.getElementById(chart_nm).getContext('2d');
+            var chart = new Chart(ctx, {
+                type: 'line',
+                // labels: ['Percentile 10 FPS'],
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        data: data.data,
+                        label: 'Percentile 10 FPS'
+                    }],
+                },
+                options: {
+                    // showLine: true,
+                    scales: {
+                        xAxes: [{
+                            type: 'time',
+                            time: {
+                                parser: timeFormat,
+                                unit: 'second',
+                                // round: 'day'
+                                tooltipFormat: 'YYYY-MM-DD HH:mm:ss',
+                                // displayFormats: {
+                                //   second: 'h:mm:ss a',
+                                //     minute: 'HH:mm',
+                                //     hour: 'HH'
+                                // }
+                            }
+                            // display: true,
+                            // scaleLabel: {
+                            //     display: true,
+                            //     labelString: 'Time'
+                            // }
+                        }]
+
+                        //       xAxes: [{
+                        //         type: 'time',
+                        //         scaleLabel: {
+                        //                   display:     true,
+                        //                   labelString: 'Date'
+                        //               },
+                        //         time:       {
+                        //           unit: 'second',
+                        //           parser: timeFormat,
+                        //           tooltipFormat: 'll'
+                        //         },
+                        //       }]
+                    }
+                }
+            });
+
+        });
+}

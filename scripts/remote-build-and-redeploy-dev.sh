@@ -7,7 +7,7 @@ GCP_PROJECT_ID="dcs-analytics-257714"
 TAG=$(date +"%s")
 
 echo "Building $IMAGE_NAME at hash $TAG..."
-docker buildx build -t gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:latest .
+docker buildx build --tag gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:latest .
 
 echo "Setting commit hash tag on latest image..."
 docker tag gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:latest gcr.io/$GCP_PROJECT_ID/$IMAGE_NAME:$TAG
