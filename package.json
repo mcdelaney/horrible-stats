@@ -23,7 +23,7 @@
     "esm": "^3.2.25",
     "obj2gltf": "^3.1.0",
     "webpack": "^4.42.1",
-    "webpack-cli": "^3.3.11"
+    "webpack-cli": "^3.3.12"
   },
   "dependencies": {
     "datatables": "^1.10.18",
