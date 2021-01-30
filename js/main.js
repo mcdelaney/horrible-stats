@@ -110,7 +110,7 @@ function load_dt(path) {
 
     try {
         if ($.fn.dataTable.isDataTable(tbl_nm)) {
-            $(tbl_nm).DataTable().destroy();
+            $(tbl_nm).destroy();
             $(tbl_nm).empty();
         }
     } catch (e) {
@@ -155,7 +155,7 @@ function load_dt(path) {
 
         document.getElementById('load_spin').hidden = true;
         document.getElementById('overall_container').hidden = false;
-        $(tbl_nm).DataTable().columns.adjust();
+        $(tbl_nm).columns.adjust();
     });
 }
 
@@ -237,6 +237,10 @@ $(document).ready(function () {
 // var selected_row;
 $('#overall_tbl').on('click', 'tbody tr', function () {
     var current = document.getElementsByClassName("active"); //current active element
+
+    if ($.fn.dataTable.isDataTable("#overall_tbl")) {
+        $("#overall_tbl").destroy();
+    };
 
     var table = $('#overall_tbl').DataTable(); // the table
     var selected_row = table.row(this).data(); // the selected row data
