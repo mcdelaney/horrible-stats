@@ -110,7 +110,7 @@ function load_dt(path) {
 
     try {
         if ($.fn.dataTable.isDataTable(tbl_nm)) {
-            $(tbl_nm).destroy();
+            $(tbl_nm).DataTable().destroy();
             $(tbl_nm).empty();
         }
     } catch (e) {
@@ -139,7 +139,7 @@ function load_dt(path) {
         $(tbl_nm).DataTable({
             data: data.data,
             columns: cols,
-            order: sortKeys[path],
+            // order: sortKeys[path],
             paging: false,
             pageLength: 50,
             rowId: "index",
@@ -151,11 +151,12 @@ function load_dt(path) {
             info: false,
             scrollX: true,
             // sScrollX: "100%",
+            initComplete: function() {
+                document.getElementById('load_spin').hidden = true;
+                document.getElementById('overall_container').hidden = false;
+                $(tbl_nm).DataTable().columns.adjust();
+            }
         });
-
-        document.getElementById('load_spin').hidden = true;
-        document.getElementById('overall_container').hidden = false;
-        $(tbl_nm).DataTable().columns.adjust();
     });
 }
 
@@ -238,37 +239,15 @@ $(document).ready(function () {
 $('#overall_tbl').on('click', 'tbody tr', function () {
     var current = document.getElementsByClassName("active"); //current active element
 
-    // if ($.fn.dataTable.isDataTable("#overall_tbl")) {
-    //     $("#overall_tbl").destroy();
-    // };
-
     var table = $('#overall_tbl').DataTable(); // the table
     var selected_row = table.row(this).data(); // the selected row data
-    var tac_filename = selected_row.split(",")[0];
-
-
-/*
-    var tac_filename = str.substring(0, str.indexOf(","));
-
-    The second is a trick with split:
-
-    var tac_filename = selected_row.split(",")[0];
-*/
-
-    if (current[0].id == 'tacview') {
-        var endpoint = 'process_tacview?filename=';// asks for TV filename
-        var row_id = 0;
-        //SW
-        selected_row.onclick(get_tacview_file(tac_filename));
-        
-    }else if (current[0].id == 'tacview_kills') {
+   
+    if (current[0].id == 'tacview_kills') {
         var kill_id = selected_row[selected_row.length - 1].toString();
         console.log(kill_id);
         window.location.href = '#killcam';
         var elem = document.getElementById('killcam');
         set_onclick(elem, kill_id);
-        return;
-    }else{
         return;
     }
 //SW this handles the database request for the Tvw Files
