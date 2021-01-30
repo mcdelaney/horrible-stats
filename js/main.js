@@ -136,19 +136,19 @@ function set_tab_active(elem_id) {
 }
 
 
-//SW: function get_tacview_file(elem,filename){
-// Test popup for onclick of TVw table
-function get_tacview_file(tv_filename){
+// //SW: function get_tacview_file(elem,filename){
+// // Test popup for onclick of TVw table
+// function get_tacview_file(tv_filename){
 
-    var userPreference;
+//     var userPreference;
 
-    if (confirm(`Do you want to download file? ${tv_filename}`) == true) {
-        userPreference = 1;
-        //get file
-    } else {
-        userPreference = -1;
-        // do nothing
-    }
+//     if (confirm(`Do you want to download file? ${tv_filename}`) == true) {
+//         userPreference = 1;
+//         //get file
+//     } else {
+//         userPreference = -1;
+//         // do nothing
+//     }
 }
 
 $(document).ready(function () {
@@ -195,62 +195,62 @@ $('#overall_tbl').on('click', 'tbody tr', function () {
 });
 
 
-function load_chart(path, pctile) {
-    console.log("Loading chart for: " + path);
-    var timeFormat = "YYYY-MM-DD HH:mm:ss";
-    var chart_nm = path + "_chart";
-    $.getJSON("/" + path + "?pctile=" + pctile,
-        function (data) {
+// function load_chart(path, pctile) {
+//     console.log("Loading chart for: " + path);
+//     var timeFormat = "YYYY-MM-DD HH:mm:ss";
+//     var chart_nm = path + "_chart";
+//     $.getJSON("/" + path + "?pctile=" + pctile,
+//         function (data) {
 
-            var ctx = document.getElementById(chart_nm).getContext('2d');
-            var chart = new Chart(ctx, {
-                type: 'line',
-                // labels: ['Percentile 10 FPS'],
-                data: {
-                    labels: data.labels,
-                    datasets: [{
-                        data: data.data,
-                        label: 'Percentile 10 FPS'
-                    }],
-                },
-                options: {
-                    // showLine: true,
-                    scales: {
-                        xAxes: [{
-                            type: 'time',
-                            time: {
-                                parser: timeFormat,
-                                unit: 'second',
-                                // round: 'day'
-                                tooltipFormat: 'YYYY-MM-DD HH:mm:ss',
-                                // displayFormats: {
-                                //   second: 'h:mm:ss a',
-                                //     minute: 'HH:mm',
-                                //     hour: 'HH'
-                                // }
-                            }
-                            // display: true,
-                            // scaleLabel: {
-                            //     display: true,
-                            //     labelString: 'Time'
-                            // }
-                        }]
+//             var ctx = document.getElementById(chart_nm).getContext('2d');
+//             var chart = new Chart(ctx, {
+//                 type: 'line',
+//                 // labels: ['Percentile 10 FPS'],
+//                 data: {
+//                     labels: data.labels,
+//                     datasets: [{
+//                         data: data.data,
+//                         label: 'Percentile 10 FPS'
+//                     }],
+//                 },
+//                 options: {
+//                     // showLine: true,
+//                     scales: {
+//                         xAxes: [{
+//                             type: 'time',
+//                             time: {
+//                                 parser: timeFormat,
+//                                 unit: 'second',
+//                                 // round: 'day'
+//                                 tooltipFormat: 'YYYY-MM-DD HH:mm:ss',
+//                                 // displayFormats: {
+//                                 //   second: 'h:mm:ss a',
+//                                 //     minute: 'HH:mm',
+//                                 //     hour: 'HH'
+//                                 // }
+//                             }
+//                             // display: true,
+//                             // scaleLabel: {
+//                             //     display: true,
+//                             //     labelString: 'Time'
+//                             // }
+//                         }]
 
-                        //       xAxes: [{
-                        //         type: 'time',
-                        //         scaleLabel: {
-                        //                   display:     true,
-                        //                   labelString: 'Date'
-                        //               },
-                        //         time:       {
-                        //           unit: 'second',
-                        //           parser: timeFormat,
-                        //           tooltipFormat: 'll'
-                        //         },
-                        //       }]
-                    }
-                }
-            });
+//                         //       xAxes: [{
+//                         //         type: 'time',
+//                         //         scaleLabel: {
+//                         //                   display:     true,
+//                         //                   labelString: 'Date'
+//                         //               },
+//                         //         time:       {
+//                         //           unit: 'second',
+//                         //           parser: timeFormat,
+//                         //           tooltipFormat: 'll'
+//                         //         },
+//                         //       }]
+//                     }
+//                 }
+//             });
 
-        });
-}
+//         });
+// }

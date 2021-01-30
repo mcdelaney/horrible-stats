@@ -47,6 +47,7 @@ def healthz():
 async def serve_index():
     return FileResponse("./static/index.html")
 
+
 @app.get("/static/mesh")
 async def serve_mesh(request: Request, obj_name: str):
     log.info(f"Looking up mesh for: {obj_name}")
@@ -67,6 +68,7 @@ async def serve_mesh(request: Request, obj_name: str):
 @app.get("/static/images/{img_name}")
 async def serve_mesh(img_name: str):
     return FileResponse(f"./static/images/{img_name}")
+
 
 @app.get("/static/textures/{img_name}")
 async def serve_texture(img_name: str):
@@ -173,7 +175,7 @@ async def get_session_perf_stats(request: Request):
                      ascending=False,
                      inplace=True)
     data = data.to_dict('split')
-    data['columns'] = [{'title': c.title()} for c in data['columns']]
+    data['columns'] = [{'title': c.replace("_", " ").title()} for c in data['columns']]
     return data
 
 
@@ -203,7 +205,7 @@ async def loss_detail(request: Request):
     data['columns'] = [{'title': c.title()} for c in data['columns']]
     return data
 
-# SW
+
 @app.get("/tacview")
 async def tacview_detail(request: Request):
     """Return tacview download links."""
