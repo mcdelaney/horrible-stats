@@ -88,7 +88,7 @@ def dict_to_js_datatable_friendly_fmt(data: List) -> Dict:
     for row in data:
         record = dict(row)
         if i == 0:
-            output['columns'].extend(list(record.keys()))
+            output['columns'] = [{'title': c.replace("_", " ").title()} for c in record.keys()]
         output['data'].append(list(record.values()))
         output['index'].append(i)
         i += 1
@@ -112,7 +112,7 @@ async def query_tacview_files(db) -> Dict:
         FROM tacview_files""")
     for record in recs:
         if i == 0:
-            output['columns'].extend(list(record.keys()))
+            output['columns'] = [{'title': c.replace("_", " ").title()} for c in record.keys()]
         output['data'].append(list(record.values()))
         output['index'].append(i)
         i += 1
