@@ -1,5 +1,4 @@
-import pandas as pd
-from typing import cast, Dict
+from typing import Dict
 from horrible.config import get_logger
 from horrible.read_stats import dict_to_js_datatable_friendly_fmt
 
