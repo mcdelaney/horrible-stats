@@ -78,8 +78,8 @@ CREATE TABLE IF NOT EXISTS frametimes (
 
 create or replace view impacts_valid as (
     select * from impact_comb ic
-    inner join (select id as target_id, first_seen, last_seen from object ) op
-    using (target_id)
+    inner join (select session_id, id as target_id, first_seen, last_seen from object ) op
+    using (target_id, session_id)
     WHERE
         weapon_first_time > first_seen and weapon_last_time <= last_seen
     );
