@@ -7,7 +7,7 @@ import sys
 
 import asyncpg
 import databases
-from tacview_client import serve_file, client
+from tacview_client import serve_file, client, db
 import uvloop
 
 from horrible.database import (DATABASE_URL, stat_files, frametime_files,
@@ -15,7 +15,7 @@ from horrible.database import (DATABASE_URL, stat_files, frametime_files,
 from horrible import read_stats, gcs
 from horrible.config import get_logger
 
-log = get_logger('file_updater')
+log = get_logger(__name__)
 
 
 TABLE_KEY = {
@@ -51,6 +51,7 @@ async def update_files(prefix, table):
 
 
 async def proc_tac():
+    await db.create_tables()
     await update_files("tacview", tacview_files)
     con = await asyncpg.connect(DATABASE_URL)
     await con.execute("SET application_name = tacview_reader;")
