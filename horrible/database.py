@@ -16,7 +16,8 @@ LOG.setLevel(level=logging.INFO)
 config = Config('.env')
 DATABASE_URL = config(
     'DATABASE_URL',
-    default="postgresql://localhost:5432/dcs?user=prod&password=pwd")
+    default = "postgresql://127.0.0.1:5432/tacview?user=postgres&password=pwd")
+    # default="postgresql://localhost:5432/dcs?user=prod&password=pwd")
 
 metadata = sqlalchemy.MetaData()
 

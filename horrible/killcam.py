@@ -15,7 +15,7 @@ async def get_all_kills(db) -> Dict:
         impact_dist,
         kill_duration,
         impact_id as id
-        FROM impact_comb
+        FROM impacts_valid
         WHERE weapon_type IS NOT NULL AND
             impact_dist <= 5 AND kill_duration > 1 AND
             kill_duration < 120 AND
@@ -30,9 +30,11 @@ async def get_all_kills(db) -> Dict:
 async def get_kill(kill_id: int, db):
     """Return coordinates for a single kill-id."""
     if kill_id == -1:
+
         filter_clause = """
-            WHERE weapon_type = 'Air-to-Air' AND
-            impact_dist < 10 AND kill_duration > 10 AND kill_duration < 120
+            WHERE
+                weapon_type = 'Air-to-Air' AND
+                impact_dist < 10 AND kill_duration > 10 AND kill_duration < 120
             ORDER BY random()
         """
     else:
@@ -40,7 +42,8 @@ async def get_kill(kill_id: int, db):
 
     log.info(f'Looking up specs for kill: {kill_id}...')
     resp = await db.fetch_one(
-        f"SELECT * FROM impact_comb {filter_clause} limit 1")
+        f"SELECT * FROM impacts_valid {filter_clause} limit 1")
+    log.info(resp)
     key_dict = {
         k: v
         for k, v in
@@ -49,7 +52,8 @@ async def get_kill(kill_id: int, db):
     }
 
     log.info(
-        f"Collecting kill points from id: {resp['impact_id']} and session: {resp['session_id']}..."
+        f"""Getting points from id: {resp['impact_id']} and session: {resp['session_id']}
+        with time range: {resp['weapon_first_time']-30} - {resp['weapon_last_time']+10}..."""
     )
 
     points_query = f"""
@@ -93,6 +97,7 @@ async def get_kill(kill_id: int, db):
 
     for pt in points:
         rec = dict(pt)
+
         if not data['min_ts'] or rec['time_step'][0] < data['min_ts']:
             data['min_ts'] = rec['time_step'][0]
 
@@ -123,10 +128,10 @@ async def get_kill(kill_id: int, db):
 
     # log.info(min_killer)
 
-    log.info(
-        f"Killer: {data['killer']['id']} -- Target: {data['target']['id']} -- "
-        f"Weapon: {data['weapon']['id']} -- Min ts: {data['min_ts']}"
-        f" Impact id: {data['impact_id']} "
-        f" Total other: {len(data['other'])}")
+    log.info(f"Killer: {data['killer']['id']}")
+    log.info(f"Target: {data['target']['id']} -- ")
+    log.info(f"Weapon: {data['weapon']['id']} -- Min ts: {data['min_ts']}")
+    log.info(f" Impact id: {data['impact_id']} ")
+    log.info(f" Total other: {len(data['other'])}")
 
     return data

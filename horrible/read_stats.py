@@ -144,26 +144,6 @@ def process_tacview_file(filename) -> None:
     log.info('Reader compete...')
 
 
-async def sync_weapons(db) -> None:
-    """Sync contents of data/weapons-db.csv with database."""
-    log.info('Syncing weapon file with DB...')
-    weapons = pd.read_csv("horrible/data/weapon-db.csv").to_dict('records')
-
-    current_weapons = await db.fetch_all(query=weapon_types.select())
-    current_weapons = [weapon['name'] for weapon in current_weapons]
-
-    query = weapon_types.insert()
-    for record in weapons:
-        if record['name'] in current_weapons:
-            continue
-        try:
-            await db.execute(query, values=record)
-        except asyncpg.UniqueViolationError:
-            pass
-        log.info(f"New weapon added to database: {record['name']}...")
-    log.info('Weapon sync complete...')
-
-
 def lua_tbl_to_py(lua_tbl: Dict) -> Dict:
     """Coerce lua table to python object."""
     flatten_these = ['names', 'friendlyKills', 'friendlyHits']
@@ -550,7 +530,7 @@ async def collect_recs_kv(db) -> pd.DataFrame:
         lambda x: 0
         if x['category'] == 'Gun' and x['metric'] == 'kills' else x['value'],
         axis=1)
-    
+
     return data
 
 

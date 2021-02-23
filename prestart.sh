@@ -10,7 +10,6 @@ from horrible.database import DATABASE_URL
 async def prestart():
     db = databases.Database(DATABASE_URL)
     await db.connect()
-    await read_stats.sync_weapons(db)
     tac_db.create_tables()
 
 print('Populating weapondb and creating tacview tables...')

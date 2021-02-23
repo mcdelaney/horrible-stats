@@ -5,7 +5,7 @@ import databases
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, FileResponse
 from starlette.requests import Request
-
+from fastapi.staticfiles import StaticFiles
 from horrible.database import DATABASE_URL
 from horrible import read_stats, killcam
 from horrible.config import get_logger
@@ -15,6 +15,7 @@ log = get_logger('horrible')
 MESHES = [str(p.name) for p in list(Path("static/mesh/").glob("*.obj"))]
 # MESHES = [str(p.name) for p in list(Path("static/mesh/").glob("*.glb"))]
 app = FastAPI(title="Stat-Server")
+# app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.on_event("startup")

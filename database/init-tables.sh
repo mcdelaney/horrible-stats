@@ -70,10 +70,18 @@ CREATE TABLE IF NOT EXISTS tacview_files (
       errors INTEGER DEFAULT 0
   );
 
-  CREATE TABLE IF NOT EXISTS frametimes (
+CREATE TABLE IF NOT EXISTS frametimes (
       file_name VARCHAR(500) REFERENCES frametime_files(file_name) ON DELETE CASCADE,
       frame_ts TIMESTAMP,
       ts_fps INT
   );
+
+create or replace view impacts_valid as (
+    select * from impact_comb ic
+    inner join (select id as target_id, first_seen, last_seen from object ) op
+    using (target_id)
+    WHERE
+        weapon_first_time > first_seen and weapon_last_time <= last_seen
+    );
 
 EOSQL
