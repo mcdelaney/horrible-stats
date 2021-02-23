@@ -4,7 +4,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { Water } from 'three/examples/jsm/objects/Water.js';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module.js';
-
+import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
 
 var renderer, scene, camera, anim_id, clock, progress, light, water, sky, zoom;
 var tubes = {
@@ -696,13 +696,26 @@ export function load_kill() {
         var uniforms = sky.material.uniforms;
         uniforms[ 'turbidity' ].value = 5;
         uniforms[ 'rayleigh' ].value = 2;
-        uniforms[ 'luminance' ].value = 1.06;
+        // uniforms[ 'luminance' ].value = 1.06;
         uniforms[ 'mieCoefficient' ].value = 0.004;
         uniforms[ 'mieDirectionalG' ].value = 0.5;
 
-        var cubeCamera = new THREE.CubeCamera( 0.1, 100000, 512 );
+
+
+        // renderer.setSize( window.innerWidth, window.innerHeight );
+        // document.body.appendChild( renderer.domElement );
+
+
+        // var cubeCamera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
+        // var controls = new OrbitControls( cubeCamera, renderer.domElement );
+        // cubeCamera.position.set( 0, 20, 100 );
+        // controls.update();
+
+        const cubeRenderTarget = new THREE.WebGLCubeRenderTarget( 128, { format: THREE.RGBFormat, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter } );
+        var cubeCamera = new THREE.CubeCamera( 0.1, 100000, cubeRenderTarget, 512 );
         cubeCamera.renderTarget.texture.generateMipmaps = true;
         cubeCamera.renderTarget.texture.minFilter = THREE.LinearMipmapLinearFilter;
+
         scene.background = cubeCamera.renderTarget;
 
         function updateSun() {
@@ -718,6 +731,8 @@ export function load_kill() {
             water.material.uniforms[ 'sunDirection' ].value.copy( light.position ).normalize();
 
             cubeCamera.update( renderer, sky );
+            // controls.update()
+            // renderer.update(  sky, camera );
 
         }
 
