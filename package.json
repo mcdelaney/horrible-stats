@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "datatables": "^1.10.18",
-    "datatables.net": "^1.10.20",
+    "datatables.net": "^1.11.3",
     "datatables.net-bs4": "^1.10.20",
     "datatables.net-fixedcolumns": "^3.3.0",
     "datatables.net-fixedcolumns-bs4": "^3.3.0",
